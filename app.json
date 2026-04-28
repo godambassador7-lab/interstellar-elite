@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Interstellar Elite",
+    "slug": "interstellar-elite",
+    "version": "1.0.0",
+    "icon": "./ChatGPT Image Apr 25, 2026, 09_38_15 PM.png",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#000008"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.interstellarelite.game"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./ChatGPT Image Apr 25, 2026, 09_38_15 PM.png",
+        "backgroundColor": "#000008"
+      },
+      "package": "com.interstellarelite.game"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

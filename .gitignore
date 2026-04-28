@@ -1,0 +1,17 @@
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.*
+
+.DS_Store
+Thumbs.db
+
+.env
+.env.local
+.env.*.local

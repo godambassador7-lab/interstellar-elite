@@ -1,0 +1,1113 @@
+// src/screens/GameScreen.js
+
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder } from 'react-native';
+import * as Haptics from 'expo-haptics';
+
+import { SCREEN, COLORS, getUpgradeThresholdsForRun } from '../utils/constants';
+import {
+  createPlayer,
+  createAbilities,
+  updatePlayer,
+  triggerDash,
+  triggerPulse,
+  triggerDrone,
+  triggerQuantumSlash,
+  triggerPhaseSwap,
+} from '../systems/PlayerSystem';
+import { runCombatFrame, applyQuantumSlashSwipe } from '../systems/CombatSystem';
+import { trySpawn, updateEnemyMovement, getWaveEnemyCount } from '../systems/SpawnSystem';
+import { pickUpgradeChoices, applyUpgrade } from '../systems/UpgradeSystem';
+import { pickShopOffers, randomShopInterval, applyShopOffer } from '../systems/ShopSystem';
+import { applyMetaUpgrades } from '../systems/MetaUpgradeSystem';
+
+import { VirtualJoystick } from '../components/VirtualJoystick';
+import { HUD } from '../components/HUD';
+import {
+  PlayerShip,
+  EnemyShip,
+  Particle,
+  DashTrail,
+  PulseRing,
+  DroneOrbit,
+  StarField,
+  AttackRangeIndicator,
+  QuantumPickup,
+  QuantumSwipeTrail,
+  DamageNumbers,
+  useShakeOffset,
+} from '../components/GameCanvas';
+import { UpgradeScreen } from '../components/UpgradeScreen';
+import { ShopScreen } from '../components/ShopScreen';
+import { GameOver } from '../components/GameOver';
+
+function EnemyLaserBeam({ x1, y1, x2, y2, alpha, color }) {
+  const dx  = x2 - x1;
+  const dy  = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 2) return null;
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: (x1 + x2) / 2 - len / 2,
+        top:  (y1 + y2) / 2 - 1,
+        width: len,
+        height: 2,
+        backgroundColor: color,
+        opacity: alpha * 0.82,
+        borderRadius: 1,
+        transform: [{ rotate: `${angle}deg` }],
+        shadowColor: color,
+        shadowOpacity: 0.9,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 0 },
+      }}
+    />
+  );
+}
+
+function PhotonBall({ photon }) {
+  const { color = '#FFE566', glowColor = 'rgba(255,193,58,0.15)', size: s, life } = photon;
+  const fadeOpacity = Math.min(1, life / 500);
+  const showGlow = s > 6;
+  return (
+    <>
+      {showGlow && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: photon.x - s * 2,
+            top:  photon.y - s * 2,
+            width: s * 4,
+            height: s * 4,
+            borderRadius: s * 2,
+            backgroundColor: glowColor,
+            opacity: fadeOpacity,
+          }}
+        />
+      )}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: photon.x - s,
+          top:  photon.y - s,
+          width: s * 2,
+          height: s * 2,
+          borderRadius: s,
+          backgroundColor: color,
+          opacity: fadeOpacity,
+          shadowColor: color,
+          shadowOpacity: 1,
+          shadowRadius: showGlow ? 18 : 6,
+          shadowOffset: { width: 0, height: 0 },
+        }}
+      />
+    </>
+  );
+}
+
+function snapshotAbilities(abilities) {
+  return {
+    dash: {
+      active: abilities.dash.active,
+      cooldownRemaining: abilities.dash.cooldownRemaining,
+      maxCooldown: abilities.dash.maxCooldown,
+    },
+    pulse: {
+      active: abilities.pulse.active,
+      cooldownRemaining: abilities.pulse.cooldownRemaining,
+      maxCooldown: abilities.pulse.maxCooldown,
+    },
+    drone: {
+      active: abilities.drone.active,
+      cooldownRemaining: abilities.drone.cooldownRemaining,
+      maxCooldown: abilities.drone.maxCooldown,
+    },
+    quantum: {
+      active: abilities.quantum.active,
+      cooldownRemaining: abilities.quantum.cooldownRemaining,
+      maxCooldown: abilities.quantum.maxCooldown,
+      unlocked: abilities.quantum.unlocked,
+    },
+    phase: {
+      active: abilities.phase.active,
+      cooldownRemaining: abilities.phase.cooldownRemaining,
+      maxCooldown: abilities.phase.maxCooldown,
+    },
+  };
+}
+
+function makeUiState() {
+  return {
+    playerHp: 100,
+    playerMaxHp: 100,
+    playerShield: 50,
+    playerMaxShield: 50,
+    photons: [],
+    playerX: SCREEN.width / 2,
+    playerY: SCREEN.height / 2,
+    playerHitFlash: 0,
+    playerAttackFlash: 0,
+    playerFacingAngle: 0,
+    cameraX: 0,
+    cameraY: 0,
+    dashActive: false,
+    score: 0,
+    combo: 0,
+    totalDamage: 0,
+    peakCombo: 0,
+    abilities: null,
+    enemies: [],
+    particles: [],
+    dashTrail: [],
+    pulseActive: false,
+    pulseElapsed: 0,
+    dronePositions: [],
+    droneActive: false,
+    attackRange: 90,
+    time: 0,
+    gameTime: 0,
+    isDead: false,
+    isVictory: false,
+    showUpgrade: false,
+    upgradeChoices: [],
+    showShop: false,
+    shopOffers: [],
+    currentWave: 1,
+    maxWaves: 1,
+    waveRemaining: 0,
+    quantumPickup: null,
+    quantumTrails: [],
+    damageNumbers: [],
+    gravityWells: [],
+  };
+}
+
+const BATTLE_WORLD = {
+  width: SCREEN.width * 3.2,
+  height: SCREEN.height * 3.2,
+};
+const PLAYER_PICKUP_RADIUS = 42;
+const ENHANCEMENT_SETTLE_MS = 220;
+const GRAVITY_WELL_MAX = 2;
+const GRAVITY_WELL_SPAWN_MS = 13000;
+
+function GravityWellView({ well }) {
+  const r = well.radius;
+  return (
+    <>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: well.x - r,
+          top: well.y - r,
+          width: r * 2,
+          height: r * 2,
+          borderRadius: r,
+          borderWidth: 1,
+          borderColor: 'rgba(125,195,255,0.65)',
+          backgroundColor: 'rgba(70,120,255,0.09)',
+        }}
+      />
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: well.x - 6,
+          top: well.y - 6,
+          width: 12,
+          height: 12,
+          borderRadius: 6,
+          backgroundColor: '#9BD7FF',
+          shadowColor: '#9BD7FF',
+          shadowOpacity: 0.95,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 0 },
+        }}
+      />
+    </>
+  );
+}
+
+function applyGravityFromWells(entity, wells, dtSec, weight = 1) {
+  if (!entity || !wells?.length) return;
+  for (const w of wells) {
+    const dx = w.x - entity.x;
+    const dy = w.y - entity.y;
+    const distSq = dx * dx + dy * dy;
+    const radiusSq = w.radius * w.radius;
+    if (distSq > radiusSq || distSq < 4) continue;
+    const dist = Math.sqrt(distSq);
+    const normalized = 1 - dist / w.radius;
+    const pull = w.strength * normalized * weight;
+    entity.vx += (dx / dist) * pull * dtSec;
+    entity.vy += (dy / dist) * pull * dtSec;
+  }
+}
+
+function hasActiveWeapon(abilities) {
+  if (!abilities) return false;
+  return !!(
+    abilities.dash?.active ||
+    abilities.pulse?.active ||
+    abilities.drone?.active ||
+    abilities.quantum?.active
+  );
+}
+
+export default function GameScreen({
+  galaxy,
+  systemNumber = 1,
+  metaUpgrades = {},
+  onSystemComplete,
+  onMainMenu,
+}) {
+  const [uiState, setUiState] = useState(makeUiState);
+  const [gameKey, setGameKey] = useState(0);
+
+  const G = useRef(null);
+  const joystick = useRef({ dx: 0, dy: 0 });
+  const rafRef = useRef(null);
+  const lastTs = useRef(null);
+  const isRunning = useRef(false);
+  const isPaused = useRef(false);
+  const upgradeQueue = useRef([]);
+  const nextThresholdIdx = useRef(0);
+  const peakComboRef = useRef(0);
+  const abilityUsageRef = useRef({ dash: 0, pulse: 0, drone: 0, phase: 0 });
+
+  const { shakeX, shakeY, applyShake } = useShakeOffset();
+
+  useEffect(() => {
+    isRunning.current = false;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    const baseWaves = galaxy?.waves ?? 4;
+    const extraWaves = Math.min(4, Math.floor((systemNumber - 1) / 12));
+    const maxWaves = baseWaves + extraWaves;
+    const runUpgradeThresholds = getUpgradeThresholdsForRun({
+      threat: galaxy?.threat ?? 1,
+      systemNumber,
+      maxWaves,
+    });
+
+    const player = createPlayer();
+    player.x = BATTLE_WORLD.width / 2;
+    player.y = BATTLE_WORLD.height / 2;
+    const abilities = createAbilities();
+    applyMetaUpgrades(player, abilities, metaUpgrades);
+
+    G.current = {
+      world: BATTLE_WORLD,
+      player,
+      abilities,
+      enemies: [],
+      particles: [],
+      dashTrail: [],
+      score: 0,
+      combo: 0,
+      totalDamageDealt: 0,
+      lastKillTime: 0,
+      resources: 0,
+      screenShake: 0,
+      gameStartTime: Date.now(),
+      lastSpawnTime: 0,
+      gameTime: 0,
+      galaxy,
+      currentWave: 1,
+      maxWaves,
+      waveSpawnRemaining: getWaveEnemyCount(1, galaxy),
+      nextWaveSpawnAt: Date.now() + 500,
+      nextShopWave: randomShopInterval(),
+      upgradeThresholds: runUpgradeThresholds,
+      lastWeaponActiveAt: 0,
+      cameraX: Math.max(0, player.x - SCREEN.width / 2),
+      cameraY: Math.max(0, player.y - SCREEN.height / 2),
+      quantumPickup: null,
+      nextQuantumSpawnAt: Date.now() + 12000,
+      quantumTrails: [],
+      damageNumbers: [],
+      victory: false,
+      photons: [],
+      gravityWells: [],
+      nextGravityWellAt: Date.now() + 4500,
+    };
+
+    joystick.current = { dx: 0, dy: 0 };
+    upgradeQueue.current = [];
+    nextThresholdIdx.current = 0;
+    isPaused.current = false;
+    peakComboRef.current = 0;
+    abilityUsageRef.current = { dash: 0, pulse: 0, drone: 0, phase: 0 };
+    lastTs.current = null;
+    isRunning.current = true;
+
+    const loop = (ts) => {
+      if (!isRunning.current) return;
+
+      const g = G.current;
+      if (!g) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      if (lastTs.current === null) lastTs.current = ts;
+      const dt = Math.min(ts - lastTs.current, 50);
+      lastTs.current = ts;
+
+      if (isPaused.current) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      g.gameTime += dt / 1000;
+      const dtSec = dt / 1000;
+
+      if (Date.now() >= (g.nextGravityWellAt || 0) && g.gravityWells.length < GRAVITY_WELL_MAX) {
+        g.gravityWells.push({
+          id: `gw-${Date.now()}-${Math.random()}`,
+          x: 120 + Math.random() * (g.world.width - 240),
+          y: 120 + Math.random() * (g.world.height - 240),
+          radius: 170 + Math.random() * 60,
+          strength: 520 + Math.random() * 240,
+          lifeMs: 10500 + Math.random() * 2500,
+        });
+        g.nextGravityWellAt = Date.now() + GRAVITY_WELL_SPAWN_MS + Math.random() * 3000;
+      }
+      for (const w of g.gravityWells) w.lifeMs -= dt;
+      g.gravityWells = g.gravityWells.filter((w) => w.lifeMs > 0);
+
+      updatePlayer(g, joystick.current, dt, g.abilities);
+      applyGravityFromWells(g.player, g.gravityWells, dtSec, 0.9);
+
+      g.cameraX = Math.max(0, Math.min(g.world.width - SCREEN.width, g.player.x - SCREEN.width / 2));
+      g.cameraY = Math.max(0, Math.min(g.world.height - SCREEN.height, g.player.y - SCREEN.height / 2));
+
+      const spawned = trySpawn(g);
+      if (spawned) g.enemies.push(...spawned);
+
+      updateEnemyMovement(g, dt);
+      for (const e of g.enemies) applyGravityFromWells(e, g.gravityWells, dtSec, 0.65);
+
+      if (hasActiveWeapon(g.abilities)) {
+        g.lastWeaponActiveAt = Date.now();
+      }
+
+      const prevShake = g.screenShake;
+      runCombatFrame(g, dt);
+      for (const ph of g.photons || []) applyGravityFromWells(ph, g.gravityWells, dtSec, 0.55);
+      if (g.screenShake > prevShake + 1) {
+        applyShake(g.screenShake);
+      }
+
+      if (g.combo > peakComboRef.current) peakComboRef.current = g.combo;
+
+      if (!g.abilities.quantum.unlocked && !g.quantumPickup && Date.now() >= g.nextQuantumSpawnAt) {
+        g.quantumPickup = {
+          id: `q-${Date.now()}`,
+          x: 80 + Math.random() * (g.world.width - 160),
+          y: 80 + Math.random() * (g.world.height - 160),
+          radius: 22,
+        };
+      }
+
+      if (g.quantumPickup) {
+        const dx = g.player.x - g.quantumPickup.x;
+        const dy = g.player.y - g.quantumPickup.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d <= PLAYER_PICKUP_RADIUS) {
+          g.abilities.quantum.unlocked = true;
+          g.quantumPickup = null;
+          g.nextQuantumSpawnAt = Date.now() + 60000;
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        }
+      }
+
+      for (const t of g.quantumTrails) t.life -= dt;
+      g.quantumTrails = g.quantumTrails.filter((t) => t.life > 0);
+      for (const n of g.damageNumbers) {
+        n.life -= dt;
+        n.y += n.vy * dt;
+      }
+      g.damageNumbers = g.damageNumbers.filter((n) => n.life > 0);
+
+      const thresholds = g.upgradeThresholds || [];
+      while (
+        nextThresholdIdx.current < thresholds.length &&
+        g.score >= thresholds[nextThresholdIdx.current]
+      ) {
+        upgradeQueue.current.push(pickUpgradeChoices());
+        nextThresholdIdx.current++;
+      }
+
+      const weaponSequenceComplete =
+        !hasActiveWeapon(g.abilities) &&
+        Date.now() - (g.lastWeaponActiveAt || 0) >= ENHANCEMENT_SETTLE_MS;
+
+      if (upgradeQueue.current.length > 0 && weaponSequenceComplete) {
+        const choices = upgradeQueue.current.shift();
+        isPaused.current = true;
+        setUiState((prev) => ({
+          ...prev,
+          showUpgrade: true,
+          upgradeChoices: choices,
+          score: g.score,
+          peakCombo: peakComboRef.current,
+          currentWave: g.currentWave,
+          maxWaves: g.maxWaves,
+          waveRemaining: g.waveSpawnRemaining + g.enemies.length,
+        }));
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      if (g.player.hp <= 0) {
+        isRunning.current = false;
+        g.player.hp = 0;
+        setUiState((prev) => ({
+          ...prev,
+          isDead: true,
+          playerHp: 0,
+          score: g.score,
+          gameTime: g.gameTime,
+          peakCombo: peakComboRef.current,
+        }));
+        return;
+      }
+
+      const waveRemaining = g.waveSpawnRemaining + g.enemies.length;
+      if (waveRemaining <= 0 && !g.victory) {
+        if (g.currentWave < g.maxWaves) {
+          const clearedWave = g.currentWave;
+          const shouldOpenShop = clearedWave >= g.nextShopWave;
+          g.currentWave += 1;
+          g.waveSpawnRemaining = getWaveEnemyCount(g.currentWave, galaxy);
+          g.nextWaveSpawnAt = Date.now() + (shouldOpenShop ? 350 : 900);
+
+          if (shouldOpenShop) {
+            g.nextShopWave = clearedWave + randomShopInterval();
+            isPaused.current = true;
+            const offers = pickShopOffers({
+              count: 3,
+              systemNumber,
+              threat: galaxy?.threat ?? 1,
+              currentWave: g.currentWave,
+              guaranteeWeaponSlot: true,
+            });
+            setUiState((prev) => ({
+              ...prev,
+              showShop: true,
+              shopOffers: offers,
+              score: g.score,
+              currentWave: g.currentWave,
+              maxWaves: g.maxWaves,
+              waveRemaining: g.waveSpawnRemaining + g.enemies.length,
+            }));
+            rafRef.current = requestAnimationFrame(loop);
+            return;
+          }
+        } else {
+          g.victory = true;
+          isRunning.current = false;
+        }
+      }
+
+      const remainingNow = g.waveSpawnRemaining + g.enemies.length;
+      const toScreen = (x, y) => ({ x: x - g.cameraX, y: y - g.cameraY });
+
+      setUiState({
+        playerHp: g.player.hp,
+        playerMaxHp: g.player.maxHp,
+        playerShield: g.player.shield,
+        playerMaxShield: g.player.maxShield,
+        playerX: g.player.x - g.cameraX,
+        playerY: g.player.y - g.cameraY,
+        playerHitFlash: g.player.hitFlash,
+        playerAttackFlash: g.player.attackFlash,
+        playerFacingAngle: g.player.facingAngle ?? 0,
+        cameraX: g.cameraX,
+        cameraY: g.cameraY,
+        dashActive: g.abilities.dash.active,
+        score: g.score,
+        combo: g.combo,
+        totalDamage: g.totalDamageDealt || 0,
+        peakCombo: peakComboRef.current,
+        abilities: snapshotAbilities(g.abilities),
+        enemies: g.enemies.map((e) => {
+          const s = toScreen(e.x, e.y);
+          return { ...e, x: s.x, y: s.y };
+        }),
+        particles: g.particles.map((p) => {
+          const s = toScreen(p.x, p.y);
+          return { ...p, x: s.x, y: s.y };
+        }),
+        dashTrail: g.dashTrail.map((t) => {
+          const s = toScreen(t.x, t.y);
+          return { ...t, x: s.x, y: s.y };
+        }),
+        pulseActive: g.abilities.pulse.active,
+        pulseElapsed: g.abilities.pulse.elapsed,
+        dronePositions: g.abilities.drone.positions
+          ? g.abilities.drone.positions.map((p) => {
+              const s = toScreen(p.x, p.y);
+              return { ...p, x: s.x, y: s.y };
+            })
+          : [],
+        droneActive: g.abilities.drone.active,
+        attackRange: g.player.attackRange,
+        time: ts / 1000,
+        gameTime: g.gameTime,
+        isDead: false,
+        isVictory: g.victory,
+        showUpgrade: false,
+        upgradeChoices: [],
+        showShop: false,
+        shopOffers: [],
+        currentWave: g.currentWave,
+        maxWaves: g.maxWaves,
+        waveRemaining: remainingNow,
+        quantumPickup: g.quantumPickup
+          ? {
+              x: g.quantumPickup.x - g.cameraX,
+              y: g.quantumPickup.y - g.cameraY,
+              active: true,
+            }
+          : null,
+        quantumTrails: g.quantumTrails.map((tr) => ({
+          id: tr.id,
+          fromX: tr.fromX - g.cameraX,
+          fromY: tr.fromY - g.cameraY,
+          toX: tr.toX - g.cameraX,
+          toY: tr.toY - g.cameraY,
+          opacity: tr.life / tr.maxLife,
+        })),
+        damageNumbers: g.damageNumbers.map((n) => ({
+          id: n.id,
+          x: n.x - g.cameraX,
+          y: n.y - g.cameraY,
+          value: n.value,
+          opacity: n.life / n.maxLife,
+        })),
+        photons: (g.photons || []).map((ph) => ({
+          ...ph,
+          x: ph.x - g.cameraX,
+          y: ph.y - g.cameraY,
+        })),
+        gravityWells: (g.gravityWells || []).map((w) => ({
+          ...w,
+          x: w.x - g.cameraX,
+          y: w.y - g.cameraY,
+        })),
+      });
+
+      if (g.victory) return;
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    rafRef.current = requestAnimationFrame(loop);
+
+    return () => {
+      isRunning.current = false;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [gameKey, galaxy, systemNumber, metaUpgrades, applyShake]);
+
+  const handleJoystick = useCallback((delta) => {
+    joystick.current = delta;
+  }, []);
+
+  const handleDash = useCallback(() => {
+    const g = G.current;
+    if (!g || g.victory) return;
+    triggerDash(g.player, g.abilities);
+    abilityUsageRef.current.dash += 1;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  }, []);
+
+  const handlePulse = useCallback(() => {
+    const g = G.current;
+    if (!g || g.victory) return;
+    triggerPulse(g.player, g.abilities);
+    abilityUsageRef.current.pulse += 1;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+  }, []);
+
+  const handleDrone = useCallback(() => {
+    const g = G.current;
+    if (!g || g.victory) return;
+    triggerDrone(g.player, g.abilities);
+    abilityUsageRef.current.drone += 1;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  }, []);
+
+  const handleQuantum = useCallback(() => {
+    const g = G.current;
+    if (!g || g.victory) return;
+    triggerQuantumSlash(g.player, g.abilities);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+  }, []);
+
+  const handlePhase = useCallback(() => {
+    const g = G.current;
+    if (!g || g.victory) return;
+    triggerPhaseSwap(g.player, g.abilities);
+    abilityUsageRef.current.phase += 1;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  }, []);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => {
+        const g = G.current;
+        return !!g?.abilities?.quantum?.active;
+      },
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const g = G.current;
+        return !!g?.abilities?.quantum?.active && (Math.abs(gestureState.dx) + Math.abs(gestureState.dy) > 4);
+      },
+      onPanResponderGrant: (evt) => {
+        const g = G.current;
+        if (!g?.abilities?.quantum?.active) return;
+        const { locationX, locationY } = evt.nativeEvent;
+        g.abilities.quantum.lastSwipePoint = {
+          x: locationX + g.cameraX,
+          y: locationY + g.cameraY,
+        };
+      },
+      onPanResponderMove: (evt) => {
+        const g = G.current;
+        if (!g?.abilities?.quantum?.active) return;
+        const { locationX, locationY } = evt.nativeEvent;
+        const curr = { x: locationX + g.cameraX, y: locationY + g.cameraY };
+        const prev = g.abilities.quantum.lastSwipePoint || curr;
+        const dx = curr.x - prev.x;
+        const dy = curr.y - prev.y;
+        if (dx * dx + dy * dy < 90) return;
+        applyQuantumSlashSwipe(g, prev, curr);
+        g.quantumTrails.push({
+          id: `${Date.now()}-${Math.random()}`,
+          fromX: prev.x,
+          fromY: prev.y,
+          toX: curr.x,
+          toY: curr.y,
+          life: 220,
+          maxLife: 220,
+        });
+        g.abilities.quantum.lastSwipePoint = curr;
+      },
+      onPanResponderRelease: () => {
+        const g = G.current;
+        if (g?.abilities?.quantum) g.abilities.quantum.lastSwipePoint = null;
+      },
+      onPanResponderTerminate: () => {
+        const g = G.current;
+        if (g?.abilities?.quantum) g.abilities.quantum.lastSwipePoint = null;
+      },
+    })
+  ).current;
+
+  const handleUpgradeSelect = useCallback((upgradeId) => {
+    const g = G.current;
+    if (!g) return;
+    applyUpgrade(upgradeId, g.player, g.abilities);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    isPaused.current = false;
+    setUiState((prev) => ({ ...prev, showUpgrade: false, upgradeChoices: [] }));
+  }, []);
+
+  const handleShopBuy = useCallback((offerId) => {
+    const g = G.current;
+    if (!g) return;
+    const selected = uiState.shopOffers.find((o) => o.id === offerId);
+    if (!selected || g.score < selected.price) return;
+
+    g.score -= selected.price;
+    applyShopOffer(offerId, g.player, g.abilities);
+    isPaused.current = false;
+    setUiState((prev) => ({
+      ...prev,
+      showShop: false,
+      shopOffers: [],
+      score: g.score,
+    }));
+    Haptics.selectionAsync().catch(() => {});
+  }, [uiState.shopOffers]);
+
+  const handleShopSkip = useCallback(() => {
+    isPaused.current = false;
+    setUiState((prev) => ({ ...prev, showShop: false, shopOffers: [] }));
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    setUiState(makeUiState());
+    setGameKey((k) => k + 1);
+  }, []);
+
+  const {
+    playerHp,
+    playerMaxHp,
+    playerShield,
+    playerMaxShield,
+    photons,
+    playerX,
+    playerY,
+    playerHitFlash,
+    playerAttackFlash,
+    playerFacingAngle,
+    cameraX,
+    cameraY,
+    dashActive,
+    score,
+    combo,
+    totalDamage,
+    peakCombo,
+    abilities,
+    enemies,
+    particles,
+    dashTrail,
+    pulseActive,
+    pulseElapsed,
+    dronePositions,
+    droneActive,
+    attackRange,
+    time,
+    gameTime,
+    isDead,
+    isVictory,
+    showUpgrade,
+    upgradeChoices,
+    showShop,
+    shopOffers,
+    currentWave,
+    maxWaves,
+    waveRemaining,
+    quantumPickup,
+    quantumTrails,
+    damageNumbers,
+    gravityWells,
+  } = uiState;
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <Animated.View style={[styles.container, { transform: [{ translateX: shakeX }, { translateY: shakeY }] }]}>
+        <View style={styles.bg} pointerEvents="none">
+          <View style={styles.nebulaA} />
+          <View style={styles.nebulaB} />
+          <View style={styles.nebulaC} />
+          <View style={styles.gridH1} />
+          <View style={styles.gridH2} />
+          <View style={styles.gridV1} />
+          <View style={styles.gridV2} />
+          <View style={styles.gridV3} />
+          <StarField time={time} cameraX={cameraX} cameraY={cameraY} />
+        </View>
+
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <DashTrail trail={dashTrail} />
+          <QuantumSwipeTrail trail={quantumTrails} />
+          <DamageNumbers numbers={damageNumbers} />
+          <AttackRangeIndicator x={playerX} y={playerY} range={attackRange} />
+          <QuantumPickup x={quantumPickup?.x || 0} y={quantumPickup?.y || 0} active={!!quantumPickup?.active} />
+          {gravityWells.map((w) => (
+            <GravityWellView key={w.id} well={w} />
+          ))}
+          {enemies.map((e) => e.laserFlash > 0 && (
+            <EnemyLaserBeam
+              key={`lb-${e.id}`}
+              x1={e.x} y1={e.y}
+              x2={playerX} y2={playerY}
+              alpha={e.laserFlash / 80}
+              color={e.glow || e.color || '#FF4F62'}
+            />
+          ))}
+          {enemies.map((e) => (
+            <EnemyShip key={e.id} enemy={e} />
+          ))}
+          {particles.map((p) => (
+            <Particle key={p.id} p={p} />
+          ))}
+          {photons.map((ph) => (
+            <PhotonBall key={ph.id} photon={ph} />
+          ))}
+          <PulseRing x={playerX} y={playerY} active={pulseActive} elapsed={pulseElapsed} />
+          <DroneOrbit positions={dronePositions} active={droneActive} />
+          <PlayerShip
+            x={playerX}
+            y={playerY}
+            hitFlash={playerHitFlash}
+            attackFlash={playerAttackFlash}
+            facingAngle={playerFacingAngle}
+            dashActive={dashActive}
+          />
+        </View>
+
+        {abilities && !isDead && !isVictory && !showShop && (
+          <HUD
+            playerHp={playerHp}
+            playerMaxHp={playerMaxHp}
+            playerShield={playerShield}
+            playerMaxShield={playerMaxShield}
+            score={score}
+            totalDamage={totalDamage}
+            combo={combo}
+            abilities={abilities}
+            onDash={handleDash}
+            onPulse={handlePulse}
+            onDrone={handleDrone}
+            onQuantum={handleQuantum}
+            onPhase={handlePhase}
+            gameTime={gameTime}
+            currentWave={currentWave}
+            maxWaves={maxWaves}
+            waveRemaining={waveRemaining}
+          />
+        )}
+
+        {abilities?.quantum?.active && (
+          <View
+            style={styles.quantumSlashLayer}
+            {...panResponder.panHandlers}
+          />
+        )}
+        {abilities?.phase?.active && !abilities?.quantum?.active && (
+          <View pointerEvents="none" style={styles.phaseShiftLayer} />
+        )}
+
+        {!isDead && !isVictory && !showUpgrade && !showShop && (
+          <View style={styles.controls}>
+            <VirtualJoystick onMove={handleJoystick} />
+          </View>
+        )}
+
+        {showUpgrade && (
+          <UpgradeScreen choices={upgradeChoices} score={score} onSelect={handleUpgradeSelect} />
+        )}
+
+        {showShop && (
+          <ShopScreen
+            wave={currentWave - 1}
+            score={score}
+            offers={shopOffers}
+            onBuy={handleShopBuy}
+            onSkip={handleShopSkip}
+          />
+        )}
+
+        {isDead && (
+          <GameOver score={score} combo={peakCombo} gameTime={gameTime} onRestart={handleRestart} />
+        )}
+
+        {isVictory && (
+          <View style={styles.victoryOverlay}>
+            <Text style={styles.victoryTitle}>SYSTEM SECURED</Text>
+            <Text style={styles.victorySub}>
+              {(galaxy?.name?.toUpperCase() || 'SECTOR') + ` | SYSTEM ${systemNumber}`}
+            </Text>
+            <Text style={styles.victoryMeta}>Score {score.toLocaleString()} | Peak Combo {peakCombo}x</Text>
+            <TouchableOpacity
+              style={styles.victoryBtn}
+              activeOpacity={0.8}
+              onPress={() =>
+                onSystemComplete?.(galaxy?.id, {
+                  score,
+                  waves: maxWaves,
+                  systemNumber,
+                  abilityUsage: { ...abilityUsageRef.current },
+                })
+              }
+            >
+              <Text style={styles.victoryBtnText}>CONFIRM SYSTEM VICTORY</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuBtn} activeOpacity={0.8} onPress={onMainMenu}>
+              <Text style={styles.menuBtnText}>MAIN MENU</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </Animated.View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
+  bg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  gridH1: {
+    position: 'absolute',
+    top: SCREEN.height * 0.33,
+    left: 0,
+    right: 0,
+    height: 0.5,
+    backgroundColor: 'rgba(79,165,255,0.12)',
+  },
+  gridH2: {
+    position: 'absolute',
+    top: SCREEN.height * 0.66,
+    left: 0,
+    right: 0,
+    height: 0.5,
+    backgroundColor: 'rgba(79,165,255,0.12)',
+  },
+  gridV1: {
+    position: 'absolute',
+    left: SCREEN.width * 0.33,
+    top: 0,
+    bottom: 0,
+    width: 0.5,
+    backgroundColor: 'rgba(79,165,255,0.1)',
+  },
+  gridV2: {
+    position: 'absolute',
+    left: SCREEN.width * 0.5,
+    top: 0,
+    bottom: 0,
+    width: 0.5,
+    backgroundColor: 'rgba(79,165,255,0.07)',
+  },
+  gridV3: {
+    position: 'absolute',
+    left: SCREEN.width * 0.66,
+    top: 0,
+    bottom: 0,
+    width: 0.5,
+    backgroundColor: 'rgba(79,165,255,0.1)',
+  },
+  nebulaA: {
+    position: 'absolute',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    top: -70,
+    right: -90,
+    backgroundColor: 'rgba(180,108,255,0.12)',
+  },
+  nebulaB: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    bottom: 60,
+    left: -70,
+    backgroundColor: 'rgba(58,222,255,0.1)',
+  },
+  nebulaC: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    bottom: -40,
+    right: 40,
+    backgroundColor: 'rgba(255,79,98,0.08)',
+  },
+  controls: {
+    position: 'absolute',
+    bottom: 40,
+    left: 16,
+  },
+  quantumSlashLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 220,
+    backgroundColor: 'rgba(74,168,255,0.06)',
+  },
+  phaseShiftLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 200,
+    backgroundColor: 'rgba(132,212,255,0.08)',
+  },
+  victoryOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(5,10,18,0.92)',
+    paddingHorizontal: 20,
+    zIndex: 250,
+  },
+  victoryTitle: {
+    color: '#67F3FF',
+    fontFamily: 'Courier New',
+    fontWeight: 'bold',
+    fontSize: 28,
+    letterSpacing: 3,
+    textShadowColor: '#67F3FF',
+    textShadowRadius: 14,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  victorySub: {
+    marginTop: 10,
+    color: 'rgba(176,207,236,0.88)',
+    fontFamily: 'Courier New',
+    fontSize: 12,
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  victoryMeta: {
+    marginTop: 10,
+    color: 'rgba(127,242,255,0.8)',
+    fontFamily: 'Courier New',
+    fontSize: 11,
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  victoryBtn: {
+    marginTop: 28,
+    borderWidth: 1.5,
+    borderColor: '#67F3FF',
+    backgroundColor: 'rgba(103,243,255,0.12)',
+    borderRadius: 4,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+  },
+  victoryBtnText: {
+    color: '#67F3FF',
+    fontFamily: 'Courier New',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+  },
+  menuBtn: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(170,192,220,0.55)',
+    borderRadius: 4,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  menuBtnText: {
+    color: 'rgba(202,219,242,0.8)',
+    fontFamily: 'Courier New',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1.2,
+  },
+});
