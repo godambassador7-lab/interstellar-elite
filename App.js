@@ -1,7 +1,7 @@
 // App.js
 
-import React, { useMemo, useState } from 'react';
-import { StatusBar, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Platform, StatusBar, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import MenuScreen from './src/screens/MenuScreen';
@@ -58,6 +58,50 @@ export default function App() {
   const [enemyMemory, setEnemyMemory] = useState(createInitialEnemyMemory());
   const [nemesisCommanders, setNemesisCommanders] = useState(createInitialCommanders());
   const [defenseEvents, setDefenseEvents] = useState([]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return undefined;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById('root');
+
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+      bodyOverscroll: body.style.overscrollBehavior,
+      bodyTouchAction: body.style.touchAction,
+      bodyMargin: body.style.margin,
+      rootHeight: root?.style.height ?? '',
+      rootOverflow: root?.style.overflow ?? '',
+    };
+
+    html.style.overflow = 'hidden';
+    html.style.overscrollBehavior = 'none';
+    body.style.overflow = 'hidden';
+    body.style.overscrollBehavior = 'none';
+    body.style.touchAction = 'none';
+    body.style.margin = '0';
+
+    if (root) {
+      root.style.height = '100vh';
+      root.style.overflow = 'hidden';
+    }
+
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      html.style.overscrollBehavior = prev.htmlOverscroll;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.overscrollBehavior = prev.bodyOverscroll;
+      body.style.touchAction = prev.bodyTouchAction;
+      body.style.margin = prev.bodyMargin;
+      if (root) {
+        root.style.height = prev.rootHeight;
+        root.style.overflow = prev.rootOverflow;
+      }
+    };
+  }, []);
 
   const unlockedGalaxyIndex = useMemo(() => {
     let unlocked = 0;

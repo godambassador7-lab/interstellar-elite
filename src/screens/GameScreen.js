@@ -1,7 +1,7 @@
 // src/screens/GameScreen.js
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image } from 'react-native';
+import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { SCREEN, COLORS, getUpgradeThresholdsForRun } from '../utils/constants';
@@ -235,6 +235,8 @@ const PLAYER_PICKUP_RADIUS = 42;
 const ENHANCEMENT_SETTLE_MS = 220;
 const GRAVITY_WELL_MAX = 2;
 const GRAVITY_WELL_SPAWN_MS = 13000;
+const DESKTOP_MIN_WIDTH = 1024;
+const DESKTOP_MIN_HEIGHT = 640;
 
 function GravityWellView({ well }) {
   const r = well.radius;
@@ -313,6 +315,9 @@ export default function GameScreen({
 
   const G = useRef(null);
   const joystick = useRef({ dx: 0, dy: 0 });
+  const keyInput = useRef({ dx: 0, dy: 0 });
+  const pressedKeys = useRef(new Set());
+  const keyboardEnabled = useRef(false);
   const rafRef = useRef(null);
   const lastTs = useRef(null);
   const isRunning = useRef(false);
@@ -323,6 +328,69 @@ export default function GameScreen({
   const abilityUsageRef = useRef({ dash: 0, pulse: 0, drone: 0, phase: 0 });
 
   const { shakeX, shakeY, applyShake } = useShakeOffset();
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
+
+    const refreshDesktopMode = () => {
+      keyboardEnabled.current =
+        window.innerWidth >= DESKTOP_MIN_WIDTH && window.innerHeight >= DESKTOP_MIN_HEIGHT;
+      if (!keyboardEnabled.current) {
+        pressedKeys.current.clear();
+        keyInput.current = { dx: 0, dy: 0 };
+      }
+    };
+
+    const updateKeyVector = () => {
+      const keys = pressedKeys.current;
+      const left = keys.has('arrowleft') || keys.has('a');
+      const right = keys.has('arrowright') || keys.has('d');
+      const up = keys.has('arrowup') || keys.has('w');
+      const down = keys.has('arrowdown') || keys.has('s');
+      const rawDx = (right ? 1 : 0) - (left ? 1 : 0);
+      const rawDy = (down ? 1 : 0) - (up ? 1 : 0);
+      const mag = Math.hypot(rawDx, rawDy);
+      if (mag > 0) {
+        keyInput.current = { dx: rawDx / mag, dy: rawDy / mag };
+      } else {
+        keyInput.current = { dx: 0, dy: 0 };
+      }
+    };
+
+    const onKeyDown = (evt) => {
+      if (!keyboardEnabled.current) return;
+      const key = String(evt.key || '').toLowerCase();
+      if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd'].includes(key)) return;
+      evt.preventDefault();
+      pressedKeys.current.add(key);
+      updateKeyVector();
+    };
+
+    const onKeyUp = (evt) => {
+      const key = String(evt.key || '').toLowerCase();
+      if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd'].includes(key)) return;
+      evt.preventDefault();
+      pressedKeys.current.delete(key);
+      updateKeyVector();
+    };
+    const onBlur = () => {
+      pressedKeys.current.clear();
+      keyInput.current = { dx: 0, dy: 0 };
+    };
+
+    refreshDesktopMode();
+    window.addEventListener('resize', refreshDesktopMode);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+
+    return () => {
+      window.removeEventListener('resize', refreshDesktopMode);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
 
   useEffect(() => {
     setBattleBgCrop(pickBattleBgCrop());
@@ -424,7 +492,10 @@ export default function GameScreen({
       for (const w of g.gravityWells) w.lifeMs -= dt;
       g.gravityWells = g.gravityWells.filter((w) => w.lifeMs > 0);
 
-      updatePlayer(g, joystick.current, dt, g.abilities);
+      const keyboardVector = keyInput.current;
+      const hasKeyboardInput = Math.abs(keyboardVector.dx) > 0.001 || Math.abs(keyboardVector.dy) > 0.001;
+      const movementInput = hasKeyboardInput ? keyboardVector : joystick.current;
+      updatePlayer(g, movementInput, dt, g.abilities);
       applyGravityFromWells(g.player, g.gravityWells, dtSec, 0.9);
 
       g.cameraX = Math.max(0, Math.min(g.world.width - SCREEN.width, g.player.x - SCREEN.width / 2));

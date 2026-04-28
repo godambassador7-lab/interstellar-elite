@@ -9,6 +9,7 @@ const KNOB_RADIUS = 24;
 export function VirtualJoystick({ onMove, style }) {
   const [knobPos, setKnobPos] = useState({ x: 0, y: 0 });
   const activeTouchId = useRef(null);
+  const mouseActive = useRef(false);
 
   const updateFromLocalPoint = (x, y) => {
     const center = JOYSTICK_RADIUS;
@@ -38,28 +39,51 @@ export function VirtualJoystick({ onMove, style }) {
     return touches.find((t) => t.identifier === activeTouchId.current) || null;
   };
 
-  const onTouchStart = (evt) => {
+  const onStart = (evt) => {
+    const nativeEvt = evt?.nativeEvent || {};
     const changed = evt?.nativeEvent?.changedTouches || [];
-    if (!changed.length || activeTouchId.current !== null) return;
+    if (changed.length) {
+      if (activeTouchId.current !== null || mouseActive.current) return;
+      const t = changed[0];
+      activeTouchId.current = t.identifier;
+      updateFromLocalPoint(t.locationX, t.locationY);
+      return;
+    }
 
-    const t = changed[0];
-    activeTouchId.current = t.identifier;
-    updateFromLocalPoint(t.locationX, t.locationY);
+    if (mouseActive.current || activeTouchId.current !== null) return;
+    mouseActive.current = true;
+    updateFromLocalPoint(nativeEvt.locationX ?? JOYSTICK_RADIUS, nativeEvt.locationY ?? JOYSTICK_RADIUS);
   };
 
-  const onTouchMove = (evt) => {
-    const t = findActiveTouch(evt);
-    if (!t) return;
-    updateFromLocalPoint(t.locationX, t.locationY);
-  };
-
-  const onTouchEnd = (evt) => {
+  const onMove = (evt) => {
     const touches = evt?.nativeEvent?.touches || [];
-    const stillActive = touches.some((t) => t.identifier === activeTouchId.current);
-    if (!stillActive) resetStick();
+    if (touches.length) {
+      const t = findActiveTouch(evt);
+      if (!t) return;
+      updateFromLocalPoint(t.locationX, t.locationY);
+      return;
+    }
+
+    if (!mouseActive.current) return;
+    const nativeEvt = evt?.nativeEvent || {};
+    updateFromLocalPoint(nativeEvt.locationX ?? JOYSTICK_RADIUS, nativeEvt.locationY ?? JOYSTICK_RADIUS);
   };
 
-  const onTouchCancel = () => {
+  const onEnd = (evt) => {
+    const touches = evt?.nativeEvent?.touches || [];
+    if (touches.length && activeTouchId.current !== null) {
+      const stillActive = touches.some((t) => t.identifier === activeTouchId.current);
+      if (!stillActive) resetStick();
+      return;
+    }
+    if (mouseActive.current) {
+      mouseActive.current = false;
+      resetStick();
+    }
+  };
+
+  const onCancel = () => {
+    mouseActive.current = false;
     resetStick();
   };
 
@@ -67,10 +91,17 @@ export function VirtualJoystick({ onMove, style }) {
     <View style={[styles.joystickArea, style]} pointerEvents="box-none">
       <View
         style={styles.base}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchCancel}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={onStart}
+        onResponderMove={onMove}
+        onResponderRelease={onEnd}
+        onResponderTerminate={onCancel}
+        onResponderTerminationRequest={() => false}
+        onTouchStart={onStart}
+        onTouchMove={onMove}
+        onTouchEnd={onEnd}
+        onTouchCancel={onCancel}
       >
         <View style={styles.baseRing} />
         <View style={styles.crossH} />
