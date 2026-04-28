@@ -55,7 +55,7 @@ export function VirtualJoystick({ onMove, style }) {
     updateFromLocalPoint(nativeEvt.locationX ?? JOYSTICK_RADIUS, nativeEvt.locationY ?? JOYSTICK_RADIUS);
   };
 
-  const onMove = (evt) => {
+  const handleMove = (evt) => {
     const touches = evt?.nativeEvent?.touches || [];
     if (touches.length) {
       const t = findActiveTouch(evt);
@@ -94,12 +94,12 @@ export function VirtualJoystick({ onMove, style }) {
         onStartShouldSetResponder={() => true}
         onMoveShouldSetResponder={() => true}
         onResponderGrant={onStart}
-        onResponderMove={onMove}
+        onResponderMove={handleMove}
         onResponderRelease={onEnd}
         onResponderTerminate={onCancel}
         onResponderTerminationRequest={() => false}
         onTouchStart={onStart}
-        onTouchMove={onMove}
+        onTouchMove={handleMove}
         onTouchEnd={onEnd}
         onTouchCancel={onCancel}
       >

@@ -64,6 +64,20 @@ export function trySpawn(state) {
   }
   const enemies = [];
 
+  if (!state.nemesisSpawned && state.currentWave >= Math.max(2, Math.floor(state.maxWaves * 0.5)) && Math.random() < 0.08) {
+    state.nemesisSpawned = true;
+    const nemesis = createEnemy(ENEMY_TYPES.elite, basePos);
+    nemesis.isNemesis = true;
+    nemesis.name = 'RIVAL NEMESIS';
+    nemesis.hp *= 2.2;
+    nemesis.maxHp = nemesis.hp;
+    nemesis.speed *= 1.2;
+    nemesis.damage *= 1.35;
+    nemesis.score = Math.round(nemesis.score * 3.2);
+    state.waveSpawnRemaining = Math.max(0, state.waveSpawnRemaining - 1);
+    return [nemesis];
+  }
+
   for (let i = 0; i < count; i++) {
     const spread = count > 1 ? 34 : 0;
     enemies.push(createEnemy(typeDef, {

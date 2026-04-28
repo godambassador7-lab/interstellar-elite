@@ -1,7 +1,7 @@
 // src/screens/GameScreen.js
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image, Platform } from 'react-native';
+import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image, Platform, Share } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { SCREEN, COLORS, getUpgradeThresholdsForRun } from '../utils/constants';
@@ -224,6 +224,13 @@ function makeUiState() {
     quantumTrails: [],
     damageNumbers: [],
     gravityWells: [],
+    meteors: [],
+    phaseLabel: 'SYSTEM BATTLE',
+    phaseTimer: 0,
+    eventBanner: '',
+    perfectDodges: 0,
+    latestHighlight: null,
+    flagshipEscape: null,
   };
 }
 
@@ -273,6 +280,27 @@ function GravityWellView({ well }) {
         }}
       />
     </>
+  );
+}
+
+function MeteorView({ meteor }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: meteor.x - meteor.size,
+        top: meteor.y - meteor.size,
+        width: meteor.size * 2,
+        height: meteor.size * 2,
+        borderRadius: meteor.size,
+        backgroundColor: 'rgba(255,170,92,0.92)',
+        shadowColor: '#FFAA5C',
+        shadowOpacity: 0.9,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 0 },
+      }}
+    />
   );
 }
 
@@ -326,8 +354,28 @@ export default function GameScreen({
   const nextThresholdIdx = useRef(0);
   const peakComboRef = useRef(0);
   const abilityUsageRef = useRef({ dash: 0, pulse: 0, drone: 0, phase: 0 });
+  const basePlayerDamageRef = useRef(0);
 
   const { shakeX, shakeY, applyShake } = useShakeOffset();
+
+  const pushHighlight = useCallback((g, type, details = {}) => {
+    g.latestHighlight = {
+      id: `hl-${Date.now()}-${Math.random()}`,
+      type,
+      details,
+      score: g.score,
+      combo: g.combo,
+      at: Date.now(),
+    };
+  }, []);
+
+  const shareHighlight = useCallback(async (highlight) => {
+    if (!highlight) return;
+    const line = `[Interstellar Elite] ${highlight.type} | Score ${highlight.score} | Combo ${highlight.combo}x`;
+    try {
+      await Share.share({ message: line });
+    } catch (_) {}
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
@@ -409,6 +457,7 @@ export default function GameScreen({
     const player = createPlayer();
     player.x = BATTLE_WORLD.width / 2;
     player.y = BATTLE_WORLD.height / 2;
+    basePlayerDamageRef.current = player.damage;
     const abilities = createAbilities();
     applyMetaUpgrades(player, abilities, metaUpgrades);
 
@@ -446,7 +495,32 @@ export default function GameScreen({
       photons: [],
       gravityWells: [],
       nextGravityWellAt: Date.now() + 4500,
+      meteors: [],
+      nextMeteorAt: Date.now() + 6000,
+      meteorStormUntil: 0,
+      inIntercept: Math.random() < 0.65,
+      interceptEndsAt: 0,
+      nextInterceptHazardAt: 0,
+      nextMutationAt: Date.now() + 32000,
+      phaseLabel: 'SYSTEM BATTLE',
+      latestHighlight: null,
+      perfectDodges: 0,
+      chainReactionKills: 0,
+      lastStand: { active: false, damageMult: 1.5, speedMult: 1.22 },
+      flagshipEscape: {
+        active: false,
+        countdownMs: 2000,
+        blastRadius: 24,
+        blastGrowth: 460,
+        centerX: BATTLE_WORLD.width * 0.5,
+        centerY: BATTLE_WORLD.height * 0.5,
+      },
     };
+    if (G.current.inIntercept) {
+      G.current.interceptEndsAt = Date.now() + (20000 + Math.random() * 25000);
+      G.current.nextInterceptHazardAt = Date.now() + 800;
+      G.current.phaseLabel = 'LIGHTSPEED INTERCEPT';
+    }
 
     joystick.current = { dx: 0, dy: 0 };
     upgradeQueue.current = [];
@@ -477,8 +551,33 @@ export default function GameScreen({
 
       g.gameTime += dt / 1000;
       const dtSec = dt / 1000;
+      const nowMs = Date.now();
 
-      if (Date.now() >= (g.nextGravityWellAt || 0) && g.gravityWells.length < GRAVITY_WELL_MAX) {
+      if (g.player.hp > 0 && g.player.hp / Math.max(1, g.player.maxHp) <= 0.2) {
+        if (!g.lastStand.active) pushHighlight(g, 'LAST STAND ONLINE');
+        g.lastStand.active = true;
+      } else {
+        g.lastStand.active = false;
+      }
+      g.player.damage = basePlayerDamageRef.current * (g.lastStand.active ? g.lastStand.damageMult : 1);
+
+      if (nowMs >= (g.nextMutationAt || 0)) {
+        const roll = Math.random();
+        if (roll < 0.34) {
+          g.player.damageMultiplier = (g.player.damageMultiplier || 1) + 0.18;
+          g.phaseLabel = 'MUTATION: WEAPON SPIKE';
+        } else if (roll < 0.67) {
+          g.player.attackRange += 10;
+          g.phaseLabel = 'MUTATION: RANGE BOOST';
+        } else {
+          g.player.speed += 28;
+          g.phaseLabel = 'MUTATION: ENGINE OVERCLOCK';
+        }
+        g.nextMutationAt = nowMs + 36000 + Math.random() * 22000;
+        pushHighlight(g, 'MUTATION UPGRADE');
+      }
+
+      if (nowMs >= (g.nextGravityWellAt || 0) && g.gravityWells.length < GRAVITY_WELL_MAX) {
         g.gravityWells.push({
           id: `gw-${Date.now()}-${Math.random()}`,
           x: 120 + Math.random() * (g.world.width - 240),
@@ -487,10 +586,71 @@ export default function GameScreen({
           strength: 520 + Math.random() * 240,
           lifeMs: 10500 + Math.random() * 2500,
         });
-        g.nextGravityWellAt = Date.now() + GRAVITY_WELL_SPAWN_MS + Math.random() * 3000;
+        g.nextGravityWellAt = nowMs + GRAVITY_WELL_SPAWN_MS + Math.random() * 3000;
       }
       for (const w of g.gravityWells) w.lifeMs -= dt;
       g.gravityWells = g.gravityWells.filter((w) => w.lifeMs > 0);
+
+      if (nowMs >= (g.nextMeteorAt || 0)) {
+        g.meteorStormUntil = nowMs + 7000 + Math.random() * 4000;
+        g.nextMeteorAt = nowMs + 18000 + Math.random() * 12000;
+        g.phaseLabel = 'METEOR STORM';
+      }
+      if (nowMs < g.meteorStormUntil && Math.random() < 0.24) {
+        g.meteors.push({
+          id: `m-${nowMs}-${Math.random()}`,
+          x: 60 + Math.random() * (g.world.width - 120),
+          y: -50,
+          vx: -40 + Math.random() * 80,
+          vy: 260 + Math.random() * 130,
+          size: 10 + Math.random() * 10,
+          damage: 20 + Math.random() * 12,
+        });
+      }
+      for (const m of g.meteors) {
+        m.x += m.vx * dtSec;
+        m.y += m.vy * dtSec;
+        for (const e of g.enemies) {
+          if (e.dead) continue;
+          const dx = e.x - m.x;
+          const dy = e.y - m.y;
+          if (dx * dx + dy * dy <= (m.size + e.size * 0.5) ** 2) e.hp -= m.damage;
+        }
+        const pdx = g.player.x - m.x;
+        const pdy = g.player.y - m.y;
+        if (pdx * pdx + pdy * pdy <= (m.size + 18) ** 2) {
+          g.player.hp = Math.max(0, g.player.hp - m.damage * 0.16);
+          g.player.shieldRegenDelay = 3000;
+          g.player.hitFlash = 8;
+        }
+      }
+      g.meteors = g.meteors.filter((m) => m.y < g.world.height + 80 && m.x > -80 && m.x < g.world.width + 80);
+
+      if (g.inIntercept) {
+        if (nowMs >= g.nextInterceptHazardAt) {
+          const spawnCount = 1 + Math.floor(Math.random() * 2);
+          for (let i = 0; i < spawnCount; i++) {
+            g.enemies.push({
+              id: `int-${nowMs}-${i}-${Math.random()}`,
+              type: 'elite',
+              x: 80 + Math.random() * (g.world.width - 160),
+              y: -20,
+              vx: 0, vy: 0, facingAngle: 0,
+              size: 16, hp: 34, maxHp: 34, speed: 170, damage: 10, score: 32,
+              color: '#67F3FF', glow: '#67F3FF', points: 2, dead: false, hitFlash: 0,
+              zigZagPhase: Math.random() * Math.PI * 2, zigZagTimer: 0, burstTimer: 0, burstActive: false, burstDuration: 0,
+              lastLaserAt: 0, laserFlash: 0, lastPhotonAt: 0, lastSwarmPhotonAt: 0,
+            });
+          }
+          g.nextInterceptHazardAt = nowMs + 700 + Math.random() * 1000;
+        }
+        if (nowMs >= g.interceptEndsAt) {
+          g.inIntercept = false;
+          g.phaseLabel = 'SYSTEM BATTLE';
+          g.score += 120 + Math.floor(g.combo * 6);
+          pushHighlight(g, 'LIGHTSPEED SURVIVAL');
+        }
+      }
 
       const keyboardVector = keyInput.current;
       const hasKeyboardInput = Math.abs(keyboardVector.dx) > 0.001 || Math.abs(keyboardVector.dy) > 0.001;
@@ -501,8 +661,10 @@ export default function GameScreen({
       g.cameraX = Math.max(0, Math.min(g.world.width - SCREEN.width, g.player.x - SCREEN.width / 2));
       g.cameraY = Math.max(0, Math.min(g.world.height - SCREEN.height, g.player.y - SCREEN.height / 2));
 
-      const spawned = trySpawn(g);
-      if (spawned) g.enemies.push(...spawned);
+      if (!g.inIntercept && !g.flagshipEscape.active) {
+        const spawned = trySpawn(g);
+        if (spawned) g.enemies.push(...spawned);
+      }
 
       updateEnemyMovement(g, dt);
       for (const e of g.enemies) applyGravityFromWells(e, g.gravityWells, dtSec, 0.65);
@@ -519,6 +681,14 @@ export default function GameScreen({
       }
 
       if (g.combo > peakComboRef.current) peakComboRef.current = g.combo;
+      if (g.combo >= 20 && (!g.lastComboHighlightAt || nowMs - g.lastComboHighlightAt > 12000)) {
+        g.lastComboHighlightAt = nowMs;
+        pushHighlight(g, 'MASSIVE COMBO', { combo: g.combo });
+      }
+      if (g.player.hp > 0 && g.player.hp / Math.max(1, g.player.maxHp) <= 0.14 && (!g.lastNearDeathAt || nowMs - g.lastNearDeathAt > 10000)) {
+        g.lastNearDeathAt = nowMs;
+        pushHighlight(g, 'NEAR DEATH SURVIVAL');
+      }
 
       if (!g.abilities.quantum.unlocked && !g.quantumPickup && Date.now() >= g.nextQuantumSpawnAt) {
         g.quantumPickup = {
@@ -593,6 +763,26 @@ export default function GameScreen({
         return;
       }
 
+      if (g.flagshipEscape.active) {
+        g.phaseLabel = g.flagshipEscape.countdownMs > 0 ? 'FLAGSHIP CORE CRITICAL' : 'ESCAPE THE BLAST';
+        if (g.flagshipEscape.countdownMs > 0) {
+          g.flagshipEscape.countdownMs = Math.max(0, g.flagshipEscape.countdownMs - dt);
+        } else {
+          g.flagshipEscape.blastRadius += g.flagshipEscape.blastGrowth * dtSec;
+          const dx = g.player.x - g.flagshipEscape.centerX;
+          const dy = g.player.y - g.flagshipEscape.centerY;
+          const distFromBlast = Math.sqrt(dx * dx + dy * dy);
+          if (distFromBlast <= g.flagshipEscape.blastRadius + 16) {
+            g.player.hp = 0;
+          } else if (g.flagshipEscape.blastRadius >= Math.min(g.world.width, g.world.height) * 0.56) {
+            g.victory = true;
+            isRunning.current = false;
+            g.score += 400;
+            pushHighlight(g, 'CLOSE ESCAPE', { blastRadius: Math.round(g.flagshipEscape.blastRadius) });
+          }
+        }
+      }
+
       const waveRemaining = g.waveSpawnRemaining + g.enemies.length;
       if (waveRemaining <= 0 && !g.victory) {
         if (g.currentWave < g.maxWaves) {
@@ -624,9 +814,18 @@ export default function GameScreen({
             rafRef.current = requestAnimationFrame(loop);
             return;
           }
-        } else {
-          g.victory = true;
-          isRunning.current = false;
+        } else if (!g.flagshipEscape.active) {
+          g.flagshipEscape.active = true;
+          g.flagshipEscape.countdownMs = 2000;
+          g.flagshipEscape.blastRadius = 24;
+          g.flagshipEscape.centerX = g.player.x;
+          g.flagshipEscape.centerY = g.player.y;
+          g.world.width = Math.round(g.world.width * 1.24);
+          g.world.height = Math.round(g.world.height * 1.24);
+          g.player.x += 40;
+          g.player.y += 40;
+          g.phaseLabel = 'FLAGSHIP CORE CRITICAL';
+          pushHighlight(g, 'FLAGSHIP DESTROYED');
         }
       }
 
@@ -716,6 +915,24 @@ export default function GameScreen({
           x: w.x - g.cameraX,
           y: w.y - g.cameraY,
         })),
+        meteors: (g.meteors || []).map((m) => ({
+          ...m,
+          x: m.x - g.cameraX,
+          y: m.y - g.cameraY,
+        })),
+        phaseLabel: g.phaseLabel,
+        phaseTimer: g.inIntercept ? Math.max(0, (g.interceptEndsAt - Date.now()) / 1000) : 0,
+        eventBanner: g.inIntercept ? 'Warp tunnel combat active' : '',
+        perfectDodges: g.perfectDodges || 0,
+        latestHighlight: g.latestHighlight || null,
+        flagshipEscape: g.flagshipEscape.active
+          ? {
+              countdownMs: g.flagshipEscape.countdownMs,
+              blastRadius: g.flagshipEscape.blastRadius,
+              x: g.flagshipEscape.centerX - g.cameraX,
+              y: g.flagshipEscape.centerY - g.cameraY,
+            }
+          : null,
       });
 
       if (g.victory) return;
@@ -903,6 +1120,13 @@ export default function GameScreen({
     quantumTrails,
     damageNumbers,
     gravityWells,
+    meteors,
+    phaseLabel,
+    phaseTimer,
+    eventBanner,
+    perfectDodges,
+    latestHighlight,
+    flagshipEscape,
   } = uiState;
 
   return (
@@ -945,6 +1169,25 @@ export default function GameScreen({
           {gravityWells.map((w) => (
             <GravityWellView key={w.id} well={w} />
           ))}
+          {meteors.map((m) => (
+            <MeteorView key={m.id} meteor={m} />
+          ))}
+          {flagshipEscape && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: flagshipEscape.x - flagshipEscape.blastRadius,
+                top: flagshipEscape.y - flagshipEscape.blastRadius,
+                width: flagshipEscape.blastRadius * 2,
+                height: flagshipEscape.blastRadius * 2,
+                borderRadius: flagshipEscape.blastRadius,
+                borderWidth: 2,
+                borderColor: 'rgba(255,102,82,0.85)',
+                backgroundColor: 'rgba(255,90,64,0.12)',
+              }}
+            />
+          )}
           {enemies.map((e) => e.laserFlash > 0 && (
             <EnemyLaserBeam
               key={`lb-${e.id}`}
@@ -995,6 +1238,25 @@ export default function GameScreen({
             maxWaves={maxWaves}
             waveRemaining={waveRemaining}
           />
+        )}
+
+        {!isDead && !isVictory && (
+          <View style={styles.phaseHeader} pointerEvents="none">
+            <Text style={styles.phaseHeaderText}>
+              {phaseLabel}{phaseTimer > 0 ? ` • ${phaseTimer.toFixed(1)}s` : ''}
+            </Text>
+            {!!eventBanner && <Text style={styles.phaseBannerText}>{eventBanner}</Text>}
+            <Text style={styles.phaseMetaText}>Perfect Dodges: {perfectDodges}</Text>
+            {!!flagshipEscape && flagshipEscape.countdownMs > 0 && (
+              <Text style={styles.phaseWarningText}>CORE DETONATION IN {(flagshipEscape.countdownMs / 1000).toFixed(1)}s</Text>
+            )}
+          </View>
+        )}
+
+        {!!latestHighlight && !isDead && (
+          <TouchableOpacity style={styles.shareBtn} activeOpacity={0.85} onPress={() => shareHighlight(latestHighlight)}>
+            <Text style={styles.shareBtnText}>SHARE CLIP MOMENT: {latestHighlight.type}</Text>
+          </TouchableOpacity>
         )}
 
         {abilities?.quantum?.active && (
@@ -1165,6 +1427,65 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 40,
     left: 16,
+  },
+  phaseHeader: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    right: 12,
+    alignItems: 'center',
+    zIndex: 210,
+  },
+  phaseHeaderText: {
+    color: '#A9F3FF',
+    fontFamily: 'Courier New',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 1.2,
+    textShadowColor: '#67F3FF',
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  phaseBannerText: {
+    marginTop: 2,
+    color: 'rgba(176,207,236,0.86)',
+    fontFamily: 'Courier New',
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  phaseMetaText: {
+    marginTop: 1,
+    color: 'rgba(255,214,153,0.92)',
+    fontFamily: 'Courier New',
+    fontSize: 9,
+    letterSpacing: 0.8,
+  },
+  phaseWarningText: {
+    marginTop: 2,
+    color: '#FF7D6E',
+    fontFamily: 'Courier New',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1.2,
+  },
+  shareBtn: {
+    position: 'absolute',
+    right: 12,
+    bottom: 120,
+    borderWidth: 1,
+    borderColor: '#67F3FF',
+    backgroundColor: 'rgba(4,22,36,0.82)',
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    zIndex: 230,
+  },
+  shareBtnText: {
+    color: '#67F3FF',
+    fontFamily: 'Courier New',
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
   },
   quantumSlashLayer: {
     position: 'absolute',

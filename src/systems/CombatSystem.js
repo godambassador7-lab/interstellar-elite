@@ -42,11 +42,13 @@ function applyPlayerDamage(player, amount) {
 export function runCombatFrame(state, deltaMs) {
   const { player, enemies, particles, abilities } = state;
   const phaseDamageMult = abilities?.phase?.active ? (abilities.phase.damageMult || 1) : 1;
+  const lastStandDamageMult = state?.lastStand?.active ? (state.lastStand.damageMult || 1) : 1;
   const now = Date.now();
   let scoreGain = 0;
   let comboIncrement = 0;
   const newParticles = [];
   const deadEnemyIds = new Set();
+  let playerTookDamage = false;
 
   // ── Auto-attack ─────────────────────────────────────────────────────────────
   if (now - player.lastAttackTime >= player.attackRate) {
@@ -69,7 +71,7 @@ export function runCombatFrame(state, deltaMs) {
       for (const target of selectedTargets) {
         const enemy = target.enemy;
         if (enemy.dead) continue;
-        const dmg = player.damage * player.damageMultiplier * phaseDamageMult;
+        const dmg = player.damage * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
         applyDamage(state, enemy, dmg, newParticles);
         if (enemy.hp <= 0 && !enemy.dead) {
           killEnemy(enemy, state, newParticles, deadEnemyIds);
@@ -87,7 +89,7 @@ export function runCombatFrame(state, deltaMs) {
       if (enemy.dead || abilities.dash.hitIds.has(enemy.id)) continue;
       if (circlesOverlap(player.x, player.y, PLAYER.SIZE / 2 + 10, enemy.x, enemy.y, enemy.size / 2)) {
         abilities.dash.hitIds.add(enemy.id);
-        const dmg = ABILITIES.DASH.DAMAGE * player.damageMultiplier * phaseDamageMult;
+        const dmg = ABILITIES.DASH.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
         applyDamage(state, enemy, dmg, newParticles);
         if (enemy.hp <= 0 && !enemy.dead) {
           killEnemy(enemy, state, newParticles, deadEnemyIds);
@@ -104,7 +106,7 @@ export function runCombatFrame(state, deltaMs) {
     for (const enemy of enemies) {
       if (enemy.dead) continue;
       if (dist(player, enemy) <= ABILITIES.PULSE.RADIUS + enemy.size / 2) {
-        const dmg = ABILITIES.PULSE.DAMAGE * player.damageMultiplier * phaseDamageMult;
+        const dmg = ABILITIES.PULSE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
         applyDamage(state, enemy, dmg, newParticles);
         if (enemy.hp <= 0 && !enemy.dead) {
           killEnemy(enemy, state, newParticles, deadEnemyIds);
@@ -126,7 +128,7 @@ export function runCombatFrame(state, deltaMs) {
           if (!abilities.drone.hitCooldowns.has(hitKey) ||
               now - abilities.drone.hitCooldowns.get(hitKey) > 600) {
             abilities.drone.hitCooldowns.set(hitKey, now);
-            const dmg = ABILITIES.DRONE.DAMAGE * player.damageMultiplier * phaseDamageMult;
+            const dmg = ABILITIES.DRONE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
             applyDamage(state, enemy, dmg, newParticles);
             if (enemy.hp <= 0 && !enemy.dead) {
               killEnemy(enemy, state, newParticles, deadEnemyIds);
@@ -145,6 +147,7 @@ export function runCombatFrame(state, deltaMs) {
       if (enemy.dead) continue;
       if (circlesOverlap(player.x, player.y, PLAYER.SIZE / 2, enemy.x, enemy.y, enemy.size / 2)) {
         applyPlayerDamage(player, enemy.damage * (deltaMs / 1000) * 0.6);
+        playerTookDamage = true;
         player.hitFlash = 12;
         player.invincibleUntil = now + PLAYER.INVINCIBILITY_MS;
         state.screenShake = Math.max(state.screenShake, enemy.type === 'heavy' ? 10 : 5);
@@ -165,6 +168,7 @@ export function runCombatFrame(state, deltaMs) {
       enemy.lastLaserAt = now;
       enemy.laserFlash  = 80;
       applyPlayerDamage(player, ELITE_LASER_DAMAGE);
+      playerTookDamage = true;
       if (player.hitFlash < 4) player.hitFlash = 4;
     }
   }
@@ -229,12 +233,23 @@ export function runCombatFrame(state, deltaMs) {
       ph.life -= deltaMs;
       if (circlesOverlap(player.x, player.y, playerRadius, ph.x, ph.y, ph.size)) {
         applyPlayerDamage(player, ph.damage);
+        playerTookDamage = true;
         player.hitFlash   = 14;
         state.screenShake = Math.max(state.screenShake, 8);
         ph.life = -1;
       }
     }
     state.photons = state.photons.filter((ph) => ph.life > 0);
+  }
+  if (!playerTookDamage) {
+    state.nearMissTimer = (state.nearMissTimer || 0) + deltaMs;
+    if (state.nearMissTimer >= 1200 && hasCloseThreat(state, 34)) {
+      state.perfectDodges = (state.perfectDodges || 0) + 1;
+      state.nearMissTimer = 0;
+      state.lastPerfectDodgeAt = now;
+    }
+  } else {
+    state.nearMissTimer = 0;
   }
 
   // ── Combo logic ─────────────────────────────────────────────────────────────
@@ -359,6 +374,46 @@ function killEnemy(enemy, state, particleList, deadSet) {
 
   // Drop resource
   state.resources = (state.resources || 0) + enemy.points;
+  triggerChainReaction(enemy, state, particleList, deadSet);
+}
+
+function triggerChainReaction(sourceEnemy, state, particleList, deadSet) {
+  const radius = sourceEnemy.type === 'heavy' ? 120 : 84;
+  const baseDamage = sourceEnemy.type === 'heavy' ? 42 : 24;
+  let chainKills = 0;
+  for (const other of state.enemies) {
+    if (other.dead || deadSet.has(other.id) || other.id === sourceEnemy.id) continue;
+    const d = dist(sourceEnemy, other);
+    if (d > radius + other.size * 0.5) continue;
+    const falloff = Math.max(0.2, 1 - d / (radius + 1));
+    const dmg = baseDamage * falloff;
+    applyDamage(state, other, dmg, particleList);
+    if (other.hp <= 0 && !other.dead) {
+      other.dead = true;
+      deadSet.add(other.id);
+      state.resources = (state.resources || 0) + other.points;
+      chainKills++;
+    }
+  }
+  if (chainKills > 0) {
+    state.chainReactionKills = (state.chainReactionKills || 0) + chainKills;
+    state.combo += chainKills;
+    state.lastKillTime = Date.now();
+    state.screenShake = Math.max(state.screenShake, 12);
+  }
+}
+
+function hasCloseThreat(state, threshold) {
+  const player = state.player;
+  const threatRadius = PLAYER.SIZE * 0.5 + threshold;
+  for (const enemy of state.enemies || []) {
+    if (enemy.dead) continue;
+    if (dist(player, enemy) <= threatRadius + enemy.size * 0.5) return true;
+  }
+  for (const ph of state.photons || []) {
+    if (circlesOverlap(player.x, player.y, threatRadius, ph.x, ph.y, ph.size + 2)) return true;
+  }
+  return false;
 }
 
 function distancePointToSegment(px, py, x1, y1, x2, y2) {
