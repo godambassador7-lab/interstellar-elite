@@ -19,6 +19,14 @@ const FLAGSHIP_SPRITES = {
   elite: require('../../Flag ship/flagship 2.png'),
   bomber: require('../../Flag ship/flagship 3.png'),
 };
+const SCRAP_BOX_SPRITES = [
+  require('../../Scrap Boxes/scrap 1.png'),
+  require('../../Scrap Boxes/scrap 2.png'),
+  require('../../Scrap Boxes/scrap 3.png'),
+  require('../../Scrap Boxes/scrap 4.png'),
+  require('../../Scrap Boxes/scrap 5.png'),
+  require('../../Scrap Boxes/scrap 6.png'),
+];
 
 // ─── Layout ─────────────────────────────────────────────────────────
 const CX = SCREEN.width / 2;
@@ -239,6 +247,10 @@ function spawnWreckage(g, counters, x, y, partType, amount) {
     amount: Math.max(1, Math.round(amount || 1)),
     life: 8000,
     targetedBy: null,
+    spriteIndex: Math.floor(Math.random() * SCRAP_BOX_SPRITES.length),
+    rotation: Math.random() * Math.PI * 2,
+    rotationSpeed: (Math.random() < 0.5 ? -1 : 1) * (0.35 + Math.random() * 0.45),
+    size: 16 + Math.random() * 8,
   });
 }
 
@@ -617,19 +629,22 @@ function MissileView({ x, y }) {
 }
 
 function WreckView({ w }) {
-  const color = PART_TYPE_COLORS[w.partType] || '#D7EEFF';
+  const size = w.size || 18;
+  const sprite = SCRAP_BOX_SPRITES[w.spriteIndex % SCRAP_BOX_SPRITES.length] || SCRAP_BOX_SPRITES[0];
   return (
-    <View
+    <Image
       pointerEvents="none"
+      source={sprite}
       style={{
         position: 'absolute',
-        left: w.x - 6, top: w.y - 6,
-        width: 12, height: 12, borderRadius: 2,
-        borderWidth: 1, borderColor: color,
-        backgroundColor: `${color}66`,
-        shadowColor: color, shadowOpacity: 0.9,
-        shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
+        left: w.x - size / 2,
+        top: w.y - size / 2,
+        width: size,
+        height: size,
+        opacity: 0.95,
+        transform: [{ rotate: `${(w.rotation || 0)}rad` }],
       }}
+      resizeMode="contain"
     />
   );
 }
@@ -924,6 +939,7 @@ export default function StationDefenseScreen({
         w.y += w.vy * (dt / 1000);
         w.vx *= 0.992;
         w.vy *= 0.992;
+        w.rotation = (w.rotation || 0) + (w.rotationSpeed || 0) * (dt / 1000);
       }
       g.wrecks = g.wrecks.filter((w) => w.life > 0 && w.x > -50 && w.x < SCREEN.width + 50 && w.y > -50 && w.y < SCREEN.height + 50);
 
