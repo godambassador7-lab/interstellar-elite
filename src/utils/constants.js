@@ -1,6 +1,7 @@
 ﻿// src/utils/constants.js
 
 import { Dimensions } from 'react-native';
+import UNIVERSE_MAP_ANCHORS from './universeMapAnchors.json';
 
 const { width, height } = Dimensions.get('window');
 
@@ -199,6 +200,34 @@ const _SPECS = [
   { id: 'ultra316', accent: '#CC44FF', x1: 1300, y1: 760, x2: 2300, y2: 1320, tMin:3.60, tMax:5.00, wMin:9, wMax:12, bMin:24, bMax:32, gMin:8, gMax:12, sMin:100, sMax:200, n:62 },
 ];
 
+function _snapGalaxiesToMapStars(all) {
+  for (const q of _SPECS) {
+    const galaxies = all.filter((g) => g.quadrant === q.id);
+    const anchors = (UNIVERSE_MAP_ANCHORS?.[q.id] || []).map((a, idx) => ({ ...a, idx }));
+    if (!anchors.length || anchors.length < galaxies.length) continue;
+
+    const used = new Set();
+    for (const g of galaxies) {
+      let best = null;
+      let bestDist = Infinity;
+      for (const a of anchors) {
+        if (used.has(a.idx)) continue;
+        const dx = g.x - a.x;
+        const dy = g.y - a.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestDist) {
+          bestDist = d2;
+          best = a;
+        }
+      }
+      if (!best) continue;
+      used.add(best.idx);
+      g.x = Math.round(Math.max(q.x1, Math.min(q.x2, best.x)));
+      g.y = Math.round(Math.max(q.y1, Math.min(q.y2, best.y)));
+    }
+  }
+}
+
 function _buildGalaxies() {
   const CENTER_X = 1200;
   const CENTER_Y = 700;
@@ -336,6 +365,9 @@ function _buildGalaxies() {
     }
   }
 
+  // Align nodes to bright map stars for better visual coherence with the background art.
+  _snapGalaxiesToMapStars(all);
+
   return all;
 }
 // 250 galaxies: 63 Bayron + 63 Crimson + 62 Watupi + 62 Ultra-316
@@ -365,4 +397,3 @@ export const PARTICLES = {
   HIT_SPEED: 80,
   HIT_LIFE: 280,
 };
-

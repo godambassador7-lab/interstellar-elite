@@ -20,7 +20,7 @@ const MAP_WIDTH = 2400;
 const MAP_HEIGHT = 1400;
 const ZOOM_MAX = 4.2;
 const PINCH_SENSITIVITY = 0.96;
-const UNIVERSE_MAP_IMAGE = require('../../universe map.jpg');
+const UNIVERSE_MAP_IMAGE = require('../../universe map.png');
 
 const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
   id: i,

@@ -14,6 +14,11 @@ import * as Haptics from 'expo-haptics';
 
 import { SCREEN } from '../utils/constants';
 const SPACE_STATION_SPRITE = require('../../space station.png');
+const FLAGSHIP_SPRITES = {
+  heavy: require('../../Flag ship/flag ship 1.png'),
+  elite: require('../../Flag ship/flagship 2.png'),
+  bomber: require('../../Flag ship/flagship 3.png'),
+};
 
 // ─── Layout ─────────────────────────────────────────────────────────
 const CX = SCREEN.width / 2;
@@ -465,21 +470,40 @@ function StationView({ hp, maxHp, hitFlash, shieldActive }) {
 function EnemyView({ enemy }) {
   const { x, y, size, color, hitFlash, hp, maxHp } = enemy;
   const hpFrac = hp / maxHp;
+  const flagshipSprite = FLAGSHIP_SPRITES[enemy.type] || null;
+  const usesFlagshipSprite = !!flagshipSprite;
   return (
     <>
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: x - size, top: y - size,
-          width: size * 2, height: size * 2,
-          borderRadius: size,
-          backgroundColor: hitFlash > 0 ? '#FFFFFF' : color,
-          opacity: 0.92,
-          shadowColor: color, shadowOpacity: 0.65,
-          shadowRadius: 7, shadowOffset: { width: 0, height: 0 },
-        }}
-      />
+      {usesFlagshipSprite ? (
+        <Image
+          source={flagshipSprite}
+          resizeMode="contain"
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: x - size * 1.15,
+            top: y - size * 1.15,
+            width: size * 2.3,
+            height: size * 2.3,
+            opacity: hitFlash > 0 ? 0.72 : 0.96,
+            tintColor: hitFlash > 0 ? '#FFFFFF' : undefined,
+          }}
+        />
+      ) : (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: x - size, top: y - size,
+            width: size * 2, height: size * 2,
+            borderRadius: size,
+            backgroundColor: hitFlash > 0 ? '#FFFFFF' : color,
+            opacity: 0.92,
+            shadowColor: color, shadowOpacity: 0.65,
+            shadowRadius: 7, shadowOffset: { width: 0, height: 0 },
+          }}
+        />
+      )}
       {hpFrac < 1 && (
         <View
           pointerEvents="none"

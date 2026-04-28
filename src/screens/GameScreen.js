@@ -1,7 +1,7 @@
 // src/screens/GameScreen.js
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder } from 'react-native';
+import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { SCREEN, COLORS, getUpgradeThresholdsForRun } from '../utils/constants';
@@ -40,6 +40,45 @@ import {
 import { UpgradeScreen } from '../components/UpgradeScreen';
 import { ShopScreen } from '../components/ShopScreen';
 import { GameOver } from '../components/GameOver';
+
+const BATTLE_BACKGROUND_IMAGE = require('../../battle background.png');
+let LAST_BATTLE_BG_CROP = null;
+
+function pickBattleBgCrop() {
+  const scale = 2.15; // Show a zoomed section so each battle feels distinct.
+  const maxOffsetX = SCREEN.width * (scale - 1);
+  const maxOffsetY = SCREEN.height * (scale - 1);
+  const minDelta = Math.min(maxOffsetX, maxOffsetY) * 0.12;
+
+  let best = null;
+  for (let i = 0; i < 12; i++) {
+    const candidate = {
+      scale,
+      offsetX: Math.random() * maxOffsetX,
+      offsetY: Math.random() * maxOffsetY,
+    };
+    if (!LAST_BATTLE_BG_CROP) {
+      LAST_BATTLE_BG_CROP = candidate;
+      return candidate;
+    }
+    const delta = Math.hypot(
+      candidate.offsetX - LAST_BATTLE_BG_CROP.offsetX,
+      candidate.offsetY - LAST_BATTLE_BG_CROP.offsetY
+    );
+    if (!best || delta > best.delta) best = { candidate, delta };
+    if (delta >= minDelta) {
+      LAST_BATTLE_BG_CROP = candidate;
+      return candidate;
+    }
+  }
+
+  LAST_BATTLE_BG_CROP = best?.candidate || {
+    scale,
+    offsetX: Math.random() * maxOffsetX,
+    offsetY: Math.random() * maxOffsetY,
+  };
+  return LAST_BATTLE_BG_CROP;
+}
 
 function EnemyLaserBeam({ x1, y1, x2, y2, alpha, color }) {
   const dx  = x2 - x1;
@@ -270,6 +309,7 @@ export default function GameScreen({
 }) {
   const [uiState, setUiState] = useState(makeUiState);
   const [gameKey, setGameKey] = useState(0);
+  const [battleBgCrop, setBattleBgCrop] = useState(() => pickBattleBgCrop());
 
   const G = useRef(null);
   const joystick = useRef({ dx: 0, dy: 0 });
@@ -285,6 +325,7 @@ export default function GameScreen({
   const { shakeX, shakeY, applyShake } = useShakeOffset();
 
   useEffect(() => {
+    setBattleBgCrop(pickBattleBgCrop());
     isRunning.current = false;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
@@ -797,6 +838,22 @@ export default function GameScreen({
     <SafeAreaView style={styles.safe}>
       <Animated.View style={[styles.container, { transform: [{ translateX: shakeX }, { translateY: shakeY }] }]}>
         <View style={styles.bg} pointerEvents="none">
+          <Image
+            source={BATTLE_BACKGROUND_IMAGE}
+            resizeMode="cover"
+            style={[
+              styles.battleBackdrop,
+              {
+                width: SCREEN.width * battleBgCrop.scale,
+                height: SCREEN.height * battleBgCrop.scale,
+                transform: [
+                  { translateX: -battleBgCrop.offsetX },
+                  { translateY: -battleBgCrop.offsetY },
+                ],
+              },
+            ]}
+          />
+          <View style={styles.battleBackdropTint} />
           <View style={styles.nebulaA} />
           <View style={styles.nebulaB} />
           <View style={styles.nebulaC} />
@@ -950,6 +1007,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    overflow: 'hidden',
+  },
+  battleBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    opacity: 0.45,
+  },
+  battleBackdropTint: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(6,10,20,0.55)',
   },
   gridH1: {
     position: 'absolute',
