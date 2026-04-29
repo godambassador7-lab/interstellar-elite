@@ -244,9 +244,21 @@ const GRAVITY_WELL_MAX = 2;
 const GRAVITY_WELL_SPAWN_MS = 13000;
 const DESKTOP_MIN_WIDTH = 1024;
 const DESKTOP_MIN_HEIGHT = 640;
+const BG_PARALLAX = 0.28;
 
-function GravityWellView({ well }) {
+function GravityWellView({ well, time = 0 }) {
   const r = well.radius;
+  const t = time * 2.6;
+  const swirlPoints = Array.from({ length: 8 }, (_, i) => {
+    const a = t + (i / 8) * Math.PI * 2;
+    const radius = r * (0.18 + (i % 4) * 0.12);
+    return {
+      x: well.x + Math.cos(a * (1 + i * 0.05)) * radius,
+      y: well.y + Math.sin(a * (1 + i * 0.05)) * radius,
+      size: 2 + (i % 3),
+      opacity: 0.35 + (i % 4) * 0.1,
+    };
+  });
   return (
     <>
       <View
@@ -263,6 +275,22 @@ function GravityWellView({ well }) {
           backgroundColor: 'rgba(70,120,255,0.09)',
         }}
       />
+      {swirlPoints.map((p, idx) => (
+        <View
+          key={`sw-${well.id}-${idx}`}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: p.x - p.size,
+            top: p.y - p.size,
+            width: p.size * 2,
+            height: p.size * 2,
+            borderRadius: p.size,
+            backgroundColor: idx % 2 === 0 ? 'rgba(117,224,255,0.9)' : 'rgba(154,179,255,0.85)',
+            opacity: p.opacity,
+          }}
+        />
+      ))}
       <View
         pointerEvents="none"
         style={{
@@ -524,7 +552,7 @@ export default function GameScreen({
       lastStand: { active: false, damageMult: 1.5, speedMult: 1.22 },
       flagshipEscape: {
         active: false,
-        countdownMs: 2000,
+        countdownMs: 3000,
         blastRadius: 24,
         blastGrowth: 460,
         centerX: BATTLE_WORLD.width * 0.5,
@@ -831,7 +859,7 @@ export default function GameScreen({
           }
         } else if (!g.flagshipEscape.active) {
           g.flagshipEscape.active = true;
-          g.flagshipEscape.countdownMs = 2000;
+          g.flagshipEscape.countdownMs = 3000;
           g.flagshipEscape.blastRadius = 24;
           g.flagshipEscape.centerX = g.player.x;
           g.flagshipEscape.centerY = g.player.y;
@@ -1166,8 +1194,20 @@ export default function GameScreen({
                 width: SCREEN.width * battleBgCrop.scale,
                 height: SCREEN.height * battleBgCrop.scale,
                 transform: [
-                  { translateX: -battleBgCrop.offsetX },
-                  { translateY: -battleBgCrop.offsetY },
+                  {
+                    translateX:
+                      -battleBgCrop.offsetX -
+                      ((cameraX / Math.max(1, BATTLE_WORLD.width - SCREEN.width)) *
+                        (SCREEN.width * (battleBgCrop.scale - 1))) *
+                        BG_PARALLAX,
+                  },
+                  {
+                    translateY:
+                      -battleBgCrop.offsetY -
+                      ((cameraY / Math.max(1, BATTLE_WORLD.height - SCREEN.height)) *
+                        (SCREEN.height * (battleBgCrop.scale - 1))) *
+                        BG_PARALLAX,
+                  },
                 ],
               },
             ]}
@@ -1187,26 +1227,56 @@ export default function GameScreen({
           <AttackRangeIndicator x={playerX} y={playerY} range={attackRange} />
           <QuantumPickup x={quantumPickup?.x || 0} y={quantumPickup?.y || 0} active={!!quantumPickup?.active} />
           {gravityWells.map((w) => (
-            <GravityWellView key={w.id} well={w} />
+            <GravityWellView key={w.id} well={w} time={time} />
           ))}
           {meteors.map((m) => (
             <MeteorView key={m.id} meteor={m} />
           ))}
           {flagshipEscape && (
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left: flagshipEscape.x - flagshipEscape.blastRadius,
-                top: flagshipEscape.y - flagshipEscape.blastRadius,
-                width: flagshipEscape.blastRadius * 2,
-                height: flagshipEscape.blastRadius * 2,
-                borderRadius: flagshipEscape.blastRadius,
-                borderWidth: 2,
-                borderColor: 'rgba(255,102,82,0.85)',
-                backgroundColor: 'rgba(255,90,64,0.12)',
-              }}
-            />
+            <>
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: flagshipEscape.x - flagshipEscape.blastRadius * 1.18,
+                  top: flagshipEscape.y - flagshipEscape.blastRadius * 1.18,
+                  width: flagshipEscape.blastRadius * 2.36,
+                  height: flagshipEscape.blastRadius * 2.36,
+                  borderRadius: flagshipEscape.blastRadius * 1.18,
+                  borderWidth: 2,
+                  borderColor: 'rgba(255,66,150,0.78)',
+                  backgroundColor: 'rgba(255,80,210,0.08)',
+                }}
+              />
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: flagshipEscape.x - flagshipEscape.blastRadius,
+                  top: flagshipEscape.y - flagshipEscape.blastRadius,
+                  width: flagshipEscape.blastRadius * 2,
+                  height: flagshipEscape.blastRadius * 2,
+                  borderRadius: flagshipEscape.blastRadius,
+                  borderWidth: 2.5,
+                  borderColor: 'rgba(255,142,54,0.9)',
+                  backgroundColor: 'rgba(255,170,66,0.12)',
+                }}
+              />
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: flagshipEscape.x - flagshipEscape.blastRadius * 0.72,
+                  top: flagshipEscape.y - flagshipEscape.blastRadius * 0.72,
+                  width: flagshipEscape.blastRadius * 1.44,
+                  height: flagshipEscape.blastRadius * 1.44,
+                  borderRadius: flagshipEscape.blastRadius * 0.72,
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(117,246,255,0.88)',
+                  backgroundColor: 'rgba(117,246,255,0.1)',
+                }}
+              />
+            </>
           )}
           {enemies.map((e) => e.laserFlash > 0 && (
             <EnemyLaserBeam

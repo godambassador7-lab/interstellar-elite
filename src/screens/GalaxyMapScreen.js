@@ -899,7 +899,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '100%',
     height: '100%',
-    opacity: 0.28,
+    opacity: 1,
   },
   galaxyName: {
     fontFamily: 'Courier New',
