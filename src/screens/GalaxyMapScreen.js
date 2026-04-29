@@ -16,8 +16,11 @@ import { PART_TYPES, getMetaUpgradePartCost } from '../systems/MetaUpgradeSystem
 import ConquestScreen from './ConquestScreen';
 import { getStationUpgradeCost } from '../systems/NemesisSystem';
 
-const MAP_WIDTH = 2400;
-const MAP_HEIGHT = 1400;
+const BASE_MAP_WIDTH = 2400;
+const BASE_MAP_HEIGHT = 1400;
+const MAP_REPEAT_X = 2;
+const MAP_WIDTH = BASE_MAP_WIDTH * MAP_REPEAT_X;
+const MAP_HEIGHT = BASE_MAP_HEIGHT;
 const ZOOM_MAX = 4.2;
 const PINCH_SENSITIVITY = 0.96;
 const UNIVERSE_MAP_IMAGE = require('../../universe map.png');
@@ -29,6 +32,46 @@ const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
   size: 0.8 + Math.random() * 2.1,
   opacity: 0.2 + Math.random() * 0.7,
 }));
+
+function DoubleChevronArrow({ left, top, scale = 1, color = '#33D6FF', rotation = 0 }) {
+  const w = 116 * scale;
+  const h = 116 * scale;
+  const t = Math.max(2, 5 * scale);
+  const line = (x, y, width, height, rotate) => (
+    <View
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width,
+        height,
+        backgroundColor: color,
+        borderRadius: t,
+        transform: [{ rotate: `${rotate}deg` }],
+      }}
+    />
+  );
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: w,
+        height: h,
+        opacity: 0.95,
+        transform: [{ rotate: `${rotation}deg` }],
+      }}
+    >
+      {line(w * 0.1, h * 0.2, w * 0.42, t, -28)}
+      {line(w * 0.48, h * 0.2, w * 0.42, t, 28)}
+      {line(w * 0.1, h * 0.46, w * 0.42, t, -28)}
+      {line(w * 0.48, h * 0.46, w * 0.42, t, 28)}
+    </View>
+  );
+}
 
 function formatWarCredits(value) {
   const n = Math.max(0, Number(value) || 0);
@@ -147,9 +190,9 @@ export default function GalaxyMapScreen({
     const hStep = 24;
     const ampV = 44;
     const ampH = 40;
-    const jitterV = Array.from({ length: Math.ceil(MAP_HEIGHT / vStep) + 2 }, (_, i) => Math.sin(i * 3.11) * 10 + Math.cos(i * 1.73) * 6);
-    const jitterH = Array.from({ length: Math.ceil(MAP_WIDTH / hStep) + 2 }, (_, i) => Math.sin(i * 2.67) * 9 + Math.cos(i * 1.39) * 7);
-    for (let y = 0; y <= MAP_HEIGHT; y += vStep) {
+    const jitterV = Array.from({ length: Math.ceil(BASE_MAP_HEIGHT / vStep) + 2 }, (_, i) => Math.sin(i * 3.11) * 10 + Math.cos(i * 1.73) * 6);
+    const jitterH = Array.from({ length: Math.ceil(BASE_MAP_WIDTH / hStep) + 2 }, (_, i) => Math.sin(i * 2.67) * 9 + Math.cos(i * 1.39) * 7);
+    for (let y = 0; y <= BASE_MAP_HEIGHT; y += vStep) {
       const idx = Math.floor(y / vStep);
       const x = 1200
         + Math.sin(y * 0.0105) * ampV
@@ -157,7 +200,7 @@ export default function GalaxyMapScreen({
         + jitterV[idx];
       pointsV.push({ x, y });
     }
-    for (let x = 0; x <= MAP_WIDTH; x += hStep) {
+    for (let x = 0; x <= BASE_MAP_WIDTH; x += hStep) {
       const idx = Math.floor(x / hStep);
       const y = 700
         + Math.sin(x * 0.0096) * ampH
@@ -177,6 +220,35 @@ export default function GalaxyMapScreen({
       links.push({ from: owned[i - 1], to: owned[i] });
     }
     return links;
+  }, [galaxies]);
+
+  const expansionArrow = useMemo(() => {
+    if (!galaxies.length) {
+      return { mapX: BASE_MAP_WIDTH * 0.9, mapY: BASE_MAP_HEIGHT * 0.5, rotation: 90 };
+    }
+
+    const xs = galaxies.map((g) => g.x);
+    const ys = galaxies.map((g) => g.y);
+    const minX = Math.max(0, Math.min(...xs));
+    const maxX = Math.min(MAP_WIDTH, Math.max(...xs));
+    const minY = Math.max(0, Math.min(...ys));
+    const maxY = Math.min(MAP_HEIGHT, Math.max(...ys));
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const spaces = [
+      { dir: 'left', value: minX },
+      { dir: 'right', value: MAP_WIDTH - maxX },
+      { dir: 'up', value: minY },
+      { dir: 'down', value: MAP_HEIGHT - maxY },
+    ];
+    spaces.sort((a, b) => b.value - a.value);
+    const winner = spaces[0]?.dir || 'right';
+
+    if (winner === 'left') return { mapX: Math.max(96, minX - 120), mapY: centerY, rotation: -90 };
+    if (winner === 'up') return { mapX: centerX, mapY: Math.max(96, minY - 120), rotation: 0 };
+    if (winner === 'down') return { mapX: centerX, mapY: Math.min(MAP_HEIGHT - 96, maxY + 120), rotation: 180 };
+    return { mapX: Math.min(MAP_WIDTH - 96, maxX + 120), mapY: centerY, rotation: 90 };
   }, [galaxies]);
 
   const clampScroll = useCallback((x, y, targetZoom) => {
@@ -251,9 +323,9 @@ export default function GalaxyMapScreen({
     const xs = unlocked.map((g) => g.x);
     const ys = unlocked.map((g) => g.y);
     const minX = Math.max(0, Math.min(...xs) - padding);
-    const maxX = Math.min(MAP_WIDTH, Math.max(...xs) + padding);
+    const maxX = Math.min(BASE_MAP_WIDTH, Math.max(...xs) + padding);
     const minY = Math.max(0, Math.min(...ys) - padding);
-    const maxY = Math.min(MAP_HEIGHT, Math.max(...ys) + padding);
+    const maxY = Math.min(BASE_MAP_HEIGHT, Math.max(...ys) + padding);
 
     const { width, height } = Dimensions.get('window');
     const viewportW = Math.max(280, width - 24);
@@ -423,7 +495,23 @@ export default function GalaxyMapScreen({
               onResponderRelease={endPinch}
               onResponderTerminate={endPinch}
             >
-            <Image source={UNIVERSE_MAP_IMAGE} style={styles.mapImage} resizeMode="cover" />
+            <Image
+              source={UNIVERSE_MAP_IMAGE}
+              style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
+              resizeMode="cover"
+            />
+            <Image
+              source={UNIVERSE_MAP_IMAGE}
+              style={[styles.mapImage, { left: BASE_MAP_WIDTH * zoom, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom, opacity: 0.72 }]}
+              resizeMode="cover"
+            />
+            <DoubleChevronArrow
+              left={expansionArrow.mapX * zoom - 58}
+              top={expansionArrow.mapY * zoom - 58}
+              scale={Math.max(0.8, zoom * 0.9)}
+              color="#2FD8FF"
+              rotation={expansionArrow.rotation}
+            />
 
             {/* Quadron background tints */}
             {QUADRANT_DEFS.map((q) => (
