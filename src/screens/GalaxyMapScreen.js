@@ -342,7 +342,7 @@ export default function GalaxyMapScreen({
             <Text style={styles.backBtnText}>BACK</Text>
           </TouchableOpacity>
           <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-            GALACTIC WAR MAP
+            OBSERVABLE UNIVERSE MAP
           </Text>
         </View>
         <View style={styles.zoomControls}>
@@ -423,7 +423,7 @@ export default function GalaxyMapScreen({
               onResponderRelease={endPinch}
               onResponderTerminate={endPinch}
             >
-            <Image source={UNIVERSE_MAP_IMAGE} style={styles.mapImage} resizeMode="stretch" />
+            <Image source={UNIVERSE_MAP_IMAGE} style={styles.mapImage} resizeMode="cover" />
 
             {/* Quadron background tints */}
             {QUADRANT_DEFS.map((q) => (
@@ -455,23 +455,36 @@ export default function GalaxyMapScreen({
               const midX = (x1 + x2) / 2;
               const midY = (y1 + y2) / 2;
               return (
-                <View
-                  key={`ov-${i}`}
-                  style={{
-                    position: 'absolute',
-                    left: midX - len / 2,
-                    top: midY - 1.4,
-                    width: len,
-                    height: 2.8,
-                    borderRadius: 2,
-                    backgroundColor: 'rgba(206,228,252,0.18)',
-                    shadowColor: '#CFE9FF',
-                    shadowOpacity: 0.45,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 0 },
-                    transform: [{ rotate: `${angle}deg` }],
-                  }}
-                />
+                <View key={`ov-${i}`} pointerEvents="none">
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: midX - len / 2,
+                      top: midY - 1.9,
+                      width: len,
+                      height: 3.8,
+                      borderRadius: 2,
+                      backgroundColor: 'rgba(173,245,255,0.26)',
+                      shadowColor: '#DDFBFF',
+                      shadowOpacity: 0.85,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 0 },
+                      transform: [{ rotate: `${angle}deg` }],
+                    }}
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: midX - len / 2,
+                      top: midY - 0.55,
+                      width: len,
+                      height: 1.1,
+                      borderRadius: 1,
+                      backgroundColor: 'rgba(228,251,255,0.92)',
+                      transform: [{ rotate: `${angle}deg` }],
+                    }}
+                  />
+                </View>
               );
             })}
             {organicBoundaries.pointsH.map((p, i) => {
@@ -488,47 +501,40 @@ export default function GalaxyMapScreen({
               const midX = (x1 + x2) / 2;
               const midY = (y1 + y2) / 2;
               return (
-                <View
-                  key={`oh-${i}`}
-                  style={{
-                    position: 'absolute',
-                    left: midX - len / 2,
-                    top: midY - 1.4,
-                    width: len,
-                    height: 2.8,
-                    borderRadius: 2,
-                    backgroundColor: 'rgba(206,228,252,0.18)',
-                    shadowColor: '#CFE9FF',
-                    shadowOpacity: 0.45,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 0 },
-                    transform: [{ rotate: `${angle}deg` }],
-                  }}
-                />
+                <View key={`oh-${i}`} pointerEvents="none">
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: midX - len / 2,
+                      top: midY - 1.9,
+                      width: len,
+                      height: 3.8,
+                      borderRadius: 2,
+                      backgroundColor: 'rgba(173,245,255,0.26)',
+                      shadowColor: '#DDFBFF',
+                      shadowOpacity: 0.85,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 0 },
+                      transform: [{ rotate: `${angle}deg` }],
+                    }}
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: midX - len / 2,
+                      top: midY - 0.55,
+                      width: len,
+                      height: 1.1,
+                      borderRadius: 1,
+                      backgroundColor: 'rgba(228,251,255,0.92)',
+                      transform: [{ rotate: `${angle}deg` }],
+                    }}
+                  />
+                </View>
               );
             })}
 
-            {/* Active quadrant glow */}
-            {QUADRANT_DEFS.filter((q) => q.id === activeQuadrantId).map((q) => (
-              <View
-                key={`active-q-${q.id}`}
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  left: q.x1 * zoom,
-                  top: q.y1 * zoom,
-                  width: (q.x2 - q.x1) * zoom,
-                  height: (q.y2 - q.y1) * zoom,
-                  borderWidth: Math.max(1.5, 2.2 * zoom),
-                  borderColor: 'rgba(173,245,255,0.88)',
-                  shadowColor: '#DDFBFF',
-                  shadowOpacity: 0.95,
-                  shadowRadius: 14,
-                  shadowOffset: { width: 0, height: 0 },
-                  backgroundColor: 'rgba(144,228,255,0.05)',
-                }}
-              />
-            ))}
+            {/* Straight active-quad borders removed: glow is now on organic separators */}
 
             {BG_STARS.map((s) => (
               <View
@@ -1019,6 +1025,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     opacity: 1,
+    imageRendering: 'crisp-edges',
   },
   galaxyName: {
     fontFamily: 'Courier New',

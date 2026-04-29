@@ -159,6 +159,7 @@ export function EnemyShip({ enemy }) {
   const t = (enemy.gameTime || 0) * 22 + (enemy.id?.length || 0);
   const pulse = 0.75 + 0.25 * Math.sin(t);
   const warmFlame = classKey === 'destroyer' || classKey === 'fighter';
+  const shipAngle = classKey === 'destroyer' ? facingAngle - 90 : facingAngle;
 
   return (
     <View style={{ position: 'absolute', left: x - shipBox / 2, top: y - shipBox / 2, width: shipBox, height: shipBox }}>
@@ -172,15 +173,15 @@ export function EnemyShip({ enemy }) {
         opacity: hitFlash > 0 ? 0.5 : 0.12,
       }} />
 
-      <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${facingAngle}deg` }] }}>
+      <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${shipAngle}deg` }] }}>
         {moving && (
           <>
             <View style={{
               position: 'absolute',
-              left: shipBox * 0.41,
-              top: shipBox * 0.82,
-              width: shipBox * 0.08,
-              height: shipBox * 0.2 * pulse,
+              left: classKey === 'destroyer' ? shipBox * 0.14 : shipBox * 0.41,
+              top: classKey === 'destroyer' ? shipBox * 0.44 : shipBox * 0.82,
+              width: classKey === 'destroyer' ? shipBox * 0.18 * pulse : shipBox * 0.08,
+              height: classKey === 'destroyer' ? shipBox * 0.08 : shipBox * 0.2 * pulse,
               borderRadius: shipBox * 0.04,
               backgroundColor: warmFlame ? 'rgba(255,130,62,0.95)' : 'rgba(117,236,255,0.95)',
               shadowColor: warmFlame ? '#FF7E36' : '#6EEFFF',
@@ -190,10 +191,10 @@ export function EnemyShip({ enemy }) {
             }} />
             <View style={{
               position: 'absolute',
-              left: shipBox * 0.51,
-              top: shipBox * 0.82,
-              width: shipBox * 0.08,
-              height: shipBox * 0.2 * pulse,
+              left: classKey === 'destroyer' ? shipBox * 0.14 : shipBox * 0.51,
+              top: classKey === 'destroyer' ? shipBox * 0.54 : shipBox * 0.82,
+              width: classKey === 'destroyer' ? shipBox * 0.18 * pulse : shipBox * 0.08,
+              height: classKey === 'destroyer' ? shipBox * 0.08 : shipBox * 0.2 * pulse,
               borderRadius: shipBox * 0.04,
               backgroundColor: warmFlame ? 'rgba(255,84,52,0.95)' : 'rgba(79,188,255,0.95)',
               shadowColor: warmFlame ? '#FF5538' : '#49C6FF',

@@ -1207,6 +1207,15 @@ export default function GameScreen({
     BG_PARALLAX;
   const bgTranslateX = clamp(-maxBgShiftX, -battleBgCrop.offsetX - parallaxX, 0);
   const bgTranslateY = clamp(-maxBgShiftY, -battleBgCrop.offsetY - parallaxY, 0);
+  const coreCountdownMs = flagshipEscape?.countdownMs ?? 0;
+  const coreCountdownActive = !!flagshipEscape && coreCountdownMs > 0;
+  const detonationProgress = coreCountdownActive ? 1 - (coreCountdownMs / 3000) : 1;
+  const coreFlickerHz = 4 + detonationProgress * 13;
+  const coreFlicker = coreCountdownActive
+    ? 0.55 + 0.45 * Math.abs(Math.sin(time * Math.PI * coreFlickerHz))
+    : 1;
+  const coreGlowScale = 0.7 + detonationProgress * 0.9;
+  const coreCountdownText = coreCountdownActive ? (coreCountdownMs / 1000).toFixed(1) : '0.0';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -1291,6 +1300,45 @@ export default function GameScreen({
                   backgroundColor: 'rgba(117,246,255,0.1)',
                 }}
               />
+              {coreCountdownActive && (
+                <>
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      left: flagshipEscape.x - 16 * coreGlowScale,
+                      top: flagshipEscape.y - 16 * coreGlowScale,
+                      width: 32 * coreGlowScale,
+                      height: 32 * coreGlowScale,
+                      borderRadius: 16 * coreGlowScale,
+                      backgroundColor: 'rgba(255,92,76,0.3)',
+                      borderWidth: 1.5,
+                      borderColor: 'rgba(255,168,140,0.85)',
+                      opacity: coreFlicker,
+                    }}
+                  />
+                  <Text
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      left: flagshipEscape.x - 19,
+                      top: flagshipEscape.y - 8,
+                      width: 38,
+                      textAlign: 'center',
+                      color: '#FFD8CC',
+                      fontFamily: 'Courier New',
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      textShadowColor: 'rgba(255,84,60,0.95)',
+                      textShadowRadius: 8,
+                      textShadowOffset: { width: 0, height: 0 },
+                      opacity: coreFlicker,
+                    }}
+                  >
+                    {coreCountdownText}
+                  </Text>
+                </>
+              )}
             </>
           )}
           {enemies.map((e) => e.laserFlash > 0 && (
