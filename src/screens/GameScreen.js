@@ -247,6 +247,10 @@ const DESKTOP_MIN_WIDTH = 1024;
 const DESKTOP_MIN_HEIGHT = 640;
 const BG_PARALLAX = 0.28;
 
+function clamp(min, value, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function GravityWellView({ well, time = 0 }) {
   const r = well.radius;
   const t = time * 2.6;
@@ -1189,6 +1193,21 @@ export default function GameScreen({
     flagshipEscape,
   } = uiState;
 
+  const bgWidth = SCREEN.width * battleBgCrop.scale;
+  const bgHeight = SCREEN.height * battleBgCrop.scale;
+  const maxBgShiftX = Math.max(0, bgWidth - SCREEN.width);
+  const maxBgShiftY = Math.max(0, bgHeight - SCREEN.height);
+  const parallaxX =
+    ((cameraX / Math.max(1, BATTLE_WORLD.width - SCREEN.width)) *
+      (SCREEN.width * (battleBgCrop.scale - 1))) *
+    BG_PARALLAX;
+  const parallaxY =
+    ((cameraY / Math.max(1, BATTLE_WORLD.height - SCREEN.height)) *
+      (SCREEN.height * (battleBgCrop.scale - 1))) *
+    BG_PARALLAX;
+  const bgTranslateX = clamp(-maxBgShiftX, -battleBgCrop.offsetX - parallaxX, 0);
+  const bgTranslateY = clamp(-maxBgShiftY, -battleBgCrop.offsetY - parallaxY, 0);
+
   return (
     <SafeAreaView style={styles.safe}>
       <Animated.View style={[styles.container, { transform: [{ translateX: shakeX }, { translateY: shakeY }] }]}>
@@ -1199,23 +1218,11 @@ export default function GameScreen({
             style={[
               styles.battleBackdrop,
               {
-                width: SCREEN.width * battleBgCrop.scale,
-                height: SCREEN.height * battleBgCrop.scale,
+                width: bgWidth,
+                height: bgHeight,
                 transform: [
-                  {
-                    translateX:
-                      -battleBgCrop.offsetX -
-                      ((cameraX / Math.max(1, BATTLE_WORLD.width - SCREEN.width)) *
-                        (SCREEN.width * (battleBgCrop.scale - 1))) *
-                        BG_PARALLAX,
-                  },
-                  {
-                    translateY:
-                      -battleBgCrop.offsetY -
-                      ((cameraY / Math.max(1, BATTLE_WORLD.height - SCREEN.height)) *
-                        (SCREEN.height * (battleBgCrop.scale - 1))) *
-                        BG_PARALLAX,
-                  },
+                  { translateX: bgTranslateX },
+                  { translateY: bgTranslateY },
                 ],
               },
             ]}
