@@ -193,6 +193,7 @@ function makeUiState() {
     playerHitFlash: 0,
     playerAttackFlash: 0,
     playerFacingAngle: 0,
+    playerMoving: false,
     cameraX: 0,
     cameraY: 0,
     dashActive: false,
@@ -885,6 +886,7 @@ export default function GameScreen({
         playerHitFlash: g.player.hitFlash,
         playerAttackFlash: g.player.attackFlash,
         playerFacingAngle: g.player.facingAngle ?? 0,
+        playerMoving: Math.hypot(g.player.vx || 0, g.player.vy || 0) > 8,
         cameraX: g.cameraX,
         cameraY: g.cameraY,
         dashActive: g.abilities.dash.active,
@@ -895,7 +897,7 @@ export default function GameScreen({
         abilities: snapshotAbilities(g.abilities),
         enemies: g.enemies.map((e) => {
           const s = toScreen(e.x, e.y);
-          return { ...e, x: s.x, y: s.y };
+          return { ...e, x: s.x, y: s.y, gameTime: g.gameTime };
         }),
         particles: g.particles.map((p) => {
           const s = toScreen(p.x, p.y);
@@ -1141,6 +1143,7 @@ export default function GameScreen({
     playerHitFlash,
     playerAttackFlash,
     playerFacingAngle,
+    playerMoving,
     cameraX,
     cameraY,
     dashActive,
@@ -1305,6 +1308,8 @@ export default function GameScreen({
             attackFlash={playerAttackFlash}
             facingAngle={playerFacingAngle}
             dashActive={dashActive}
+            isMoving={playerMoving}
+            time={time}
           />
         </View>
 

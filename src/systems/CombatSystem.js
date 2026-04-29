@@ -107,7 +107,7 @@ export function runCombatFrame(state, deltaMs) {
       if (enemy.dead) continue;
       if (dist(player, enemy) <= ABILITIES.PULSE.RADIUS + enemy.size / 2) {
         const dmg = ABILITIES.PULSE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
-        applyDamage(state, enemy, dmg, newParticles);
+        applyDamage(state, enemy, dmg, newParticles, 'offensive_shield');
         if (enemy.hp <= 0 && !enemy.dead) {
           killEnemy(enemy, state, newParticles, deadEnemyIds);
           scoreGain += enemy.score;
@@ -312,8 +312,9 @@ export function applyQuantumSlashSwipe(state, from, to) {
   return kills;
 }
 
-function applyDamage(state, enemy, dmg, particleList) {
+function applyDamage(state, enemy, dmg, particleList, source = 'default') {
   const dealt = Math.max(0, Math.min(enemy.hp, dmg));
+  const critical = dealt >= Math.max(26, enemy.maxHp * 0.35);
   enemy.hp -= dmg;
   enemy.hitFlash = 10;
   if (dealt > 0) {
@@ -324,6 +325,8 @@ function applyDamage(state, enemy, dmg, particleList) {
       x: enemy.x + (Math.random() - 0.5) * 8,
       y: enemy.y - enemy.size * 0.35,
       value: Math.round(dealt),
+      source,
+      critical,
       life: 560,
       maxLife: 560,
       vy: -0.026 - Math.random() * 0.012,
