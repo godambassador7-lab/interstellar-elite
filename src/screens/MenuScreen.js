@@ -5,6 +5,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image }
 
 const { width, height } = Dimensions.get('window');
 const MENU_TITLE_IMAGE = require('../../main menu title.png');
+const BATTLE_BACKGROUND_IMAGE = require('../../battle background.png');
 
 const STARS = Array.from({ length: 60 }, () => ({
   x: Math.random() * width,
@@ -42,27 +43,7 @@ export default function MenuScreen({ onStart }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.nebulaA} />
-      <View style={styles.nebulaB} />
-      <View style={styles.nebulaC} />
-
-      {STARS.map((star, i) => (
-        <View
-          key={i}
-          style={{
-            position: 'absolute',
-            left: star.x,
-            top: star.y,
-            width: star.size,
-            height: star.size,
-            borderRadius: star.size / 2,
-            backgroundColor: '#FFFFFF',
-            opacity: star.opacity,
-          }}
-        />
-      ))}
-
-      <View style={styles.horizon} />
+      <Image source={BATTLE_BACKGROUND_IMAGE} resizeMode="cover" style={styles.battleBg} />
 
       <Animated.View style={[styles.titleBlock, { opacity: titleOpacity, transform: [{ scale: titleScale }] }]}>
         <Text style={styles.titleSub}>MOBILIZED COMBAT SERIES</Text>
@@ -114,40 +95,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  nebulaA: {
+  battleBg: {
     position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    top: -40,
-    left: -80,
-    backgroundColor: 'rgba(178,80,255,0.14)',
-  },
-  nebulaB: {
-    position: 'absolute',
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    bottom: 40,
-    right: -60,
-    backgroundColor: 'rgba(34,214,255,0.1)',
-  },
-  nebulaC: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    bottom: -40,
-    left: 40,
-    backgroundColor: 'rgba(255,84,102,0.08)',
-  },
-  horizon: {
-    position: 'absolute',
-    bottom: height * 0.3,
+    top: 0,
     left: 0,
     right: 0,
-    height: 0.5,
-    backgroundColor: 'rgba(103,243,255,0.2)',
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
 
   titleBlock: {

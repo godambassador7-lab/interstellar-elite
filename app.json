@@ -20,6 +20,9 @@
       },
       "package": "com.interstellarelite.game"
     },
+    "web": {
+      "favicon": "./ChatGPT Image Apr 25, 2026, 09_38_15 PM.png"
+    },
     "plugins": [
       "expo-asset"
     ]
