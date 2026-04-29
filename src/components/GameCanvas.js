@@ -159,7 +159,7 @@ export function EnemyShip({ enemy }) {
   const t = (enemy.gameTime || 0) * 22 + (enemy.id?.length || 0);
   const pulse = 0.75 + 0.25 * Math.sin(t);
   const warmFlame = classKey === 'destroyer' || classKey === 'fighter';
-  const shipAngle = classKey === 'destroyer' ? facingAngle - 90 : facingAngle;
+  const shipAngle = (classKey === 'destroyer' || classKey === 'flagship') ? facingAngle - 90 : facingAngle;
 
   return (
     <View style={{ position: 'absolute', left: x - shipBox / 2, top: y - shipBox / 2, width: shipBox, height: shipBox }}>
