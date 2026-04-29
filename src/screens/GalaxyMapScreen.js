@@ -143,16 +143,26 @@ export default function GalaxyMapScreen({
   const organicBoundaries = useMemo(() => {
     const pointsV = [];
     const pointsH = [];
-    const vStep = 32;
-    const hStep = 32;
-    const ampV = 28;
-    const ampH = 26;
+    const vStep = 24;
+    const hStep = 24;
+    const ampV = 44;
+    const ampH = 40;
+    const jitterV = Array.from({ length: Math.ceil(MAP_HEIGHT / vStep) + 2 }, (_, i) => Math.sin(i * 3.11) * 10 + Math.cos(i * 1.73) * 6);
+    const jitterH = Array.from({ length: Math.ceil(MAP_WIDTH / hStep) + 2 }, (_, i) => Math.sin(i * 2.67) * 9 + Math.cos(i * 1.39) * 7);
     for (let y = 0; y <= MAP_HEIGHT; y += vStep) {
-      const x = 1200 + Math.sin(y * 0.013) * ampV + Math.sin(y * 0.041) * (ampV * 0.35);
+      const idx = Math.floor(y / vStep);
+      const x = 1200
+        + Math.sin(y * 0.0105) * ampV
+        + Math.sin(y * 0.034) * (ampV * 0.48)
+        + jitterV[idx];
       pointsV.push({ x, y });
     }
     for (let x = 0; x <= MAP_WIDTH; x += hStep) {
-      const y = 700 + Math.sin(x * 0.011) * ampH + Math.sin(x * 0.037) * (ampH * 0.4);
+      const idx = Math.floor(x / hStep);
+      const y = 700
+        + Math.sin(x * 0.0096) * ampH
+        + Math.sin(x * 0.0305) * (ampH * 0.52)
+        + jitterH[idx];
       pointsH.push({ x, y });
     }
     return { pointsV, pointsH };
@@ -450,11 +460,15 @@ export default function GalaxyMapScreen({
                   style={{
                     position: 'absolute',
                     left: midX - len / 2,
-                    top: midY - 0.8,
+                    top: midY - 1.4,
                     width: len,
-                    height: 1.6,
-                    borderRadius: 1,
-                    backgroundColor: 'rgba(206,228,252,0.26)',
+                    height: 2.8,
+                    borderRadius: 2,
+                    backgroundColor: 'rgba(206,228,252,0.18)',
+                    shadowColor: '#CFE9FF',
+                    shadowOpacity: 0.45,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 0 },
                     transform: [{ rotate: `${angle}deg` }],
                   }}
                 />
@@ -479,11 +493,15 @@ export default function GalaxyMapScreen({
                   style={{
                     position: 'absolute',
                     left: midX - len / 2,
-                    top: midY - 0.8,
+                    top: midY - 1.4,
                     width: len,
-                    height: 1.6,
-                    borderRadius: 1,
-                    backgroundColor: 'rgba(206,228,252,0.26)',
+                    height: 2.8,
+                    borderRadius: 2,
+                    backgroundColor: 'rgba(206,228,252,0.18)',
+                    shadowColor: '#CFE9FF',
+                    shadowOpacity: 0.45,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 0 },
                     transform: [{ rotate: `${angle}deg` }],
                   }}
                 />

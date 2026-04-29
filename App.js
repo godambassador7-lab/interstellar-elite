@@ -133,6 +133,48 @@ export default function App() {
       root.style.overflow = 'hidden';
     }
 
+    const scrollbarStyleId = 'interstellar-scrollbar-theme';
+    let scrollbarStyle = document.getElementById(scrollbarStyleId);
+    if (!scrollbarStyle) {
+      scrollbarStyle = document.createElement('style');
+      scrollbarStyle.id = scrollbarStyleId;
+      scrollbarStyle.textContent = `
+        *::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+        *::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.28);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+        }
+        *::-webkit-scrollbar-thumb {
+          background: linear-gradient(
+            180deg,
+            rgba(22, 22, 24, 0.82) 0%,
+            rgba(6, 6, 8, 0.72) 100%
+          );
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 10px;
+          box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.08), 0 0 10px rgba(0, 0, 0, 0.45);
+        }
+        *::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(
+            180deg,
+            rgba(34, 34, 36, 0.9) 0%,
+            rgba(10, 10, 12, 0.8) 100%
+          );
+        }
+        * {
+          scrollbar-color: rgba(22, 22, 24, 0.85) rgba(0, 0, 0, 0.24);
+          scrollbar-width: thin;
+        }
+      `;
+      document.head.appendChild(scrollbarStyle);
+    }
+
     return () => {
       html.style.overflow = prev.htmlOverflow;
       html.style.overscrollBehavior = prev.htmlOverscroll;
@@ -144,6 +186,8 @@ export default function App() {
         root.style.height = prev.rootHeight;
         root.style.overflow = prev.rootOverflow;
       }
+      const nextScrollbarStyle = document.getElementById(scrollbarStyleId);
+      if (nextScrollbarStyle) nextScrollbarStyle.remove();
     };
   }, []);
 

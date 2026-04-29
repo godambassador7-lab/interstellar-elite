@@ -148,7 +148,9 @@ export function EnemyShip({ enemy }) {
   const hpPct = hp / maxHp;
   const classKey = enemy.isNemesis ? 'flagship' : type === 'heavy' ? 'destroyer' : type === 'elite' ? 'interceptor' : 'fighter';
   const spritePool = ENEMY_SPRITES[classKey];
-  const sprite = spritePool[Math.abs(String(enemy.id || '').length + Math.floor((enemy.x + enemy.y) || 0)) % spritePool.length];
+  const enemyId = String(enemy.id || '');
+  const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
+  const sprite = spritePool[spriteSeed % spritePool.length];
   const scaleByClass = classKey === 'flagship' ? 3.5 : classKey === 'destroyer' ? 3.15 : classKey === 'interceptor' ? 2.7 : 2.3;
   const shipBox = size * scaleByClass;
   const showHpBar = classKey === 'destroyer' || classKey === 'flagship';
