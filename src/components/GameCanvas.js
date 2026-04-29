@@ -151,7 +151,7 @@ export function EnemyShip({ enemy }) {
   const enemyId = String(enemy.id || '');
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
   const sprite = spritePool[spriteSeed % spritePool.length];
-  const scaleByClass = classKey === 'flagship' ? 3.5 : classKey === 'destroyer' ? 3.15 : classKey === 'interceptor' ? 2.7 : 2.3;
+  const scaleByClass = classKey === 'flagship' ? 7.0 : classKey === 'destroyer' ? 3.15 : classKey === 'interceptor' ? 5.4 : 2.3;
   const shipBox = size * scaleByClass;
   const showHpBar = classKey === 'destroyer' || classKey === 'flagship';
   const enemySpeed = Math.hypot(enemy.vx || 0, enemy.vy || 0);
