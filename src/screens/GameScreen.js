@@ -363,6 +363,7 @@ export default function GameScreen({
   galaxy,
   systemNumber = 1,
   metaUpgrades = {},
+  meteorUnlocked = false,
   onSystemComplete,
   onMainMenu,
 }) {
@@ -635,21 +636,25 @@ export default function GameScreen({
       for (const w of g.gravityWells) w.lifeMs -= dt;
       g.gravityWells = g.gravityWells.filter((w) => w.lifeMs > 0);
 
-      if (nowMs >= (g.nextMeteorAt || 0)) {
-        g.meteorStormUntil = nowMs + 7000 + Math.random() * 4000;
-        g.nextMeteorAt = nowMs + 18000 + Math.random() * 12000;
-        g.phaseLabel = 'METEOR STORM';
-      }
-      if (nowMs < g.meteorStormUntil && Math.random() < 0.24) {
-        g.meteors.push({
-          id: `m-${nowMs}-${Math.random()}`,
-          x: 60 + Math.random() * (g.world.width - 120),
-          y: -50,
-          vx: -40 + Math.random() * 80,
-          vy: 260 + Math.random() * 130,
-          size: 10 + Math.random() * 10,
-          damage: 20 + Math.random() * 12,
-        });
+      if (meteorUnlocked) {
+        if (nowMs >= (g.nextMeteorAt || 0)) {
+          g.meteorStormUntil = nowMs + 7000 + Math.random() * 4000;
+          g.nextMeteorAt = nowMs + 18000 + Math.random() * 12000;
+          g.phaseLabel = 'METEOR STORM';
+        }
+        if (nowMs < g.meteorStormUntil && Math.random() < 0.24) {
+          g.meteors.push({
+            id: `m-${nowMs}-${Math.random()}`,
+            x: 60 + Math.random() * (g.world.width - 120),
+            y: -50,
+            vx: -40 + Math.random() * 80,
+            vy: 260 + Math.random() * 130,
+            size: 10 + Math.random() * 10,
+            damage: 20 + Math.random() * 12,
+          });
+        }
+      } else {
+        g.meteorStormUntil = 0;
       }
       for (const m of g.meteors) {
         m.x += m.vx * dtSec;

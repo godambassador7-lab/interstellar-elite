@@ -115,6 +115,12 @@ export default function App() {
     return unlocked;
   }, [completedSystemsByGalaxy]);
 
+  const meteorUnlocked = useMemo(() => {
+    const thirdQuadrantStart = GALAXIES.findIndex((g) => g.quadrant === 'watupi');
+    if (thirdQuadrantStart < 0) return false;
+    return unlockedGalaxyIndex >= thirdQuadrantStart;
+  }, [unlockedGalaxyIndex]);
+
   const shipParts = useMemo(
     () => PART_TYPES.reduce((sum, k) => sum + (shipPartsByType[k] || 0), 0),
     [shipPartsByType]
@@ -340,6 +346,7 @@ export default function App() {
           galaxy={selectedGalaxy}
           systemNumber={selectedSystemNumber}
           metaUpgrades={ownedMetaUpgrades}
+          meteorUnlocked={meteorUnlocked}
           onSystemComplete={handleSystemComplete}
           onMainMenu={() => setScreen('menu')}
         />

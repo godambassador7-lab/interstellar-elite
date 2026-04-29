@@ -135,6 +135,29 @@ export default function GalaxyMapScreen({
     [unlockedGalaxyIndex, completedSystemsByGalaxy]
   );
 
+  const activeQuadrantId = useMemo(() => {
+    const idx = Math.max(0, Math.min(unlockedGalaxyIndex, GALAXIES.length - 1));
+    return GALAXIES[idx]?.quadrant || QUADRANT_DEFS[0]?.id;
+  }, [unlockedGalaxyIndex]);
+
+  const organicBoundaries = useMemo(() => {
+    const pointsV = [];
+    const pointsH = [];
+    const vStep = 32;
+    const hStep = 32;
+    const ampV = 28;
+    const ampH = 26;
+    for (let y = 0; y <= MAP_HEIGHT; y += vStep) {
+      const x = 1200 + Math.sin(y * 0.013) * ampV + Math.sin(y * 0.041) * (ampV * 0.35);
+      pointsV.push({ x, y });
+    }
+    for (let x = 0; x <= MAP_WIDTH; x += hStep) {
+      const y = 700 + Math.sin(x * 0.011) * ampH + Math.sin(x * 0.037) * (ampH * 0.4);
+      pointsH.push({ x, y });
+    }
+    return { pointsV, pointsH };
+  }, []);
+
   const ownedLinks = useMemo(() => {
     const owned = galaxies
       .filter((g) => g.completedSystems > 0)
@@ -407,9 +430,87 @@ export default function GalaxyMapScreen({
               />
             ))}
 
-            {/* Quadron boundary dividers */}
-            <View style={{ position: 'absolute', left: 1200 * zoom, top: 0, width: 1, height: MAP_HEIGHT * zoom, backgroundColor: 'rgba(255,255,255,0.1)' }} />
-            <View style={{ position: 'absolute', left: 0, top: 700 * zoom, width: MAP_WIDTH * zoom, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+            {/* Organic quadrant boundaries */}
+            {organicBoundaries.pointsV.map((p, i) => {
+              if (i === 0) return null;
+              const prev = organicBoundaries.pointsV[i - 1];
+              const x1 = prev.x * zoom;
+              const y1 = prev.y * zoom;
+              const x2 = p.x * zoom;
+              const y2 = p.y * zoom;
+              const dx = x2 - x1;
+              const dy = y2 - y1;
+              const len = Math.sqrt(dx * dx + dy * dy);
+              const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+              const midX = (x1 + x2) / 2;
+              const midY = (y1 + y2) / 2;
+              return (
+                <View
+                  key={`ov-${i}`}
+                  style={{
+                    position: 'absolute',
+                    left: midX - len / 2,
+                    top: midY - 0.8,
+                    width: len,
+                    height: 1.6,
+                    borderRadius: 1,
+                    backgroundColor: 'rgba(206,228,252,0.26)',
+                    transform: [{ rotate: `${angle}deg` }],
+                  }}
+                />
+              );
+            })}
+            {organicBoundaries.pointsH.map((p, i) => {
+              if (i === 0) return null;
+              const prev = organicBoundaries.pointsH[i - 1];
+              const x1 = prev.x * zoom;
+              const y1 = prev.y * zoom;
+              const x2 = p.x * zoom;
+              const y2 = p.y * zoom;
+              const dx = x2 - x1;
+              const dy = y2 - y1;
+              const len = Math.sqrt(dx * dx + dy * dy);
+              const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+              const midX = (x1 + x2) / 2;
+              const midY = (y1 + y2) / 2;
+              return (
+                <View
+                  key={`oh-${i}`}
+                  style={{
+                    position: 'absolute',
+                    left: midX - len / 2,
+                    top: midY - 0.8,
+                    width: len,
+                    height: 1.6,
+                    borderRadius: 1,
+                    backgroundColor: 'rgba(206,228,252,0.26)',
+                    transform: [{ rotate: `${angle}deg` }],
+                  }}
+                />
+              );
+            })}
+
+            {/* Active quadrant glow */}
+            {QUADRANT_DEFS.filter((q) => q.id === activeQuadrantId).map((q) => (
+              <View
+                key={`active-q-${q.id}`}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: q.x1 * zoom,
+                  top: q.y1 * zoom,
+                  width: (q.x2 - q.x1) * zoom,
+                  height: (q.y2 - q.y1) * zoom,
+                  borderWidth: Math.max(1.5, 2.2 * zoom),
+                  borderColor: 'rgba(173,245,255,0.88)',
+                  shadowColor: '#DDFBFF',
+                  shadowOpacity: 0.95,
+                  shadowRadius: 14,
+                  shadowOffset: { width: 0, height: 0 },
+                  backgroundColor: 'rgba(144,228,255,0.05)',
+                }}
+              />
+            ))}
 
             {BG_STARS.map((s) => (
               <View
