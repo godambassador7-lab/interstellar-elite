@@ -44,6 +44,7 @@ export default function MenuScreen({ onStart }) {
   return (
     <View style={styles.container}>
       <Image source={BATTLE_BACKGROUND_IMAGE} resizeMode="cover" style={styles.battleBg} />
+      <View style={styles.focusOverlay} />
 
       <Animated.View style={[styles.titleBlock, { opacity: titleOpacity, transform: [{ scale: titleScale }] }]}>
         <Text style={styles.titleSub}>MOBILIZED COMBAT SERIES</Text>
@@ -104,6 +105,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  focusOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(4,10,20,0.34)',
+  },
 
   titleBlock: {
     alignItems: 'center',
@@ -111,11 +120,15 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   titleSub: {
-    color: 'rgba(152,195,255,0.5)',
+    color: 'rgba(196,230,255,0.9)',
     fontFamily: 'Courier New',
-    fontSize: 9,
+    fontSize: 10,
+    fontWeight: 'bold',
     letterSpacing: 5,
     marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.85)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 1 },
   },
   titleImage: {
     width: '100%',
@@ -138,11 +151,15 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   tag: {
-    color: 'rgba(139,231,255,0.62)',
+    color: 'rgba(182,241,255,0.95)',
     fontFamily: 'Courier New',
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: 'bold',
     letterSpacing: 4,
     marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowRadius: 7,
+    textShadowOffset: { width: 0, height: 1 },
   },
   tagDivider: {
     width: 40,
@@ -151,12 +168,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tagSub: {
-    color: 'rgba(183,201,225,0.62)',
+    color: 'rgba(232,240,255,0.95)',
     fontFamily: 'Courier New',
-    fontSize: 9,
+    fontSize: 10,
+    fontWeight: 'bold',
     textAlign: 'center',
     lineHeight: 14,
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 1 },
   },
 
   abilitiesRow: {
@@ -172,19 +193,26 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: 'rgba(7,12,22,0.8)',
+    backgroundColor: 'rgba(6,12,25,0.92)',
   },
   abilityChipIcon: {
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: 'Courier New',
     fontWeight: 'bold',
-    color: '#D7EBFF',
+    color: '#F0F8FF',
     letterSpacing: 0.8,
+    textShadowColor: 'rgba(0,0,0,0.85)',
+    textShadowRadius: 4,
+    textShadowOffset: { width: 0, height: 1 },
   },
   abilityChipLabel: {
     fontFamily: 'Courier New',
-    fontSize: 8,
+    fontSize: 9,
+    fontWeight: 'bold',
     letterSpacing: 1,
+    textShadowColor: 'rgba(0,0,0,0.85)',
+    textShadowRadius: 4,
+    textShadowOffset: { width: 0, height: 1 },
   },
 
   startBtn: {
@@ -193,12 +221,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   startBtnInner: {
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#67F3FF',
     borderRadius: 4,
     paddingHorizontal: 48,
     paddingVertical: 16,
-    backgroundColor: 'rgba(103,243,255,0.09)',
+    backgroundColor: 'rgba(4,18,36,0.6)',
   },
   startText: {
     color: '#67F3FF',
@@ -230,11 +258,15 @@ const styles = StyleSheet.create({
   },
 
   hint: {
-    color: 'rgba(202,219,242,0.33)',
+    color: 'rgba(230,238,255,0.85)',
     fontFamily: 'Courier New',
-    fontSize: 8,
+    fontSize: 9,
+    fontWeight: 'bold',
     letterSpacing: 1,
     marginTop: 20,
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowRadius: 5,
+    textShadowOffset: { width: 0, height: 1 },
   },
 });
