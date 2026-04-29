@@ -151,7 +151,7 @@ export function EnemyShip({ enemy }) {
   const enemyId = String(enemy.id || '');
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
   const sprite = spritePool[spriteSeed % spritePool.length];
-  const scaleByClass = classKey === 'flagship' ? 7.0 : classKey === 'destroyer' ? 3.15 : classKey === 'interceptor' ? 5.4 : 2.3;
+  const scaleByClass = classKey === 'flagship' ? 15.75 : classKey === 'destroyer' ? 3.15 : classKey === 'interceptor' ? 5.4 : 2.3;
   const shipBox = size * scaleByClass;
   const showHpBar = classKey === 'destroyer' || classKey === 'flagship';
   const enemySpeed = Math.hypot(enemy.vx || 0, enemy.vy || 0);
@@ -160,7 +160,7 @@ export function EnemyShip({ enemy }) {
   const pulse = 0.75 + 0.25 * Math.sin(t);
   const warmFlame = classKey === 'destroyer' || classKey === 'fighter';
   const rearThrustersOnSide = classKey === 'destroyer' || classKey === 'flagship';
-  const shipAngle = (classKey === 'destroyer' || classKey === 'flagship') ? facingAngle - 90 : facingAngle;
+  const shipAngle = classKey === 'destroyer' ? facingAngle - 90 : facingAngle;
 
   return (
     <View style={{ position: 'absolute', left: x - shipBox / 2, top: y - shipBox / 2, width: shipBox, height: shipBox }}>
