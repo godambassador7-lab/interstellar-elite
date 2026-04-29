@@ -232,6 +232,9 @@ function makeUiState() {
     perfectDodges: 0,
     latestHighlight: null,
     flagshipEscape: null,
+    boosterActive: false,
+    boosterCooldownRemaining: 0,
+    boosterMaxCooldown: 500,
   };
 }
 
@@ -564,6 +567,13 @@ export default function GameScreen({
         centerX: BATTLE_WORLD.width * 0.5,
         centerY: BATTLE_WORLD.height * 0.5,
       },
+      booster: {
+        activeUntil: 0,
+        lastUsedAt: -500,
+        cooldownMs: 500,
+        durationMs: 1500,
+        speedMult: 1.5,
+      },
     };
     if (G.current.inIntercept) {
       G.current.interceptEndsAt = Date.now() + (20000 + Math.random() * 25000);
@@ -708,7 +718,13 @@ export default function GameScreen({
       const keyboardVector = keyInput.current;
       const hasKeyboardInput = Math.abs(keyboardVector.dx) > 0.001 || Math.abs(keyboardVector.dy) > 0.001;
       const movementInput = hasKeyboardInput ? keyboardVector : joystick.current;
+      const boosterActive = nowMs < (g.booster?.activeUntil || 0);
+      const baseSpeed = g.player.speed;
+      if (boosterActive && g.flagshipEscape.active) {
+        g.player.speed = baseSpeed * (g.booster.speedMult || 1.5);
+      }
       updatePlayer(g, movementInput, dt, g.abilities);
+      g.player.speed = baseSpeed;
       applyGravityFromWells(g.player, g.gravityWells, dtSec, 0.9);
 
       g.cameraX = Math.max(0, Math.min(g.world.width - SCREEN.width, g.player.x - SCREEN.width / 2));
@@ -883,6 +899,18 @@ export default function GameScreen({
       }
 
       const remainingNow = g.waveSpawnRemaining + g.enemies.length;
+      const livingNemesis = g.enemies.filter((e) => e.isNemesis && !e.dead);
+      const markLastFlagship = g.currentWave >= g.maxWaves && livingNemesis.length === 1;
+      if (markLastFlagship) {
+        const lastId = livingNemesis[0].id;
+        for (const e of g.enemies) {
+          e.isLastFlagship = e.id === lastId;
+        }
+      } else {
+        for (const e of g.enemies) {
+          if (e.isLastFlagship) e.isLastFlagship = false;
+        }
+      }
       const toScreen = (x, y) => ({ x: x - g.cameraX, y: y - g.cameraY });
 
       setUiState({
@@ -987,6 +1015,11 @@ export default function GameScreen({
               y: g.flagshipEscape.centerY - g.cameraY,
             }
           : null,
+        boosterActive: boosterActive && g.flagshipEscape.active,
+        boosterCooldownRemaining: g.flagshipEscape.active
+          ? Math.max(0, (g.booster.lastUsedAt + g.booster.cooldownMs) - nowMs)
+          : 0,
+        boosterMaxCooldown: g.booster.cooldownMs,
       });
 
       if (g.victory) return;
@@ -1008,8 +1041,26 @@ export default function GameScreen({
   const handleDash = useCallback(() => {
     const g = G.current;
     if (!g || g.victory) return;
+    if (g.flagshipEscape?.active) {
+      const now = Date.now();
+      if (now < (g.booster.lastUsedAt + g.booster.cooldownMs)) return;
+      g.booster.lastUsedAt = now;
+      g.booster.activeUntil = now + g.booster.durationMs;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      return;
+    }
     triggerDash(g.player, g.abilities);
     abilityUsageRef.current.dash += 1;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  }, []);
+
+  const handleBooster = useCallback(() => {
+    const g = G.current;
+    if (!g || g.victory || !g.flagshipEscape?.active) return;
+    const now = Date.now();
+    if (now < (g.booster.lastUsedAt + g.booster.cooldownMs)) return;
+    g.booster.lastUsedAt = now;
+    g.booster.activeUntil = now + g.booster.durationMs;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, []);
 
@@ -1191,6 +1242,9 @@ export default function GameScreen({
     perfectDodges,
     latestHighlight,
     flagshipEscape,
+    boosterActive,
+    boosterCooldownRemaining,
+    boosterMaxCooldown,
   } = uiState;
 
   const bgWidth = SCREEN.width * battleBgCrop.scale;
@@ -1216,6 +1270,11 @@ export default function GameScreen({
     : 1;
   const coreGlowScale = 0.7 + detonationProgress * 0.9;
   const coreCountdownText = coreCountdownActive ? (coreCountdownMs / 1000).toFixed(1) : '0.0';
+  const escapeGuidanceActive = !!flagshipEscape;
+  const escapeDx = playerX - (flagshipEscape?.x || 0);
+  const escapeDy = playerY - (flagshipEscape?.y || 0);
+  const escapeLen = Math.hypot(escapeDx, escapeDy) || 1;
+  const escapeAngle = (Math.atan2(escapeDy / escapeLen, escapeDx / escapeLen) * 180) / Math.PI;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -1245,6 +1304,54 @@ export default function GameScreen({
         </View>
 
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          {escapeGuidanceActive && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                top: 106,
+                left: SCREEN.width / 2 - 70,
+                width: 140,
+                height: 44,
+                alignItems: 'center',
+                justifyContent: 'center',
+                transform: [{ rotate: `${escapeAngle}deg` }],
+              }}
+            >
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 8,
+                  width: 84,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: 'rgba(130,235,255,0.95)',
+                  shadowColor: '#DDFBFF',
+                  shadowOpacity: 1,
+                  shadowRadius: 16,
+                  shadowOffset: { width: 0, height: 0 },
+                }}
+              />
+              <View
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  width: 0,
+                  height: 0,
+                  borderTopWidth: 16,
+                  borderBottomWidth: 16,
+                  borderLeftWidth: 36,
+                  borderTopColor: 'transparent',
+                  borderBottomColor: 'transparent',
+                  borderLeftColor: 'rgba(220,252,255,0.98)',
+                  shadowColor: '#DDFBFF',
+                  shadowOpacity: 1,
+                  shadowRadius: 18,
+                  shadowOffset: { width: 0, height: 0 },
+                }}
+              />
+            </View>
+          )}
           <DashTrail trail={dashTrail} />
           <QuantumSwipeTrail trail={quantumTrails} />
           <DamageNumbers numbers={damageNumbers} />
@@ -1384,10 +1491,14 @@ export default function GameScreen({
             combo={combo}
             abilities={abilities}
             onDash={handleDash}
+            onBooster={handleBooster}
             onPulse={handlePulse}
             onDrone={handleDrone}
             onQuantum={handleQuantum}
             onPhase={handlePhase}
+            showBooster={!!flagshipEscape}
+            boosterActive={boosterActive}
+            boosterCooldownPct={Math.min(1, Math.max(0, boosterCooldownRemaining / Math.max(1, boosterMaxCooldown)))}
             gameTime={gameTime}
             currentWave={currentWave}
             maxWaves={maxWaves}
@@ -1400,6 +1511,9 @@ export default function GameScreen({
             <Text style={styles.phaseHeaderText}>
               {phaseLabel}{phaseTimer > 0 ? ` • ${phaseTimer.toFixed(1)}s` : ''}
             </Text>
+            {!!flagshipEscape && (
+              <Text style={styles.phaseWarningText}>OUTRUN FLAGSHIP DETONATION!</Text>
+            )}
             {!!eventBanner && <Text style={styles.phaseBannerText}>{eventBanner}</Text>}
             <Text style={styles.phaseMetaText}>Perfect Dodges: {perfectDodges}</Text>
             {!!flagshipEscape && flagshipEscape.countdownMs > 0 && (

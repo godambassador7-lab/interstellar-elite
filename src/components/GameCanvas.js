@@ -144,7 +144,7 @@ export function PlayerShip({ x, y, hitFlash, attackFlash, facingAngle = 0, dashA
 // Enemy ship component
 export function EnemyShip({ enemy }) {
   const { x, y, size, color, glow, type, hp, maxHp, hitFlash, facingAngle = 0 } = enemy;
-  const flashColor = hitFlash > 0 ? '#FFFFFF' : color;
+  const flashColor = hitFlash > 0 ? '#FFFFFF' : (enemy.isLastFlagship ? '#FF2A2A' : color);
   const hpPct = hp / maxHp;
   const classKey = enemy.isNemesis ? 'flagship' : type === 'heavy' ? 'destroyer' : type === 'elite' ? 'interceptor' : 'fighter';
   const spritePool = ENEMY_SPRITES[classKey];
@@ -170,7 +170,11 @@ export function EnemyShip({ enemy }) {
         width: shipBox * 0.84, height: shipBox * 0.84,
         borderRadius: shipBox * 0.42,
         backgroundColor: flashColor,
-        opacity: hitFlash > 0 ? 0.5 : 0.12,
+        opacity: hitFlash > 0 ? 0.5 : (enemy.isLastFlagship ? 0.34 : 0.12),
+        shadowColor: enemy.isLastFlagship ? '#FF1C1C' : flashColor,
+        shadowOpacity: enemy.isLastFlagship ? 0.95 : 0.4,
+        shadowRadius: enemy.isLastFlagship ? 20 : 7,
+        shadowOffset: { width: 0, height: 0 },
       }} />
 
       <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${shipAngle}deg` }] }}>
@@ -214,7 +218,7 @@ export function EnemyShip({ enemy }) {
             width: shipBox,
             height: shipBox,
             opacity: hitFlash > 0 ? 0.65 : 1,
-            tintColor: hitFlash > 0 ? '#FFFFFF' : undefined,
+            tintColor: hitFlash > 0 ? '#FFFFFF' : (enemy.isLastFlagship ? '#FF7676' : undefined),
           }}
         />
       </View>

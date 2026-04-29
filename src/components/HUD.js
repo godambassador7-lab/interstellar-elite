@@ -15,10 +15,14 @@ export function HUD({
   combo,
   abilities,
   onDash,
+  onBooster,
   onPulse,
   onDrone,
   onQuantum,
   onPhase,
+  showBooster = false,
+  boosterActive = false,
+  boosterCooldownPct = 1,
   gameTime,
   currentWave,
   maxWaves,
@@ -97,12 +101,12 @@ export function HUD({
       <View style={styles.abilityRow}>
         <View style={styles.abilityItem}>
           <AbilityButton
-            icon="D"
-            label="DASH"
-            cooldownPct={dashCdPct}
-            active={abilities.dash.active}
-            onPress={onDash}
-            color="#30FFB5"
+            icon={showBooster ? 'B' : 'D'}
+            label={showBooster ? 'BOOST' : 'DASH'}
+            cooldownPct={showBooster ? boosterCooldownPct : dashCdPct}
+            active={showBooster ? boosterActive : abilities.dash.active}
+            onPress={showBooster ? onBooster : onDash}
+            color={showBooster ? '#7FD9FF' : '#30FFB5'}
             size={58}
           />
         </View>
