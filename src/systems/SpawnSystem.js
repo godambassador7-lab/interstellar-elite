@@ -3,6 +3,13 @@
 import { ENEMY_TYPES, SCREEN } from '../utils/constants';
 import { uid } from '../utils/mathUtils';
 
+function normalizeAngleDelta(delta) {
+  let d = delta;
+  while (d > 180) d -= 360;
+  while (d < -180) d += 360;
+  return d;
+}
+
 export function getWaveEnemyCount(wave, galaxy) {
   const baseEnemies = galaxy?.baseEnemies ?? 14;
   const enemyGrowth = galaxy?.enemyGrowth ?? 5;
@@ -149,7 +156,13 @@ export function updateEnemyMovement(state, deltaMs) {
     const nx = dx / d;
     const ny = dy / d;
 
-    if (enemy.type === 'swarm') {
+    if (enemy.isNemesis) {
+      // Keep the flagship on a steadier course so large sprites don't wobble.
+      const targetVx = nx * enemy.speed * 0.9;
+      const targetVy = ny * enemy.speed * 0.9;
+      enemy.vx += (targetVx - enemy.vx) * 0.022;
+      enemy.vy += (targetVy - enemy.vy) * 0.022;
+    } else if (enemy.type === 'swarm') {
       enemy.vx = nx * enemy.speed;
       enemy.vy = ny * enemy.speed;
     } else if (enemy.type === 'heavy') {
@@ -185,7 +198,13 @@ export function updateEnemyMovement(state, deltaMs) {
     const velLen = Math.sqrt(enemy.vx * enemy.vx + enemy.vy * enemy.vy);
     if (velLen > 0.01) {
       // 0deg points "up" in our ship art, so add 90deg to atan2 result.
-      enemy.facingAngle = (Math.atan2(enemy.vy, enemy.vx) * 180) / Math.PI + 90;
+      const targetAngle = (Math.atan2(enemy.vy, enemy.vx) * 180) / Math.PI + 90;
+      const current = enemy.facingAngle ?? targetAngle;
+      const delta = normalizeAngleDelta(targetAngle - current);
+      const maxTurnSpeed = enemy.isNemesis ? 75 : enemy.type === 'heavy' ? 95 : 260; // deg/sec
+      const maxTurnStep = maxTurnSpeed * dt;
+      const applied = Math.max(-maxTurnStep, Math.min(maxTurnStep, delta));
+      enemy.facingAngle = current + applied;
     }
 
     enemy.x += enemy.vx * dt;
