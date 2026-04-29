@@ -159,6 +159,7 @@ export function EnemyShip({ enemy }) {
   const t = (enemy.gameTime || 0) * 22 + (enemy.id?.length || 0);
   const pulse = 0.75 + 0.25 * Math.sin(t);
   const warmFlame = classKey === 'destroyer' || classKey === 'fighter';
+  const rearThrustersOnSide = classKey === 'destroyer' || classKey === 'flagship';
   const shipAngle = (classKey === 'destroyer' || classKey === 'flagship') ? facingAngle - 90 : facingAngle;
 
   return (
@@ -182,10 +183,10 @@ export function EnemyShip({ enemy }) {
           <>
             <View style={{
               position: 'absolute',
-              left: classKey === 'destroyer' ? shipBox * 0.14 : shipBox * 0.41,
-              top: classKey === 'destroyer' ? shipBox * 0.44 : shipBox * 0.82,
-              width: classKey === 'destroyer' ? shipBox * 0.18 * pulse : shipBox * 0.08,
-              height: classKey === 'destroyer' ? shipBox * 0.08 : shipBox * 0.2 * pulse,
+              left: rearThrustersOnSide ? shipBox * 0.14 : shipBox * 0.41,
+              top: rearThrustersOnSide ? shipBox * 0.44 : shipBox * 0.82,
+              width: rearThrustersOnSide ? shipBox * 0.18 * pulse : shipBox * 0.08,
+              height: rearThrustersOnSide ? shipBox * 0.08 : shipBox * 0.2 * pulse,
               borderRadius: shipBox * 0.04,
               backgroundColor: warmFlame ? 'rgba(255,130,62,0.95)' : 'rgba(117,236,255,0.95)',
               shadowColor: warmFlame ? '#FF7E36' : '#6EEFFF',
@@ -195,10 +196,10 @@ export function EnemyShip({ enemy }) {
             }} />
             <View style={{
               position: 'absolute',
-              left: classKey === 'destroyer' ? shipBox * 0.14 : shipBox * 0.51,
-              top: classKey === 'destroyer' ? shipBox * 0.54 : shipBox * 0.82,
-              width: classKey === 'destroyer' ? shipBox * 0.18 * pulse : shipBox * 0.08,
-              height: classKey === 'destroyer' ? shipBox * 0.08 : shipBox * 0.2 * pulse,
+              left: rearThrustersOnSide ? shipBox * 0.14 : shipBox * 0.51,
+              top: rearThrustersOnSide ? shipBox * 0.54 : shipBox * 0.82,
+              width: rearThrustersOnSide ? shipBox * 0.18 * pulse : shipBox * 0.08,
+              height: rearThrustersOnSide ? shipBox * 0.08 : shipBox * 0.2 * pulse,
               borderRadius: shipBox * 0.04,
               backgroundColor: warmFlame ? 'rgba(255,84,52,0.95)' : 'rgba(79,188,255,0.95)',
               shadowColor: warmFlame ? '#FF5538' : '#49C6FF',
