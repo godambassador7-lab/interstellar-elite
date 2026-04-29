@@ -1148,10 +1148,6 @@ export default function GameScreen({
               },
             ]}
           />
-          <View style={styles.battleBackdropTint} />
-          <View style={styles.nebulaA} />
-          <View style={styles.nebulaB} />
-          <View style={styles.nebulaC} />
           <View style={styles.gridH1} />
           <View style={styles.gridH2} />
           <View style={styles.gridV1} />
@@ -1348,14 +1344,6 @@ const styles = StyleSheet.create({
     left: 0,
     opacity: 0.45,
   },
-  battleBackdropTint: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(6,10,20,0.55)',
-  },
   gridH1: {
     position: 'absolute',
     top: SCREEN.height * 0.33,
@@ -1395,33 +1383,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 0.5,
     backgroundColor: 'rgba(79,165,255,0.1)',
-  },
-  nebulaA: {
-    position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    top: -70,
-    right: -90,
-    backgroundColor: 'rgba(180,108,255,0.12)',
-  },
-  nebulaB: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    bottom: 60,
-    left: -70,
-    backgroundColor: 'rgba(58,222,255,0.1)',
-  },
-  nebulaC: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    bottom: -40,
-    right: 40,
-    backgroundColor: 'rgba(255,79,98,0.08)',
   },
   controls: {
     position: 'absolute',

@@ -391,10 +391,6 @@ export default function GalaxyMapScreen({
               onResponderTerminate={endPinch}
             >
             <Image source={UNIVERSE_MAP_IMAGE} style={styles.mapImage} resizeMode="stretch" />
-            <View style={styles.mapImageTint} />
-            <View style={[styles.nebulaA, { transform: [{ scale: zoom }] }]} />
-            <View style={[styles.nebulaB, { transform: [{ scale: zoom }] }]} />
-            <View style={[styles.nebulaC, { transform: [{ scale: zoom }] }]} />
 
             {/* Quadron background tints */}
             {QUADRANT_DEFS.map((q) => (
@@ -904,41 +900,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     opacity: 0.28,
-  },
-  mapImageTint: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(6,10,20,0.58)',
-  },
-  nebulaA: {
-    position: 'absolute',
-    left: 280,
-    top: 220,
-    width: 460,
-    height: 460,
-    borderRadius: 230,
-    backgroundColor: 'rgba(82,168,255,0.07)',
-  },
-  nebulaB: {
-    position: 'absolute',
-    left: 1180,
-    top: 760,
-    width: 520,
-    height: 520,
-    borderRadius: 260,
-    backgroundColor: 'rgba(68,255,136,0.06)',
-  },
-  nebulaC: {
-    position: 'absolute',
-    left: 1780,
-    top: 180,
-    width: 420,
-    height: 420,
-    borderRadius: 210,
-    backgroundColor: 'rgba(255,61,61,0.07)',
   },
   galaxyName: {
     fontFamily: 'Courier New',
