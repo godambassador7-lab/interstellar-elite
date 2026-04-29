@@ -21,6 +21,23 @@ const SWARM_PHOTON_SPEED     = 250;
 const SWARM_PHOTON_SIZE      = 5;
 const SWARM_PHOTON_LIFE_MS   = 2000;
 
+const FLAGSHIP_BARRAGE_DURATION_MS = 3000;
+const FLAGSHIP_BARRAGE_RATE_MS = 110;
+const FLAGSHIP_BARRAGE_RANGE_SQ = 420 * 420;
+const FLAGSHIP_BARRAGE_DAMAGE = 3.2;
+const FLAGSHIP_BARRAGE_SPEED = 300;
+const FLAGSHIP_BARRAGE_SIZE = 5;
+const FLAGSHIP_BARRAGE_LIFE_MS = 2200;
+
+const FLAGSHIP_CHARGE_DURATION_MS = 5000;
+const FLAGSHIP_CHARGE_RANGE_SQ = 520 * 520;
+const FLAGSHIP_CHARGE_DAMAGE = 34;
+const FLAGSHIP_CHARGE_SPEED = 210;
+const FLAGSHIP_CHARGE_SIZE = 30;
+const FLAGSHIP_CHARGE_LIFE_MS = 3800;
+const FLAGSHIP_PATTERN_COOLDOWN_MS = 4500;
+const FIRST_QUADRANT_SPECIAL_CHANCE = 0.05;
+
 // Absorb damage into shield first; any overflow hits HP; resets regen timer.
 function applyPlayerDamage(player, amount) {
   if (player.phaseShift) return;
@@ -220,6 +237,97 @@ export function runCombatFrame(state, deltaMs) {
         color: '#2DFFB2',
         glowColor: 'rgba(45,255,178,0.12)',
       });
+    }
+  }
+
+  // ── Nemesis flagship special attacks ─────────────────────────────────────────
+  for (const enemy of enemies) {
+    if (enemy.dead || !enemy.isNemesis) continue;
+    const dx = player.x - enemy.x;
+    const dy = player.y - enemy.y;
+    const distSq = dx * dx + dy * dy;
+    const quadrant = state?.galaxy?.quadrant || '';
+    const inFirstQuadrant = quadrant === 'bayron';
+
+    if (!enemy.flagshipPattern) {
+      enemy.flagshipPattern = {
+        mode: 'idle', // idle | barrage | charge
+        nextAt: now + 1200,
+        modeEndsAt: 0,
+        lastShotAt: 0,
+      };
+    }
+    const p = enemy.flagshipPattern;
+    enemy.flagshipChargeActive = p.mode === 'charge';
+    enemy.flagshipChargeT = p.mode === 'charge' && p.modeEndsAt > now
+      ? 1 - ((p.modeEndsAt - now) / FLAGSHIP_CHARGE_DURATION_MS)
+      : 0;
+
+    if (p.mode === 'charge') {
+      if (now >= p.modeEndsAt) {
+        if (distSq <= FLAGSHIP_CHARGE_RANGE_SQ) {
+          const d = Math.max(1, Math.sqrt(distSq));
+          state.photons.push({
+            id: uid(),
+            x: enemy.x, y: enemy.y,
+            vx: (dx / d) * FLAGSHIP_CHARGE_SPEED,
+            vy: (dy / d) * FLAGSHIP_CHARGE_SPEED,
+            damage: FLAGSHIP_CHARGE_DAMAGE,
+            size: FLAGSHIP_CHARGE_SIZE,
+            life: FLAGSHIP_CHARGE_LIFE_MS,
+            maxLife: FLAGSHIP_CHARGE_LIFE_MS,
+            color: '#7BD8FF',
+            glowColor: 'rgba(106,206,255,0.28)',
+          });
+        }
+        p.mode = 'idle';
+        p.nextAt = now + FLAGSHIP_PATTERN_COOLDOWN_MS;
+        enemy.flagshipChargeActive = false;
+        enemy.flagshipChargeT = 0;
+      }
+      continue;
+    }
+
+    if (p.mode === 'barrage') {
+      if (now >= p.modeEndsAt) {
+        p.mode = 'idle';
+        p.nextAt = now + FLAGSHIP_PATTERN_COOLDOWN_MS;
+      } else if (distSq <= FLAGSHIP_BARRAGE_RANGE_SQ && now - p.lastShotAt >= FLAGSHIP_BARRAGE_RATE_MS) {
+        p.lastShotAt = now;
+        const d = Math.max(1, Math.sqrt(distSq));
+        const baseNx = dx / d;
+        const baseNy = dy / d;
+        const spread = (Math.random() - 0.5) * 0.16;
+        const cos = Math.cos(spread);
+        const sin = Math.sin(spread);
+        const nx = baseNx * cos - baseNy * sin;
+        const ny = baseNx * sin + baseNy * cos;
+        state.photons.push({
+          id: uid(),
+          x: enemy.x, y: enemy.y,
+          vx: nx * FLAGSHIP_BARRAGE_SPEED,
+          vy: ny * FLAGSHIP_BARRAGE_SPEED,
+          damage: FLAGSHIP_BARRAGE_DAMAGE,
+          size: FLAGSHIP_BARRAGE_SIZE,
+          life: FLAGSHIP_BARRAGE_LIFE_MS,
+          maxLife: FLAGSHIP_BARRAGE_LIFE_MS,
+          color: '#86DFFF',
+          glowColor: 'rgba(105,207,255,0.16)',
+        });
+      }
+      continue;
+    }
+
+    if (p.mode === 'idle' && now >= p.nextAt) {
+      const useSpecialCharge = inFirstQuadrant && Math.random() < FIRST_QUADRANT_SPECIAL_CHANCE;
+      if (useSpecialCharge) {
+        p.mode = 'charge';
+        p.modeEndsAt = now + FLAGSHIP_CHARGE_DURATION_MS;
+      } else {
+        p.mode = 'barrage';
+        p.modeEndsAt = now + FLAGSHIP_BARRAGE_DURATION_MS;
+        p.lastShotAt = 0;
+      }
     }
   }
 

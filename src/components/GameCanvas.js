@@ -144,7 +144,9 @@ export function PlayerShip({ x, y, hitFlash, attackFlash, facingAngle = 0, dashA
 // Enemy ship component
 export function EnemyShip({ enemy }) {
   const { x, y, size, color, glow, type, hp, maxHp, hitFlash, facingAngle = 0 } = enemy;
-  const flashColor = hitFlash > 0 ? '#FFFFFF' : (enemy.isLastFlagship ? '#FF2A2A' : color);
+  const chargeT = Math.max(0, Math.min(1, enemy.flagshipChargeT || 0));
+  const charging = !!enemy.flagshipChargeActive;
+  const flashColor = hitFlash > 0 ? '#FFFFFF' : (charging ? '#66C8FF' : (enemy.isLastFlagship ? '#FF2A2A' : color));
   const hpPct = hp / maxHp;
   const classKey = enemy.isNemesis ? 'flagship' : type === 'heavy' ? 'destroyer' : type === 'elite' ? 'interceptor' : 'fighter';
   const spritePool = ENEMY_SPRITES[classKey];
@@ -173,8 +175,8 @@ export function EnemyShip({ enemy }) {
         backgroundColor: flashColor,
         opacity: hitFlash > 0 ? 0.5 : (enemy.isLastFlagship ? 0.34 : 0.12),
         shadowColor: enemy.isLastFlagship ? '#FF1C1C' : flashColor,
-        shadowOpacity: enemy.isLastFlagship ? 0.95 : 0.4,
-        shadowRadius: enemy.isLastFlagship ? 20 : 7,
+        shadowOpacity: charging ? 0.95 : (enemy.isLastFlagship ? 0.95 : 0.4),
+        shadowRadius: charging ? (10 + chargeT * 16) : (enemy.isLastFlagship ? 20 : 7),
         shadowOffset: { width: 0, height: 0 },
       }} />
 
@@ -219,9 +221,49 @@ export function EnemyShip({ enemy }) {
             width: shipBox,
             height: shipBox,
             opacity: hitFlash > 0 ? 0.65 : 1,
-            tintColor: hitFlash > 0 ? '#FFFFFF' : (enemy.isLastFlagship ? '#FF7676' : undefined),
+            tintColor: hitFlash > 0 ? '#FFFFFF' : (charging ? '#8BD5FF' : (enemy.isLastFlagship ? '#FF7676' : undefined)),
           }}
         />
+        {charging && classKey === 'flagship' && (
+          <>
+            <View
+              style={{
+                position: 'absolute',
+                left: shipBox * 0.44,
+                top: shipBox * 0.03,
+                width: shipBox * (0.12 + chargeT * 0.06),
+                height: shipBox * (0.12 + chargeT * 0.06),
+                borderRadius: shipBox * 0.08,
+                backgroundColor: `rgba(120,214,255,${0.4 + chargeT * 0.45})`,
+                shadowColor: '#7ED7FF',
+                shadowOpacity: 1,
+                shadowRadius: 12 + chargeT * 12,
+                shadowOffset: { width: 0, height: 0 },
+              }}
+            />
+            {Array.from({ length: 6 }).map((_, i) => {
+              const a = (i / 6) * Math.PI * 2 + (enemy.gameTime || 0) * 7;
+              const r = shipBox * (0.03 + chargeT * 0.04);
+              const cx = shipBox * 0.5 + Math.cos(a) * r;
+              const cy = shipBox * 0.09 + Math.sin(a) * r;
+              return (
+                <View
+                  key={`ch-${enemy.id}-${i}`}
+                  style={{
+                    position: 'absolute',
+                    left: cx - 2,
+                    top: cy - 2,
+                    width: 4,
+                    height: 4,
+                    borderRadius: 2,
+                    backgroundColor: '#C9F0FF',
+                    opacity: 0.55 + 0.45 * Math.abs(Math.sin((enemy.gameTime || 0) * 12 + i)),
+                  }}
+                />
+              );
+            })}
+          </>
+        )}
       </View>
       {showHpBar && (
         <View style={{
