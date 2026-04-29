@@ -1,8 +1,9 @@
 // App.js
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, StatusBar, StyleSheet } from 'react-native';
+import { Platform, StatusBar, StyleSheet, View, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Asset } from 'expo-asset';
 
 import MenuScreen from './src/screens/MenuScreen';
 import GalaxyMapScreen from './src/screens/GalaxyMapScreen';
@@ -28,6 +29,7 @@ import {
 } from './src/systems/NemesisSystem';
 
 export default function App() {
+  const [coreAssetsReady, setCoreAssetsReady] = useState(false);
   const [screen, setScreen] = useState('menu'); // menu | map | game | defense_prep | defense
   const [selectedGalaxy, setSelectedGalaxy] = useState(GALAXIES[0]);
   const [selectedSystemNumber, setSelectedSystemNumber] = useState(1);
@@ -58,6 +60,48 @@ export default function App() {
   const [enemyMemory, setEnemyMemory] = useState(createInitialEnemyMemory());
   const [nemesisCommanders, setNemesisCommanders] = useState(createInitialCommanders());
   const [defenseEvents, setDefenseEvents] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCoreAssets = async () => {
+      try {
+        await Asset.loadAsync([
+          require('./main menu title.png'),
+          require('./battle background.png'),
+          require('./universe map.png'),
+          require('./user ship1.png'),
+        ]);
+      } catch (_) {
+        // Non-fatal: app still runs with on-demand asset loading.
+      } finally {
+        if (!cancelled) setCoreAssetsReady(true);
+      }
+    };
+
+    loadCoreAssets();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Warm heavy combat sprites in the background to reduce first-battle hitches.
+    if (!coreAssetsReady) return;
+    Asset.loadAsync([
+      require('./Enemy Fighter Pack/Destroyers/destroyer 3.png'),
+      require('./Enemy Fighter Pack/Destroyers/destroyer1.png'),
+      require('./Enemy Fighter Pack/Destroyers/destroyer2.png'),
+      require('./Enemy Fighter Pack/Flag ship/flag ship 1.png'),
+      require('./Enemy Fighter Pack/Flag ship/flagship 2.png'),
+      require('./Enemy Fighter Pack/Flag ship/flagship 3.png'),
+      require('./Enemy Fighter Pack/Interceptors/Interceptor 1.png'),
+      require('./Enemy Fighter Pack/Interceptors/Interceptor 2.png'),
+      require('./Enemy Fighter Pack/Interceptors/Interceptor 3.png'),
+      require('./Enemy Fighter Pack/Small fighers/small fighter 1.png'),
+      require('./Enemy Fighter Pack/Small fighers/small fighter 2.png'),
+      require('./Enemy Fighter Pack/Small fighers/small fighter 3.png'),
+    ]).catch(() => {});
+  }, [coreAssetsReady]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return undefined;
@@ -318,59 +362,69 @@ export default function App() {
     <GestureHandlerRootView style={styles.root}>
       <StatusBar hidden />
 
-      {screen === 'menu' && <MenuScreen onStart={() => setScreen('map')} />}
-
-      {screen === 'map' && (
-        <GalaxyMapScreen
-          unlockedGalaxyIndex={unlockedGalaxyIndex}
-          completedSystemsByGalaxy={completedSystemsByGalaxy}
-          warCredits={warCredits}
-          ownedMetaUpgrades={ownedMetaUpgrades}
-          shipParts={shipParts}
-          shipPartsByType={shipPartsByType}
-          metaUpgradeCatalog={META_UPGRADES}
-          stationUpgradeCatalog={STATION_UPGRADES}
-          stationUpgrades={stationUpgrades}
-          territories={territories}
-          defenseEvents={defenseEvents}
-          onBuyMetaUpgrade={handleBuyMetaUpgrade}
-          onBuyStationUpgrade={handleBuyStationUpgrade}
-          onSelectGalaxy={handleSelectGalaxy}
-          onBack={() => setScreen('menu')}
-          onDefendStation={handleDefendStation}
-        />
+      {!coreAssetsReady && (
+        <View style={styles.loadingOverlay}>
+          <Text style={styles.loadingText}>LOADING ASSETS...</Text>
+        </View>
       )}
 
-      {screen === 'game' && (
-        <GameScreen
-          galaxy={selectedGalaxy}
-          systemNumber={selectedSystemNumber}
-          metaUpgrades={ownedMetaUpgrades}
-          meteorUnlocked={meteorUnlocked}
-          onSystemComplete={handleSystemComplete}
-          onMainMenu={() => setScreen('menu')}
-        />
-      )}
+      {coreAssetsReady && (
+        <>
+          {screen === 'menu' && <MenuScreen onStart={() => setScreen('map')} />}
 
-      {screen === 'defense_prep' && (
-        <DefensePrepScreen
-          territory={selectedDefenseTerritory}
-          defaultDoctrine={selectedDefenseDoctrine}
-          enemyCounterStyle={adaptiveCounterStyle}
-          onBack={() => setScreen('map')}
-          onStartDefense={handleStartDefense}
-        />
-      )}
+          {screen === 'map' && (
+            <GalaxyMapScreen
+              unlockedGalaxyIndex={unlockedGalaxyIndex}
+              completedSystemsByGalaxy={completedSystemsByGalaxy}
+              warCredits={warCredits}
+              ownedMetaUpgrades={ownedMetaUpgrades}
+              shipParts={shipParts}
+              shipPartsByType={shipPartsByType}
+              metaUpgradeCatalog={META_UPGRADES}
+              stationUpgradeCatalog={STATION_UPGRADES}
+              stationUpgrades={stationUpgrades}
+              territories={territories}
+              defenseEvents={defenseEvents}
+              onBuyMetaUpgrade={handleBuyMetaUpgrade}
+              onBuyStationUpgrade={handleBuyStationUpgrade}
+              onSelectGalaxy={handleSelectGalaxy}
+              onBack={() => setScreen('menu')}
+              onDefendStation={handleDefendStation}
+            />
+          )}
 
-      {screen === 'defense' && (
-        <StationDefenseScreen
-          territory={selectedDefenseTerritory}
-          stationUpgrades={stationUpgrades}
-          doctrine={selectedDefenseDoctrine}
-          enemyCounterStyle={adaptiveCounterStyle}
-          onDefenseComplete={handleDefenseComplete}
-          onMainMenu={() => setScreen('menu')}
-        />
+          {screen === 'game' && (
+            <GameScreen
+              galaxy={selectedGalaxy}
+              systemNumber={selectedSystemNumber}
+              metaUpgrades={ownedMetaUpgrades}
+              meteorUnlocked={meteorUnlocked}
+              onSystemComplete={handleSystemComplete}
+              onMainMenu={() => setScreen('menu')}
+            />
+          )}
+
+          {screen === 'defense_prep' && (
+            <DefensePrepScreen
+              territory={selectedDefenseTerritory}
+              defaultDoctrine={selectedDefenseDoctrine}
+              enemyCounterStyle={adaptiveCounterStyle}
+              onBack={() => setScreen('map')}
+              onStartDefense={handleStartDefense}
+            />
+          )}
+
+          {screen === 'defense' && (
+            <StationDefenseScreen
+              territory={selectedDefenseTerritory}
+              stationUpgrades={stationUpgrades}
+              doctrine={selectedDefenseDoctrine}
+              enemyCounterStyle={adaptiveCounterStyle}
+              onDefenseComplete={handleDefenseComplete}
+              onMainMenu={() => setScreen('menu')}
+            />
+          )}
+        </>
       )}
     </GestureHandlerRootView>
   );
@@ -380,5 +434,18 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#000008',
+  },
+  loadingOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000008',
+  },
+  loadingText: {
+    color: '#67F3FF',
+    fontFamily: 'Courier New',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 2,
   },
 });
