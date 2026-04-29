@@ -346,6 +346,12 @@ export default function GameScreen({
   const keyInput = useRef({ dx: 0, dy: 0 });
   const pressedKeys = useRef(new Set());
   const keyboardEnabled = useRef(false);
+  const abilityHotkeysRef = useRef({
+    dash: () => {},
+    pulse: () => {},
+    drone: () => {},
+    quantum: () => {},
+  });
   const rafRef = useRef(null);
   const lastTs = useRef(null);
   const isRunning = useRef(false);
@@ -408,6 +414,15 @@ export default function GameScreen({
     const onKeyDown = (evt) => {
       if (!keyboardEnabled.current) return;
       const key = String(evt.key || '').toLowerCase();
+      if (['j', 'k', 'l', ';'].includes(key)) {
+        evt.preventDefault();
+        if (evt.repeat) return;
+        if (key === 'j') abilityHotkeysRef.current.dash();
+        if (key === 'k') abilityHotkeysRef.current.pulse();
+        if (key === 'l') abilityHotkeysRef.current.drone();
+        if (key === ';') abilityHotkeysRef.current.quantum();
+        return;
+      }
       if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd'].includes(key)) return;
       evt.preventDefault();
       pressedKeys.current.add(key);
@@ -989,6 +1004,15 @@ export default function GameScreen({
     abilityUsageRef.current.phase += 1;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    abilityHotkeysRef.current = {
+      dash: handleDash,
+      pulse: handlePulse,
+      drone: handleDrone,
+      quantum: handleQuantum,
+    };
+  }, [handleDash, handlePulse, handleDrone, handleQuantum]);
 
   const panResponder = useRef(
     PanResponder.create({
