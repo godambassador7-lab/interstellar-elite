@@ -181,7 +181,7 @@ export function EnemyShip({ enemy }) {
       }} />
 
       <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${shipAngle}deg` }] }}>
-        {moving && (
+        {moving && classKey !== 'flagship' && (
           <>
             <View style={{
               position: 'absolute',
@@ -209,6 +209,40 @@ export function EnemyShip({ enemy }) {
               shadowRadius: 7,
               shadowOffset: { width: 0, height: 0 },
             }} />
+          </>
+        )}
+        {moving && classKey === 'flagship' && (
+          <>
+            <View
+              style={{
+                position: 'absolute',
+                left: shipBox * 0.44,
+                top: shipBox * 0.82,
+                width: shipBox * 0.08,
+                height: shipBox * 0.2 * pulse,
+                borderRadius: shipBox * 0.04,
+                backgroundColor: 'rgba(117,236,255,0.95)',
+                shadowColor: '#6EEFFF',
+                shadowOpacity: 0.95,
+                shadowRadius: 7,
+                shadowOffset: { width: 0, height: 0 },
+              }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                left: shipBox * 0.54,
+                top: shipBox * 0.82,
+                width: shipBox * 0.08,
+                height: shipBox * 0.2 * pulse,
+                borderRadius: shipBox * 0.04,
+                backgroundColor: 'rgba(79,188,255,0.95)',
+                shadowColor: '#49C6FF',
+                shadowOpacity: 0.95,
+                shadowRadius: 7,
+                shadowOffset: { width: 0, height: 0 },
+              }}
+            />
           </>
         )}
         <Image

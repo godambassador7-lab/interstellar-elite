@@ -157,11 +157,18 @@ export function updateEnemyMovement(state, deltaMs) {
     const ny = dy / d;
 
     if (enemy.isNemesis) {
-      // Keep the flagship on a steadier course so large sprites don't wobble.
-      const targetVx = nx * enemy.speed * 0.9;
-      const targetVy = ny * enemy.speed * 0.9;
-      enemy.vx += (targetVx - enemy.vx) * 0.022;
-      enemy.vy += (targetVy - enemy.vy) * 0.022;
+      // Flagship should drive forward toward the player; avoid lateral orbiting.
+      const targetVx = nx * enemy.speed * 0.96;
+      const targetVy = ny * enemy.speed * 0.96;
+      enemy.vx += (targetVx - enemy.vx) * 0.16;
+      enemy.vy += (targetVy - enemy.vy) * 0.16;
+      const vmax = enemy.speed * 1.02;
+      const vlen = Math.hypot(enemy.vx, enemy.vy);
+      if (vlen > vmax && vlen > 0) {
+        const s = vmax / vlen;
+        enemy.vx *= s;
+        enemy.vy *= s;
+      }
     } else if (enemy.type === 'swarm') {
       enemy.vx = nx * enemy.speed;
       enemy.vy = ny * enemy.speed;
@@ -201,7 +208,7 @@ export function updateEnemyMovement(state, deltaMs) {
       const targetAngle = (Math.atan2(enemy.vy, enemy.vx) * 180) / Math.PI + 90;
       const current = enemy.facingAngle ?? targetAngle;
       const delta = normalizeAngleDelta(targetAngle - current);
-      const maxTurnSpeed = enemy.isNemesis ? 75 : enemy.type === 'heavy' ? 95 : 260; // deg/sec
+      const maxTurnSpeed = enemy.isNemesis ? 160 : enemy.type === 'heavy' ? 95 : 260; // deg/sec
       const maxTurnStep = maxTurnSpeed * dt;
       const applied = Math.max(-maxTurnStep, Math.min(maxTurnStep, delta));
       enemy.facingAngle = current + applied;
