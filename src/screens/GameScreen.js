@@ -238,6 +238,7 @@ function makeUiState() {
     boosterCooldownRemaining: 0,
     boosterMaxCooldown: 500,
     hyperspaceActive: false,
+    hyperspaceSessionKey: 0,
   };
 }
 
@@ -605,6 +606,7 @@ export default function GameScreen({
       meteorStormUntil: 0,
       inIntercept: Math.random() < 0.65,
       interceptEndsAt: 0,
+      interceptStartedAt: 0,
       nextInterceptHazardAt: 0,
       nextMutationAt: Date.now() + 32000,
       phaseLabel: 'SYSTEM BATTLE',
@@ -629,7 +631,8 @@ export default function GameScreen({
       },
     };
     if (G.current.inIntercept) {
-      G.current.interceptEndsAt = Date.now() + (20000 + Math.random() * 25000);
+      G.current.interceptStartedAt = Date.now();
+      G.current.interceptEndsAt = G.current.interceptStartedAt + (20000 + Math.random() * 25000);
       G.current.nextInterceptHazardAt = Date.now() + 800;
       G.current.phaseLabel = 'LIGHTSPEED INTERCEPT';
     }
@@ -987,7 +990,13 @@ export default function GameScreen({
         abilities: snapshotAbilities(g.abilities),
         enemies: g.enemies.map((e) => {
           const s = toScreen(e.x, e.y);
-          return { ...e, x: s.x, y: s.y, gameTime: g.gameTime };
+          return {
+            ...e,
+            x: s.x,
+            y: s.y,
+            gameTime: g.gameTime,
+            facingAngle: g.inIntercept ? 90 : e.facingAngle,
+          };
         }),
         particles: g.particles.map((p) => {
           const s = toScreen(p.x, p.y);
@@ -1059,6 +1068,7 @@ export default function GameScreen({
         phaseTimer: g.inIntercept ? Math.max(0, (g.interceptEndsAt - Date.now()) / 1000) : 0,
         eventBanner: g.inIntercept ? 'Warp tunnel combat active' : '',
         hyperspaceActive: !!g.inIntercept,
+        hyperspaceSessionKey: g.inIntercept ? (g.interceptStartedAt || 0) : 0,
         perfectDodges: g.perfectDodges || 0,
         latestHighlight: g.latestHighlight || null,
         flagshipEscape: g.flagshipEscape.active
@@ -1294,6 +1304,7 @@ export default function GameScreen({
     phaseTimer,
     eventBanner,
     hyperspaceActive,
+    hyperspaceSessionKey,
     perfectDodges,
     latestHighlight,
     flagshipEscape,
@@ -1354,6 +1365,7 @@ export default function GameScreen({
           />
           {hyperspaceActive && (
             <Video
+              key={`hs-${hyperspaceSessionKey}`}
               source={HYPERSPACE_BACKGROUND_VIDEO}
               resizeMode={ResizeMode.COVER}
               isLooping
@@ -1651,7 +1663,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    opacity: 0.38,
   },
   gridH1: {
     position: 'absolute',
