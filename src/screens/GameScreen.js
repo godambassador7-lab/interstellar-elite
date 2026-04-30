@@ -113,7 +113,101 @@ function EnemyLaserBeam({ x1, y1, x2, y2, alpha, color }) {
 function PhotonBall({ photon }) {
   const { color = '#FFE566', glowColor = 'rgba(255,193,58,0.15)', size: s, life } = photon;
   const fadeOpacity = Math.min(1, life / 500);
+  const isMissile = !!photon.missile;
+  const angle = (Math.atan2(photon.vy || 0, photon.vx || 0) * 180) / Math.PI + 90;
   const showGlow = s > 6;
+  if (isMissile) {
+    return (
+      <>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: photon.x - s * 2.2,
+            top: photon.y - s * 2.2,
+            width: s * 4.4,
+            height: s * 4.4,
+            borderRadius: s * 2.2,
+            backgroundColor: glowColor,
+            opacity: 0.65 * fadeOpacity,
+          }}
+        />
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: photon.x - s * 0.55,
+            top: photon.y - s * 1.35,
+            width: s * 1.1,
+            height: s * 2.7,
+            transform: [{ rotate: `${angle}deg` }],
+            opacity: fadeOpacity,
+          }}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              left: s * 0.1,
+              top: s * 0.18,
+              width: s * 0.9,
+              height: s * 1.85,
+              borderRadius: s * 0.45,
+              backgroundColor: color,
+              shadowColor: '#FF9A4E',
+              shadowOpacity: 1,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 0 },
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              left: s * 0.26,
+              top: -s * 0.06,
+              width: s * 0.58,
+              height: s * 0.36,
+              borderRadius: s * 0.2,
+              backgroundColor: '#FFF1C2',
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              left: -s * 0.08,
+              top: s * 1.12,
+              width: s * 0.38,
+              height: s * 0.56,
+              borderRadius: s * 0.1,
+              backgroundColor: '#D95A3F',
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              right: -s * 0.08,
+              top: s * 1.12,
+              width: s * 0.38,
+              height: s * 0.56,
+              borderRadius: s * 0.1,
+              backgroundColor: '#D95A3F',
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              left: s * 0.28,
+              bottom: -s * 0.46,
+              width: s * 0.44,
+              height: s * 0.52,
+              borderRadius: s * 0.22,
+              backgroundColor: '#FF6A40',
+              opacity: 0.9,
+            }}
+          />
+        </View>
+      </>
+    );
+  }
   return (
     <>
       {showGlow && (
@@ -1376,6 +1470,7 @@ export default function GameScreen({
           />
           {hyperspaceActive && (
             <Video
+              pointerEvents="none"
               key={`hs-${hyperspaceSessionKey}`}
               source={HYPERSPACE_BACKGROUND_VIDEO}
               resizeMode={ResizeMode.COVER}
