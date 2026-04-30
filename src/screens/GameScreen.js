@@ -194,6 +194,7 @@ function makeUiState() {
     playerY: SCREEN.height / 2,
     playerHitFlash: 0,
     playerAttackFlash: 0,
+    playerAttackDamageFlash: 0,
     playerFacingAngle: 0,
     playerMoving: false,
     cameraX: 0,
@@ -978,6 +979,7 @@ export default function GameScreen({
         playerY: g.player.y - g.cameraY,
         playerHitFlash: g.player.hitFlash,
         playerAttackFlash: g.player.attackFlash,
+        playerAttackDamageFlash: g.player.attackDamageFlash || 0,
         playerFacingAngle: g.player.facingAngle ?? 0,
         playerMoving: Math.hypot(g.player.vx || 0, g.player.vy || 0) > 8,
         cameraX: g.cameraX,
@@ -1266,6 +1268,7 @@ export default function GameScreen({
     playerY,
     playerHitFlash,
     playerAttackFlash,
+    playerAttackDamageFlash,
     playerFacingAngle,
     playerMoving,
     cameraX,
@@ -1515,6 +1518,7 @@ export default function GameScreen({
             y={playerY}
             hitFlash={playerHitFlash}
             attackFlash={playerAttackFlash}
+            attackDamageFlash={playerAttackDamageFlash}
             facingAngle={playerFacingAngle}
             dashActive={dashActive}
             isMoving={playerMoving}

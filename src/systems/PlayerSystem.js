@@ -23,12 +23,13 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
     const inputY = joystick.dy;
     const len = Math.sqrt(inputX * inputX + inputY * inputY);
     const magnitude = Math.min(len, 1);
+    const inputDeadzone = hyperspaceActive ? 0.02 : 0.08;
 
-    if (magnitude > 0.08) {
+    if (magnitude > inputDeadzone) {
       const nx = inputX / len;
       const ny = inputY / len;
-      const speed = player.speed * phaseSpeedMult * hyperspaceTurbulence;
-      const controlGain = hyperspaceActive ? 8.4 : 12;
+      const speed = player.speed * phaseSpeedMult * (hyperspaceActive ? 1 : hyperspaceTurbulence);
+      const controlGain = 12;
       player.vx += nx * speed * magnitude * controlGain * dt;
       player.vy += ny * speed * magnitude * controlGain * dt;
 
@@ -86,6 +87,7 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   // ── Flash decay ───────────────────────────────────────────────────────────────
   if (player.hitFlash > 0) player.hitFlash--;
   if (player.attackFlash > 0) player.attackFlash--;
+  if (player.attackDamageFlash > 0) player.attackDamageFlash--;
 
   // ── Ability: Dash ─────────────────────────────────────────────────────────────
   if (abilities.dash.active) {
@@ -292,6 +294,7 @@ export function createPlayer() {
     lastAttackTime: 0,
     hitFlash: 0,
     attackFlash: 0,
+    attackDamageFlash: 0,
     invincibleUntil: 0,
     comboWindowBonus: 0,
   };

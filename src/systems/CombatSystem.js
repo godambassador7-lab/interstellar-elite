@@ -66,6 +66,7 @@ export function runCombatFrame(state, deltaMs) {
   const newParticles = [];
   const deadEnemyIds = new Set();
   let playerTookDamage = false;
+  let playerDealtDamage = false;
 
   // ── Auto-attack ─────────────────────────────────────────────────────────────
   if (now - player.lastAttackTime >= player.attackRate) {
@@ -89,7 +90,8 @@ export function runCombatFrame(state, deltaMs) {
         const enemy = target.enemy;
         if (enemy.dead) continue;
         const dmg = player.damage * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
-        applyDamage(state, enemy, dmg, newParticles);
+        const dealt = applyDamage(state, enemy, dmg, newParticles);
+        if (dealt > 0) playerDealtDamage = true;
         if (enemy.hp <= 0 && !enemy.dead) {
           killEnemy(enemy, state, newParticles, deadEnemyIds);
           scoreGain += enemy.score;
@@ -107,7 +109,8 @@ export function runCombatFrame(state, deltaMs) {
       if (circlesOverlap(player.x, player.y, PLAYER.SIZE / 2 + 10, enemy.x, enemy.y, enemy.size / 2)) {
         abilities.dash.hitIds.add(enemy.id);
         const dmg = ABILITIES.DASH.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
-        applyDamage(state, enemy, dmg, newParticles);
+        const dealt = applyDamage(state, enemy, dmg, newParticles);
+        if (dealt > 0) playerDealtDamage = true;
         if (enemy.hp <= 0 && !enemy.dead) {
           killEnemy(enemy, state, newParticles, deadEnemyIds);
           scoreGain += enemy.score;
@@ -124,7 +127,8 @@ export function runCombatFrame(state, deltaMs) {
       if (enemy.dead) continue;
       if (dist(player, enemy) <= ABILITIES.PULSE.RADIUS + enemy.size / 2) {
         const dmg = ABILITIES.PULSE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
-        applyDamage(state, enemy, dmg, newParticles, 'offensive_shield');
+        const dealt = applyDamage(state, enemy, dmg, newParticles, 'offensive_shield');
+        if (dealt > 0) playerDealtDamage = true;
         if (enemy.hp <= 0 && !enemy.dead) {
           killEnemy(enemy, state, newParticles, deadEnemyIds);
           scoreGain += enemy.score;
@@ -146,7 +150,8 @@ export function runCombatFrame(state, deltaMs) {
               now - abilities.drone.hitCooldowns.get(hitKey) > 600) {
             abilities.drone.hitCooldowns.set(hitKey, now);
             const dmg = ABILITIES.DRONE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
-            applyDamage(state, enemy, dmg, newParticles);
+            const dealt = applyDamage(state, enemy, dmg, newParticles);
+            if (dealt > 0) playerDealtDamage = true;
             if (enemy.hp <= 0 && !enemy.dead) {
               killEnemy(enemy, state, newParticles, deadEnemyIds);
               scoreGain += enemy.score;
@@ -359,6 +364,9 @@ export function runCombatFrame(state, deltaMs) {
   } else {
     state.nearMissTimer = 0;
   }
+  if (playerDealtDamage) {
+    player.attackDamageFlash = Math.max(player.attackDamageFlash || 0, 9);
+  }
 
   // ── Combo logic ─────────────────────────────────────────────────────────────
   if (comboIncrement > 0) {
@@ -457,6 +465,7 @@ function applyDamage(state, enemy, dmg, particleList, source = 'default') {
       type: 'hit',
     });
   }
+  return dealt;
 }
 
 function killEnemy(enemy, state, particleList, deadSet) {
