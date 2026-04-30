@@ -342,6 +342,56 @@ function MeteorView({ meteor }) {
   );
 }
 
+function EscapeChevronArrow({ angle = 0 }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: 106,
+        left: SCREEN.width / 2 - 72,
+        width: 144,
+        height: 52,
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ rotate: `${angle}deg` }],
+      }}
+    >
+      <View
+        style={{
+          position: 'absolute',
+          width: 92,
+          height: 30,
+          borderLeftWidth: 4,
+          borderTopWidth: 4,
+          borderColor: '#7FEFFF',
+          transform: [{ rotate: '45deg' }],
+          shadowColor: '#A9F7FF',
+          shadowOpacity: 1,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 0 },
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          left: 14,
+          width: 92,
+          height: 30,
+          borderLeftWidth: 4,
+          borderTopWidth: 4,
+          borderColor: '#2FD8FF',
+          transform: [{ rotate: '45deg' }],
+          shadowColor: '#7FEFFF',
+          shadowOpacity: 1,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 0 },
+        }}
+      />
+    </View>
+  );
+}
+
 function applyGravityFromWells(entity, wells, dtSec, weight = 1) {
   if (!entity || !wells?.length) return;
   for (const w of wells) {
@@ -1346,54 +1396,7 @@ export default function GameScreen({
         </View>
 
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {escapeGuidanceActive && (
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                top: 106,
-                left: SCREEN.width / 2 - 70,
-                width: 140,
-                height: 44,
-                alignItems: 'center',
-                justifyContent: 'center',
-                transform: [{ rotate: `${escapeAngle}deg` }],
-              }}
-            >
-              <View
-                style={{
-                  position: 'absolute',
-                  left: 8,
-                  width: 84,
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: 'rgba(130,235,255,0.95)',
-                  shadowColor: '#DDFBFF',
-                  shadowOpacity: 1,
-                  shadowRadius: 16,
-                  shadowOffset: { width: 0, height: 0 },
-                }}
-              />
-              <View
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  width: 0,
-                  height: 0,
-                  borderTopWidth: 16,
-                  borderBottomWidth: 16,
-                  borderLeftWidth: 36,
-                  borderTopColor: 'transparent',
-                  borderBottomColor: 'transparent',
-                  borderLeftColor: 'rgba(220,252,255,0.98)',
-                  shadowColor: '#DDFBFF',
-                  shadowOpacity: 1,
-                  shadowRadius: 18,
-                  shadowOffset: { width: 0, height: 0 },
-                }}
-              />
-            </View>
-          )}
+          {escapeGuidanceActive && <EscapeChevronArrow angle={escapeAngle} />}
           <DashTrail trail={dashTrail} />
           <QuantumSwipeTrail trail={quantumTrails} />
           <DamageNumbers numbers={damageNumbers} />
