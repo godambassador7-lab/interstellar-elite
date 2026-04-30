@@ -19,6 +19,7 @@ const FLAGSHIP_SPRITES = {
   elite: require('../../Flag ship/flagship 2.png'),
   bomber: require('../../Flag ship/flagship 3.png'),
 };
+const FLAGSHIP_SIZE = 24;
 const SCRAP_BOX_SPRITES = [
   require('../../Scrap Boxes/scrap 1.png'),
   require('../../Scrap Boxes/scrap 2.png'),
@@ -206,6 +207,7 @@ function spawnEnemyOnEdge(id, wave, threat, counterProfile) {
   const type = pickEnemyTypeForWave(wave, counterProfile);
   const def  = ENEMY_DEFS[type];
   const hp   = Math.round(def.baseHp * (1 + threat * 0.1) * (counterProfile?.hpMult || 1));
+  const isFlagship = !!FLAGSHIP_SPRITES[type];
 
   const edge = Math.floor(Math.random() * 4);
   const m    = 22;
@@ -216,7 +218,7 @@ function spawnEnemyOnEdge(id, wave, threat, counterProfile) {
   else                 { x = -m; y = Math.random() * SCREEN.height; }
 
   return { id, type, x, y, hp, maxHp: hp, speed: def.speed * (counterProfile?.speedMult || 1), damage: def.damage * (counterProfile?.damageMult || 1),
-    size: def.size, color: def.color, dropChance: def.dropChance, explodes: def.explodes,
+    size: isFlagship ? FLAGSHIP_SIZE : def.size, color: def.color, dropChance: def.dropChance, explodes: def.explodes,
     score: def.score, partYield: def.partYield || 1, partType: def.partType || 'mech', faction: def.faction || 'Unknown',
     lastHitSource: null, hitFlash: 0 };
 }

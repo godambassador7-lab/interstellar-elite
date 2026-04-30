@@ -3,6 +3,8 @@
 import { ENEMY_TYPES, SCREEN } from '../utils/constants';
 import { uid } from '../utils/mathUtils';
 
+const FLAGSHIP_SIZE = 24;
+
 function normalizeAngleDelta(delta) {
   let d = delta;
   while (d > 180) d -= 360;
@@ -75,6 +77,7 @@ export function trySpawn(state) {
     state.nemesisSpawned = true;
     const nemesis = createEnemy(ENEMY_TYPES.elite, basePos);
     nemesis.isNemesis = true;
+    nemesis.size = FLAGSHIP_SIZE;
     nemesis.name = 'RIVAL NEMESIS';
     nemesis.hp *= 2.2;
     nemesis.maxHp = nemesis.hp;

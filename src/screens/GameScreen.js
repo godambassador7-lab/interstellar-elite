@@ -1519,6 +1519,7 @@ export default function GameScreen({
             dashActive={dashActive}
             isMoving={playerMoving}
             time={time}
+            shieldPct={playerMaxShield > 0 ? playerShield / playerMaxShield : 0}
           />
         </View>
 

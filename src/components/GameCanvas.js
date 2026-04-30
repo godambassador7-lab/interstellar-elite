@@ -61,9 +61,12 @@ export function useShakeOffset(screenShake) {
 }
 
 // Player ship component - rendered as geometric shapes
-export function PlayerShip({ x, y, hitFlash, attackFlash, facingAngle = 0, dashActive, isMoving = false, time = 0 }) {
+export function PlayerShip({ x, y, hitFlash, attackFlash, facingAngle = 0, dashActive, isMoving = false, time = 0, shieldPct = 1 }) {
   const size = PLAYER.SIZE;
   const flamePulse = 0.78 + 0.22 * Math.sin(time * 24);
+  const shield = Math.max(0, Math.min(1, shieldPct || 0));
+  const smokePulse = 0.72 + 0.28 * Math.abs(Math.sin(time * 2.9));
+  const shieldAlpha = 0.18 + shield * 0.36;
 
   return (
     <View style={{ position: 'absolute', left: x - size, top: y - size, width: size * 2, height: size * 2 }}>
@@ -77,6 +80,45 @@ export function PlayerShip({ x, y, hitFlash, attackFlash, facingAngle = 0, dashA
         backgroundColor: COLORS.playerGlow,
         opacity: dashActive ? 0.34 : 0.2,
       }} />
+      {shield > 0.02 && (
+        <>
+          <View style={{
+            position: 'absolute',
+            left: -size * 0.34,
+            top: -size * 0.34,
+            width: size * 2.68,
+            height: size * 2.68,
+            borderRadius: size * 1.34,
+            backgroundColor: `rgba(105,235,255,${shieldAlpha * 0.34 * smokePulse})`,
+            shadowColor: '#7FEFFF',
+            shadowOpacity: 0.95,
+            shadowRadius: 20,
+            shadowOffset: { width: 0, height: 0 },
+          }} />
+          <View style={{
+            position: 'absolute',
+            left: -size * 0.24,
+            top: -size * 0.24,
+            width: size * 2.48,
+            height: size * 2.48,
+            borderRadius: size * 1.24,
+            borderWidth: 3.1,
+            borderColor: `rgba(132,246,255,${0.26 + shield * 0.46})`,
+            backgroundColor: `rgba(78,186,255,${shieldAlpha * 0.16})`,
+          }} />
+          <View style={{
+            position: 'absolute',
+            left: -size * 0.16,
+            top: -size * 0.16,
+            width: size * 2.32,
+            height: size * 2.32,
+            borderRadius: size * 1.16,
+            borderWidth: 2.2,
+            borderColor: `rgba(210,254,255,${0.24 + shield * 0.52})`,
+            backgroundColor: 'transparent',
+          }} />
+        </>
+      )}
 
       <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${facingAngle}deg` }] }}>
         {isMoving && (
