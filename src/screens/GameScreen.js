@@ -689,6 +689,7 @@ export default function GameScreen({
       lastWeaponActiveAt: 0,
       cameraX: Math.max(0, player.x - SCREEN.width / 2),
       cameraY: Math.max(0, player.y - SCREEN.height / 2),
+      interceptCamera: null,
       quantumPickup: null,
       nextQuantumSpawnAt: Date.now() + 12000,
       quantumTrails: [],
@@ -880,8 +881,20 @@ export default function GameScreen({
       g.player.speed = baseSpeed;
       applyGravityFromWells(g.player, g.gravityWells, dtSec, 0.9);
 
-      g.cameraX = Math.max(0, Math.min(g.world.width - SCREEN.width, g.player.x - SCREEN.width / 2));
-      g.cameraY = Math.max(0, Math.min(g.world.height - SCREEN.height, g.player.y - SCREEN.height / 2));
+      if (g.inIntercept) {
+        if (!g.interceptCamera) {
+          g.interceptCamera = {
+            x: Math.max(0, Math.min(g.world.width - SCREEN.width, g.player.x - SCREEN.width / 2)),
+            y: Math.max(0, Math.min(g.world.height - SCREEN.height, g.player.y - SCREEN.height / 2)),
+          };
+        }
+        g.cameraX = g.interceptCamera.x;
+        g.cameraY = g.interceptCamera.y;
+      } else {
+        g.interceptCamera = null;
+        g.cameraX = Math.max(0, Math.min(g.world.width - SCREEN.width, g.player.x - SCREEN.width / 2));
+        g.cameraY = Math.max(0, Math.min(g.world.height - SCREEN.height, g.player.y - SCREEN.height / 2));
+      }
 
       if (!g.inIntercept && !g.flagshipEscape.active) {
         const spawned = trySpawn(g);
