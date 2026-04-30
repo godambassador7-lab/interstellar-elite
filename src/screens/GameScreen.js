@@ -1329,7 +1329,7 @@ export default function GameScreen({
   const escapeDy = playerY - (flagshipEscape?.y || 0);
   const escapeLen = Math.hypot(escapeDx, escapeDy) || 1;
   const escapeAngle = (Math.atan2(escapeDy / escapeLen, escapeDx / escapeLen) * 180) / Math.PI;
-  const hyperspaceBgShift = ((time * 520) % Math.max(1, SCREEN.width * 2.2)) - SCREEN.width * 1.1;
+  const hyperspaceBgShift = Math.sin(time * 2.8) * 48 + Math.sin(time * 6.1) * 18;
   const hyperspacePulse = 0.45 + 0.3 * Math.abs(Math.sin(time * 2.8));
 
   return (
@@ -1352,40 +1352,23 @@ export default function GameScreen({
             ]}
           />
           {hyperspaceActive && (
-            <>
-              <Image
-                source={HYPERSPACE_BACKGROUND_IMAGE}
-                resizeMode="cover"
-                style={[
-                  styles.hyperspaceBackdrop,
-                  {
-                    width: SCREEN.width * 2.2,
-                    height: SCREEN.height * 1.22,
-                    opacity: 0.33 + hyperspacePulse * 0.24,
-                    transform: [
-                      { translateX: hyperspaceBgShift },
-                      { translateY: -SCREEN.height * 0.09 },
-                    ],
-                  },
-                ]}
-              />
-              <Image
-                source={HYPERSPACE_BACKGROUND_IMAGE}
-                resizeMode="cover"
-                style={[
-                  styles.hyperspaceBackdrop,
-                  {
-                    width: SCREEN.width * 2.2,
-                    height: SCREEN.height * 1.22,
-                    opacity: 0.2 + hyperspacePulse * 0.16,
-                    transform: [
-                      { translateX: hyperspaceBgShift - SCREEN.width * 2.2 },
-                      { translateY: -SCREEN.height * 0.09 },
-                    ],
-                  },
-                ]}
-              />
-            </>
+            <Image
+              source={HYPERSPACE_BACKGROUND_IMAGE}
+              resizeMode="cover"
+              style={[
+                styles.hyperspaceBackdrop,
+                {
+                  width: SCREEN.width * 1.28,
+                  height: SCREEN.height * 1.22,
+                  opacity: 0.35 + hyperspacePulse * 0.26,
+                  transform: [
+                    { translateX: hyperspaceBgShift - SCREEN.width * 0.14 },
+                    { translateY: -SCREEN.height * 0.09 },
+                    { scaleX: 1.03 + Math.sin(time * 3.2) * 0.015 },
+                  ],
+                },
+              ]}
+            />
           )}
           <View style={styles.gridH1} />
           <View style={styles.gridH2} />
