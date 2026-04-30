@@ -9,13 +9,17 @@ import { clamp, uid } from '../utils/mathUtils';
 export function updatePlayer(state, joystick, deltaMs, abilities) {
   const dt = deltaMs / 1000;
   const { player } = state;
+  const hyperspaceActive = !!state?.inIntercept;
   const phaseActive = !!abilities.phase?.active;
   const phaseSpeedMult = phaseActive ? abilities.phase.speedMult || 1.35 : 1;
   player.phaseShift = phaseActive;
+  const hyperspaceTurbulence = hyperspaceActive
+    ? (0.85 + Math.abs(Math.sin((state.gameTime || 0) * 3.9 + 0.73)) * 0.55 + Math.abs(Math.sin((state.gameTime || 0) * 1.7 + 2.1)) * 0.25)
+    : 1;
 
   // ── Input → velocity ─────────────────────────────────────────────────────────
   if (!abilities.dash.active) {
-    const inputX = joystick.dx;
+    const inputX = hyperspaceActive ? Math.max(0, joystick.dx) : joystick.dx;
     const inputY = joystick.dy;
     const len = Math.sqrt(inputX * inputX + inputY * inputY);
     const magnitude = Math.min(len, 1);
@@ -23,14 +27,14 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
     if (magnitude > 0.08) {
       const nx = inputX / len;
       const ny = inputY / len;
-      const speed = player.speed * phaseSpeedMult;
+      const speed = player.speed * phaseSpeedMult * hyperspaceTurbulence;
 
       player.vx += nx * speed * magnitude * 12 * dt;
       player.vy += ny * speed * magnitude * 12 * dt;
 
       // Store facing direction for dash
-      player.facingX = nx;
-      player.facingY = ny;
+      player.facingX = hyperspaceActive ? 1 : nx;
+      player.facingY = hyperspaceActive ? 0 : ny;
     }
   }
 
@@ -39,8 +43,14 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   player.vx *= Math.pow(friction, deltaMs / 16.67);
   player.vy *= Math.pow(friction, deltaMs / 16.67);
 
+  if (hyperspaceActive) {
+    const drive = player.speed * hyperspaceTurbulence * 0.82;
+    player.vx += drive * dt;
+    if (player.vx < 0) player.vx = 0;
+  }
+
   // Cap velocity
-  const maxSpd = player.speed * phaseSpeedMult * 1.5;
+  const maxSpd = player.speed * phaseSpeedMult * hyperspaceTurbulence * 1.5;
   const spd = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
   if (spd > maxSpd) {
     player.vx = (player.vx / spd) * maxSpd;
@@ -48,7 +58,11 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   }
 
   // Keep sprite facing the movement direction while moving.
-  if (spd > 6) {
+  if (hyperspaceActive) {
+    player.facingAngle = 90;
+    player.facingX = 1;
+    player.facingY = 0;
+  } else if (spd > 6) {
     player.facingAngle = (Math.atan2(player.vy, player.vx) * 180) / Math.PI + 90;
   }
 

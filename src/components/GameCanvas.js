@@ -163,6 +163,13 @@ export function EnemyShip({ enemy }) {
   const warmFlame = classKey === 'destroyer' || classKey === 'fighter';
   const rearThrustersOnSide = false;
   const shipAngle = classKey === 'flagship' ? facingAngle - 90 : facingAngle;
+  const velNx = enemySpeed > 0.001 ? (enemy.vx || 0) / enemySpeed : 0;
+  const velNy = enemySpeed > 0.001 ? (enemy.vy || 0) / enemySpeed : -1;
+  const rearNx = -velNx;
+  const rearNy = -velNy;
+  const sideNx = -velNy;
+  const sideNy = velNx;
+  const thrustAngle = (Math.atan2(velNy, velNx) * 180) / Math.PI + 90;
 
   return (
     <View style={{ position: 'absolute', left: x - shipBox / 2, top: y - shipBox / 2, width: shipBox, height: shipBox }}>
@@ -180,6 +187,42 @@ export function EnemyShip({ enemy }) {
         shadowOffset: { width: 0, height: 0 },
       }} />
 
+      {moving && classKey === 'flagship' && (
+        <>
+          <View
+            style={{
+              position: 'absolute',
+              left: shipBox * 0.5 + rearNx * shipBox * 0.33 + sideNx * shipBox * 0.08 - shipBox * 0.04,
+              top: shipBox * 0.5 + rearNy * shipBox * 0.33 + sideNy * shipBox * 0.08 - shipBox * 0.1,
+              width: shipBox * 0.08,
+              height: shipBox * 0.2 * pulse,
+              borderRadius: shipBox * 0.04,
+              backgroundColor: 'rgba(117,236,255,0.95)',
+              shadowColor: '#6EEFFF',
+              shadowOpacity: 0.95,
+              shadowRadius: 7,
+              shadowOffset: { width: 0, height: 0 },
+              transform: [{ rotate: `${thrustAngle}deg` }],
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              left: shipBox * 0.5 + rearNx * shipBox * 0.33 - sideNx * shipBox * 0.08 - shipBox * 0.04,
+              top: shipBox * 0.5 + rearNy * shipBox * 0.33 - sideNy * shipBox * 0.08 - shipBox * 0.1,
+              width: shipBox * 0.08,
+              height: shipBox * 0.2 * pulse,
+              borderRadius: shipBox * 0.04,
+              backgroundColor: 'rgba(79,188,255,0.95)',
+              shadowColor: '#49C6FF',
+              shadowOpacity: 0.95,
+              shadowRadius: 7,
+              shadowOffset: { width: 0, height: 0 },
+              transform: [{ rotate: `${thrustAngle}deg` }],
+            }}
+          />
+        </>
+      )}
       <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${shipAngle}deg` }] }}>
         {moving && classKey !== 'flagship' && (
           <>
@@ -209,40 +252,6 @@ export function EnemyShip({ enemy }) {
               shadowRadius: 7,
               shadowOffset: { width: 0, height: 0 },
             }} />
-          </>
-        )}
-        {moving && classKey === 'flagship' && (
-          <>
-            <View
-              style={{
-                position: 'absolute',
-                left: shipBox * 0.44,
-                top: shipBox * 0.82,
-                width: shipBox * 0.08,
-                height: shipBox * 0.2 * pulse,
-                borderRadius: shipBox * 0.04,
-                backgroundColor: 'rgba(117,236,255,0.95)',
-                shadowColor: '#6EEFFF',
-                shadowOpacity: 0.95,
-                shadowRadius: 7,
-                shadowOffset: { width: 0, height: 0 },
-              }}
-            />
-            <View
-              style={{
-                position: 'absolute',
-                left: shipBox * 0.54,
-                top: shipBox * 0.82,
-                width: shipBox * 0.08,
-                height: shipBox * 0.2 * pulse,
-                borderRadius: shipBox * 0.04,
-                backgroundColor: 'rgba(79,188,255,0.95)',
-                shadowColor: '#49C6FF',
-                shadowOpacity: 0.95,
-                shadowRadius: 7,
-                shadowOffset: { width: 0, height: 0 },
-              }}
-            />
           </>
         )}
         <Image

@@ -42,6 +42,7 @@ import { ShopScreen } from '../components/ShopScreen';
 import { GameOver } from '../components/GameOver';
 
 const BATTLE_BACKGROUND_IMAGE = require('../../battle background.png');
+const HYPERSPACE_BACKGROUND_IMAGE = require('../../inline_image_preview.jpg');
 let LAST_BATTLE_BG_CROP = null;
 
 function pickBattleBgCrop() {
@@ -235,6 +236,7 @@ function makeUiState() {
     boosterActive: false,
     boosterCooldownRemaining: 0,
     boosterMaxCooldown: 500,
+    hyperspaceActive: false,
   };
 }
 
@@ -1005,6 +1007,7 @@ export default function GameScreen({
         phaseLabel: g.phaseLabel,
         phaseTimer: g.inIntercept ? Math.max(0, (g.interceptEndsAt - Date.now()) / 1000) : 0,
         eventBanner: g.inIntercept ? 'Warp tunnel combat active' : '',
+        hyperspaceActive: !!g.inIntercept,
         perfectDodges: g.perfectDodges || 0,
         latestHighlight: g.latestHighlight || null,
         flagshipEscape: g.flagshipEscape.active
@@ -1239,6 +1242,7 @@ export default function GameScreen({
     phaseLabel,
     phaseTimer,
     eventBanner,
+    hyperspaceActive,
     perfectDodges,
     latestHighlight,
     flagshipEscape,
@@ -1275,6 +1279,8 @@ export default function GameScreen({
   const escapeDy = playerY - (flagshipEscape?.y || 0);
   const escapeLen = Math.hypot(escapeDx, escapeDy) || 1;
   const escapeAngle = (Math.atan2(escapeDy / escapeLen, escapeDx / escapeLen) * 180) / Math.PI;
+  const hyperspaceBgShift = ((time * 520) % Math.max(1, SCREEN.width * 2.2)) - SCREEN.width * 1.1;
+  const hyperspacePulse = 0.45 + 0.3 * Math.abs(Math.sin(time * 2.8));
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -1295,6 +1301,42 @@ export default function GameScreen({
               },
             ]}
           />
+          {hyperspaceActive && (
+            <>
+              <Image
+                source={HYPERSPACE_BACKGROUND_IMAGE}
+                resizeMode="cover"
+                style={[
+                  styles.hyperspaceBackdrop,
+                  {
+                    width: SCREEN.width * 2.2,
+                    height: SCREEN.height * 1.22,
+                    opacity: 0.33 + hyperspacePulse * 0.24,
+                    transform: [
+                      { translateX: hyperspaceBgShift },
+                      { translateY: -SCREEN.height * 0.09 },
+                    ],
+                  },
+                ]}
+              />
+              <Image
+                source={HYPERSPACE_BACKGROUND_IMAGE}
+                resizeMode="cover"
+                style={[
+                  styles.hyperspaceBackdrop,
+                  {
+                    width: SCREEN.width * 2.2,
+                    height: SCREEN.height * 1.22,
+                    opacity: 0.2 + hyperspacePulse * 0.16,
+                    transform: [
+                      { translateX: hyperspaceBgShift - SCREEN.width * 2.2 },
+                      { translateY: -SCREEN.height * 0.09 },
+                    ],
+                  },
+                ]}
+              />
+            </>
+          )}
           <View style={styles.gridH1} />
           <View style={styles.gridH2} />
           <View style={styles.gridV1} />
@@ -1616,6 +1658,12 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     opacity: 0.45,
+  },
+  hyperspaceBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    opacity: 0.38,
   },
   gridH1: {
     position: 'absolute',
