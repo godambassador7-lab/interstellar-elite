@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image, Platform, Share } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Video, ResizeMode } from 'expo-av';
 
 import { SCREEN, COLORS, getUpgradeThresholdsForRun } from '../utils/constants';
 import {
@@ -42,7 +43,7 @@ import { ShopScreen } from '../components/ShopScreen';
 import { GameOver } from '../components/GameOver';
 
 const BATTLE_BACKGROUND_IMAGE = require('../../battle background.png');
-const HYPERSPACE_BACKGROUND_IMAGE = require('../../inline_image_preview.jpg');
+const HYPERSPACE_BACKGROUND_VIDEO = require('../../hyperspace background video.mp4');
 let LAST_BATTLE_BG_CROP = null;
 
 function pickBattleBgCrop() {
@@ -1329,9 +1330,8 @@ export default function GameScreen({
   const escapeDy = playerY - (flagshipEscape?.y || 0);
   const escapeLen = Math.hypot(escapeDx, escapeDy) || 1;
   const escapeAngle = (Math.atan2(escapeDy / escapeLen, escapeDx / escapeLen) * 180) / Math.PI;
-  const hyperspaceBgShift = Math.sin(time * 2.8) * 54 + Math.sin(time * 6.1) * 21;
-  const hyperspaceBgDriftY = Math.sin(time * 1.9) * 10;
-  const hyperspaceBgScale = 1.03 + Math.sin(time * 3.2) * 0.02;
+  const hyperspaceBgShift = Math.sin(time * 1.6) * 12;
+  const hyperspaceBgDriftY = Math.sin(time * 1.1) * 6;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -1353,19 +1353,20 @@ export default function GameScreen({
             ]}
           />
           {hyperspaceActive && (
-            <Image
-              source={HYPERSPACE_BACKGROUND_IMAGE}
-              resizeMode="cover"
+            <Video
+              source={HYPERSPACE_BACKGROUND_VIDEO}
+              resizeMode={ResizeMode.COVER}
+              isLooping
+              shouldPlay
+              isMuted
               style={[
                 styles.hyperspaceBackdrop,
                 {
-                  width: SCREEN.width * 1.28,
-                  height: SCREEN.height * 1.22,
+                  width: SCREEN.width * 1.08,
+                  height: SCREEN.height * 1.08,
                   transform: [
-                    { translateX: hyperspaceBgShift - SCREEN.width * 0.14 },
+                    { translateX: hyperspaceBgShift - SCREEN.width * 0.04 },
                     { translateY: -SCREEN.height * 0.09 + hyperspaceBgDriftY },
-                    { scaleX: hyperspaceBgScale },
-                    { scaleY: 1.01 + Math.sin(time * 2.4) * 0.012 },
                   ],
                 },
               ]}

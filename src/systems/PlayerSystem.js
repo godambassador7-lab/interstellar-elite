@@ -19,7 +19,7 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
 
   // ── Input → velocity ─────────────────────────────────────────────────────────
   if (!abilities.dash.active) {
-    const inputX = hyperspaceActive ? Math.max(0, joystick.dx) : joystick.dx;
+    const inputX = joystick.dx;
     const inputY = joystick.dy;
     const len = Math.sqrt(inputX * inputX + inputY * inputY);
     const magnitude = Math.min(len, 1);
@@ -28,9 +28,9 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
       const nx = inputX / len;
       const ny = inputY / len;
       const speed = player.speed * phaseSpeedMult * hyperspaceTurbulence;
-
-      player.vx += nx * speed * magnitude * 12 * dt;
-      player.vy += ny * speed * magnitude * 12 * dt;
+      const controlGain = hyperspaceActive ? 8.4 : 12;
+      player.vx += nx * speed * magnitude * controlGain * dt;
+      player.vy += ny * speed * magnitude * controlGain * dt;
 
       // Store facing direction for dash
       player.facingX = hyperspaceActive ? 1 : nx;
@@ -39,14 +39,18 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   }
 
   // Apply friction
-  const friction = abilities.dash.active ? 0.96 : PLAYER.FRICTION;
+  const friction = abilities.dash.active
+    ? 0.96
+    : hyperspaceActive
+      ? 0.93
+      : PLAYER.FRICTION;
   player.vx *= Math.pow(friction, deltaMs / 16.67);
   player.vy *= Math.pow(friction, deltaMs / 16.67);
 
   if (hyperspaceActive) {
-    const drive = player.speed * hyperspaceTurbulence * 0.82;
-    player.vx += drive * dt;
-    if (player.vx < 0) player.vx = 0;
+    // Add slight lateral slip so controls feel drifty in hyperspace.
+    const slip = Math.sin((state.gameTime || 0) * 2.2 + player.x * 0.0023 + player.y * 0.0017);
+    player.vy += slip * player.speed * 0.06 * dt;
   }
 
   // Cap velocity
