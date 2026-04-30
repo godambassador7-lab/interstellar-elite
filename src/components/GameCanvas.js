@@ -199,8 +199,16 @@ export function EnemyShip({ enemy }) {
   const enemyId = String(enemy.id || '');
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
   const sprite = spritePool[spriteSeed % spritePool.length];
-  const scaleByClass = classKey === 'flagship' ? 15.75 : classKey === 'destroyer' ? 3.15 : classKey === 'interceptor' ? 5.4 : 2.3;
-  const shipBox = size * scaleByClass;
+  const FLAGSHIP_VISUAL_SCALE = 15.75;
+  const FLAGSHIP_BASE_SIZE = 24;
+  const FLAGSHIP_VISUAL_BOX = FLAGSHIP_BASE_SIZE * FLAGSHIP_VISUAL_SCALE;
+  const scaleByClass = classKey === 'flagship' ? FLAGSHIP_VISUAL_SCALE : classKey === 'interceptor' ? 5.4 : 2.3;
+  const shipBox =
+    classKey === 'flagship'
+      ? size * scaleByClass
+      : classKey === 'destroyer'
+        ? FLAGSHIP_VISUAL_BOX * 0.5
+        : size * scaleByClass;
   const showHpBar = classKey === 'destroyer' || classKey === 'flagship';
   const enemySpeed = Math.hypot(enemy.vx || 0, enemy.vy || 0);
   const moving = enemySpeed > 8;
@@ -208,7 +216,7 @@ export function EnemyShip({ enemy }) {
   const pulse = 0.75 + 0.25 * Math.sin(t);
   const warmFlame = classKey === 'destroyer' || classKey === 'fighter';
   const rearThrustersOnSide = false;
-  const shipAngle = classKey === 'flagship' ? facingAngle - 90 : facingAngle;
+  const shipAngle = classKey === 'flagship' ? facingAngle + 90 : facingAngle;
   const velNx = enemySpeed > 0.001 ? (enemy.vx || 0) / enemySpeed : 0;
   const velNy = enemySpeed > 0.001 ? (enemy.vy || 0) / enemySpeed : -1;
   const rearNx = -velNx;
@@ -248,7 +256,7 @@ export function EnemyShip({ enemy }) {
               shadowOpacity: 0.95,
               shadowRadius: 7,
               shadowOffset: { width: 0, height: 0 },
-              transform: [{ rotate: `${thrustAngle}deg` }],
+              transform: [{ rotate: `${thrustAngle + 180}deg` }],
             }}
           />
           <View
@@ -264,7 +272,7 @@ export function EnemyShip({ enemy }) {
               shadowOpacity: 0.95,
               shadowRadius: 7,
               shadowOffset: { width: 0, height: 0 },
-              transform: [{ rotate: `${thrustAngle}deg` }],
+              transform: [{ rotate: `${thrustAngle + 180}deg` }],
             }}
           />
         </>
@@ -496,16 +504,23 @@ export function StarField({ time, cameraX = 0, cameraY = 0 }) {
 }
 
 // Attack range indicator
-export function AttackRangeIndicator({ x, y, range }) {
+export function AttackRangeIndicator({ x, y, range, attackDamageFlash = 0 }) {
+  const hitActive = attackDamageFlash > 0;
+  const ringColor = hitActive ? '#FF2A2A' : '#F8FF3A';
   return (
     <View style={{
       position: 'absolute',
       left: x - range, top: y - range,
       width: range * 2, height: range * 2,
       borderRadius: range,
-      borderWidth: 0.5,
-      borderColor: 'rgba(103,243,255,0.18)',
+      borderWidth: hitActive ? 3.2 : 2.4,
+      borderColor: ringColor,
       backgroundColor: 'transparent',
+      shadowColor: ringColor,
+      shadowOpacity: 0.95,
+      shadowRadius: hitActive ? 14 : 10,
+      shadowOffset: { width: 0, height: 0 },
+      opacity: hitActive ? 0.95 : 0.88,
     }} />
   );
 }

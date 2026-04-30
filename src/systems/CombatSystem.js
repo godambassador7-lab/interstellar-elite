@@ -13,6 +13,13 @@ const HEAVY_PHOTON_DAMAGE    = 14;
 const HEAVY_PHOTON_SPEED     = 180;
 const HEAVY_PHOTON_SIZE      = 14;
 const HEAVY_PHOTON_LIFE_MS   = 3500;
+const DESTROYER_MISSILE_RANGE_SQ = 380 * 380;
+const DESTROYER_MISSILE_RATE_MS = 2600;
+const DESTROYER_MISSILE_DAMAGE = 18;
+const DESTROYER_MISSILE_SPEED = 118;
+const DESTROYER_MISSILE_TURN = 0.085;
+const DESTROYER_MISSILE_SIZE = 12;
+const DESTROYER_MISSILE_LIFE_MS = 9000;
 
 const SWARM_PHOTON_RANGE_SQ  = 220 * 220;
 const SWARM_PHOTON_RATE_MS   = 350;
@@ -67,6 +74,7 @@ export function runCombatFrame(state, deltaMs) {
   const deadEnemyIds = new Set();
   let playerTookDamage = false;
   let playerDealtDamage = false;
+  if (!state.destroyerMissiles) state.destroyerMissiles = [];
 
   // ── Auto-attack ─────────────────────────────────────────────────────────────
   if (now - player.lastAttackTime >= player.attackRate) {
@@ -136,6 +144,29 @@ export function runCombatFrame(state, deltaMs) {
         }
       }
     }
+    const pulseMissileRadius = ABILITIES.PULSE.RADIUS + 12;
+    for (const missile of state.destroyerMissiles) {
+      if (missile.dead) continue;
+      if (dist(player, missile) <= pulseMissileRadius + (missile.size || DESTROYER_MISSILE_SIZE) * 0.5) {
+        missile.dead = true;
+        missile.life = -1;
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          newParticles.push({
+            id: uid(),
+            x: missile.x,
+            y: missile.y,
+            vx: Math.cos(a) * 120 * (0.6 + Math.random() * 0.6),
+            vy: Math.sin(a) * 120 * (0.6 + Math.random() * 0.6),
+            life: 300,
+            maxLife: 300,
+            size: 2 + Math.random() * 2,
+            color: '#FF725C',
+            type: 'hit',
+          });
+        }
+      }
+    }
   }
 
   // ── Drone orbit damage ──────────────────────────────────────────────────────
@@ -202,21 +233,24 @@ export function runCombatFrame(state, deltaMs) {
     const pdx = player.x - enemy.x;
     const pdy = player.y - enemy.y;
     const pDistSq = pdx * pdx + pdy * pdy;
-    if (pDistSq > HEAVY_PHOTON_RANGE_SQ) continue;
-    if (now - (enemy.lastPhotonAt || 0) >= HEAVY_PHOTON_RATE_MS) {
+    if (pDistSq > DESTROYER_MISSILE_RANGE_SQ) continue;
+    if (now - (enemy.lastPhotonAt || 0) >= DESTROYER_MISSILE_RATE_MS) {
       enemy.lastPhotonAt = now;
       const pDist = Math.sqrt(pDistSq);
-      state.photons.push({
+      state.destroyerMissiles.push({
         id: uid(),
         x: enemy.x, y: enemy.y,
-        vx: (pdx / pDist) * HEAVY_PHOTON_SPEED,
-        vy: (pdy / pDist) * HEAVY_PHOTON_SPEED,
-        damage: HEAVY_PHOTON_DAMAGE,
-        size: HEAVY_PHOTON_SIZE,
-        life: HEAVY_PHOTON_LIFE_MS,
-        maxLife: HEAVY_PHOTON_LIFE_MS,
-        color: '#FFE566',
-        glowColor: 'rgba(255,193,58,0.15)',
+        vx: (pdx / pDist) * DESTROYER_MISSILE_SPEED,
+        vy: (pdy / pDist) * DESTROYER_MISSILE_SPEED,
+        speed: DESTROYER_MISSILE_SPEED,
+        turnRate: DESTROYER_MISSILE_TURN,
+        damage: DESTROYER_MISSILE_DAMAGE,
+        size: DESTROYER_MISSILE_SIZE,
+        life: DESTROYER_MISSILE_LIFE_MS,
+        maxLife: DESTROYER_MISSILE_LIFE_MS,
+        color: '#FFB857',
+        glowColor: 'rgba(255,128,72,0.22)',
+        missile: true,
       });
     }
   }
@@ -353,6 +387,28 @@ export function runCombatFrame(state, deltaMs) {
       }
     }
     state.photons = state.photons.filter((ph) => ph.life > 0);
+    for (const missile of state.destroyerMissiles) {
+      if (missile.dead) continue;
+      const dx = player.x - missile.x;
+      const dy = player.y - missile.y;
+      const d = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+      const tvx = (dx / d) * (missile.speed || DESTROYER_MISSILE_SPEED);
+      const tvy = (dy / d) * (missile.speed || DESTROYER_MISSILE_SPEED);
+      const turn = missile.turnRate || DESTROYER_MISSILE_TURN;
+      missile.vx += (tvx - missile.vx) * turn;
+      missile.vy += (tvy - missile.vy) * turn;
+      missile.x += missile.vx * dt;
+      missile.y += missile.vy * dt;
+      missile.life -= deltaMs;
+      if (circlesOverlap(player.x, player.y, playerRadius, missile.x, missile.y, missile.size || DESTROYER_MISSILE_SIZE)) {
+        applyPlayerDamage(player, missile.damage || DESTROYER_MISSILE_DAMAGE);
+        playerTookDamage = true;
+        player.hitFlash = 14;
+        state.screenShake = Math.max(state.screenShake, 10);
+        missile.life = -1;
+      }
+    }
+    state.destroyerMissiles = state.destroyerMissiles.filter((m) => m.life > 0 && !m.dead);
   }
   if (!playerTookDamage) {
     state.nearMissTimer = (state.nearMissTimer || 0) + deltaMs;
@@ -532,6 +588,9 @@ function hasCloseThreat(state, threshold) {
   }
   for (const ph of state.photons || []) {
     if (circlesOverlap(player.x, player.y, threatRadius, ph.x, ph.y, ph.size + 2)) return true;
+  }
+  for (const missile of state.destroyerMissiles || []) {
+    if (circlesOverlap(player.x, player.y, threatRadius, missile.x, missile.y, (missile.size || DESTROYER_MISSILE_SIZE) + 2)) return true;
   }
   return false;
 }

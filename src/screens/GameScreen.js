@@ -190,6 +190,7 @@ function makeUiState() {
     playerShield: 50,
     playerMaxShield: 50,
     photons: [],
+    destroyerMissiles: [],
     playerX: SCREEN.width / 2,
     playerY: SCREEN.height / 2,
     playerHitFlash: 0,
@@ -600,6 +601,7 @@ export default function GameScreen({
       damageNumbers: [],
       victory: false,
       photons: [],
+      destroyerMissiles: [],
       gravityWells: [],
       nextGravityWellAt: Date.now() + 4500,
       meteors: [],
@@ -1056,6 +1058,11 @@ export default function GameScreen({
           x: ph.x - g.cameraX,
           y: ph.y - g.cameraY,
         })),
+        destroyerMissiles: (g.destroyerMissiles || []).map((m) => ({
+          ...m,
+          x: m.x - g.cameraX,
+          y: m.y - g.cameraY,
+        })),
         gravityWells: (g.gravityWells || []).map((w) => ({
           ...w,
           x: w.x - g.cameraX,
@@ -1264,6 +1271,7 @@ export default function GameScreen({
     playerShield,
     playerMaxShield,
     photons,
+    destroyerMissiles,
     playerX,
     playerY,
     playerHitFlash,
@@ -1400,7 +1408,12 @@ export default function GameScreen({
           <DashTrail trail={dashTrail} />
           <QuantumSwipeTrail trail={quantumTrails} />
           <DamageNumbers numbers={damageNumbers} />
-          <AttackRangeIndicator x={playerX} y={playerY} range={attackRange} />
+          <AttackRangeIndicator
+            x={playerX}
+            y={playerY}
+            range={attackRange}
+            attackDamageFlash={playerAttackDamageFlash}
+          />
           <QuantumPickup x={quantumPickup?.x || 0} y={quantumPickup?.y || 0} active={!!quantumPickup?.active} />
           {gravityWells.map((w) => (
             <GravityWellView key={w.id} well={w} time={time} />
@@ -1510,6 +1523,9 @@ export default function GameScreen({
           ))}
           {photons.map((ph) => (
             <PhotonBall key={ph.id} photon={ph} />
+          ))}
+          {destroyerMissiles.map((m) => (
+            <PhotonBall key={`dm-${m.id}`} photon={m} />
           ))}
           <PulseRing x={playerX} y={playerY} active={pulseActive} elapsed={pulseElapsed} />
           <DroneOrbit positions={dronePositions} active={droneActive} />
