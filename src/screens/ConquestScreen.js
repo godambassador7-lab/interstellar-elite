@@ -82,6 +82,7 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
   const driftAnim = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
@@ -114,6 +115,14 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     loop.start();
     return () => loop.stop();
   }, [driftAnim, galaxy?.id]);
+  useEffect(() => {
+    spinAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(spinAnim, { toValue: 1, duration: 52000, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [spinAnim, galaxy?.id]);
 
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
@@ -125,15 +134,31 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
       seed = (1103515245 * seed + 12345) >>> 0;
       return seed / 0xFFFFFFFF;
     };
-    const count = Math.max(14, Math.min(40, Math.floor((galaxy?.systems || 20) * 0.45)));
-    return Array.from({ length: count }, (_, i) => ({
-      id: `n-${i}`,
-      x: 8 + rand() * 84,
-      y: 12 + rand() * 76,
-      size: 2 + rand() * 4,
-      hot: rand() > 0.88,
-    }));
+    const count = Math.max(700, Math.min(1400, (galaxy?.systems || 24) * 35));
+    const arms = 4;
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const t = i / count;
+      const arm = i % arms;
+      const radius = Math.pow(t, 0.72) * 47;
+      const baseAngle = radius * 0.34 + (arm * (Math.PI * 2 / arms));
+      const jitterA = (rand() - 0.5) * 0.9;
+      const jitterR = (rand() - 0.5) * 5.5;
+      const a = baseAngle + jitterA;
+      const r = Math.max(0, radius + jitterR);
+      const x = 50 + Math.cos(a) * r;
+      const y = 52 + Math.sin(a) * r * 0.62;
+      out.push({
+        id: `n-${i}`,
+        x,
+        y,
+        size: 0.4 + rand() * 1.9,
+        opacity: 0.15 + rand() * 0.7,
+      });
+    }
+    return out;
   }, [galaxy?.id, galaxy?.systems]);
+  const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
     <View style={styles.overlay}>
@@ -203,17 +228,20 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
         <View style={styles.liveMapWrap}>
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c' }]}>
-            <View style={styles.galaxyHaloOuter} />
-            <View style={styles.galaxyHaloMid} />
-            <View style={styles.galaxyDisc} />
-            <View style={styles.galaxyArmA} />
-            <View style={styles.galaxyArmB} />
-            <View style={styles.galaxyArmC} />
             <View style={styles.galaxyCoreGlow} />
             <View style={styles.galaxyCoreHot} />
             <Animated.View
               pointerEvents="none"
-              style={[styles.liveNodesLayer, { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] }]}
+              style={[
+                styles.liveNodesLayer,
+                {
+                  transform: [
+                    { translateX: driftTranslateX },
+                    { translateY: driftTranslateY },
+                    { rotate: spinRotate },
+                  ],
+                },
+              ]}
             >
               {liveMapNodes.map((n) => (
                 <View
@@ -225,10 +253,11 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                     width: n.size,
                     height: n.size,
                     borderRadius: n.size / 2,
-                    backgroundColor: n.hot ? '#FFD3A0' : '#B9DFFF',
-                    shadowColor: n.hot ? '#FFBC73' : '#A7D1FF',
-                    shadowOpacity: 0.7,
-                    shadowRadius: 6,
+                    opacity: n.opacity,
+                    backgroundColor: '#FFFFFF',
+                    shadowColor: '#FFFFFF',
+                    shadowOpacity: 0.6,
+                    shadowRadius: 3,
                     shadowOffset: { width: 0, height: 0 },
                   }}
                 />
@@ -549,88 +578,26 @@ const styles = StyleSheet.create({
     height: 108,
     borderRadius: 6,
     borderWidth: 1,
-    backgroundColor: '#071429',
+    backgroundColor: '#02060D',
     overflow: 'hidden',
-  },
-  galaxyHaloOuter: {
-    position: 'absolute',
-    left: '6%',
-    top: '-20%',
-    width: '88%',
-    height: '138%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(74,132,255,0.13)',
-    transform: [{ rotate: '-19deg' }],
-  },
-  galaxyHaloMid: {
-    position: 'absolute',
-    left: '14%',
-    top: '-8%',
-    width: '72%',
-    height: '120%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(120,176,255,0.14)',
-    transform: [{ rotate: '-19deg' }],
-  },
-  galaxyDisc: {
-    position: 'absolute',
-    left: '22%',
-    top: '12%',
-    width: '56%',
-    height: '78%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(145,196,255,0.2)',
-    transform: [{ rotate: '-19deg' }],
-  },
-  galaxyArmA: {
-    position: 'absolute',
-    left: '16%',
-    top: '22%',
-    width: '66%',
-    height: '16%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(154,196,255,0.25)',
-    transform: [{ rotate: '-17deg' }],
-  },
-  galaxyArmB: {
-    position: 'absolute',
-    left: '21%',
-    top: '45%',
-    width: '58%',
-    height: '13%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(123,181,255,0.27)',
-    transform: [{ rotate: '-17deg' }],
-  },
-  galaxyArmC: {
-    position: 'absolute',
-    left: '26%',
-    top: '63%',
-    width: '49%',
-    height: '10%',
-    borderRadius: 999,
-    backgroundColor: 'rgba(108,168,255,0.23)',
-    transform: [{ rotate: '-17deg' }],
   },
   galaxyCoreGlow: {
     position: 'absolute',
-    left: '39%',
-    top: '28%',
-    width: '24%',
-    height: '44%',
+    left: '42%',
+    top: '35%',
+    width: '16%',
+    height: '30%',
     borderRadius: 999,
-    backgroundColor: 'rgba(255,232,200,0.78)',
-    transform: [{ rotate: '-19deg' }],
+    backgroundColor: 'rgba(255,243,220,0.95)',
   },
   galaxyCoreHot: {
     position: 'absolute',
-    left: '45%',
-    top: '38%',
-    width: '12%',
-    height: '24%',
+    left: '46.5%',
+    top: '42%',
+    width: '7%',
+    height: '14%',
     borderRadius: 999,
-    backgroundColor: 'rgba(255,246,232,0.97)',
-    transform: [{ rotate: '-19deg' }],
+    backgroundColor: '#FFFFFF',
   },
   liveNodesLayer: {
     width: '100%',
