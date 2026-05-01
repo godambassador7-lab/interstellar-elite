@@ -117,6 +117,23 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
 
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
+  const liveMapNodes = useMemo(() => {
+    let seed = 0;
+    const key = String(galaxy?.id || 'live');
+    for (let i = 0; i < key.length; i++) seed = ((seed * 33) + key.charCodeAt(i)) >>> 0;
+    const rand = () => {
+      seed = (1103515245 * seed + 12345) >>> 0;
+      return seed / 0xFFFFFFFF;
+    };
+    const count = Math.max(14, Math.min(40, Math.floor((galaxy?.systems || 20) * 0.45)));
+    return Array.from({ length: count }, (_, i) => ({
+      id: `n-${i}`,
+      x: 8 + rand() * 84,
+      y: 12 + rand() * 76,
+      size: 2 + rand() * 4,
+      hot: rand() > 0.88,
+    }));
+  }, [galaxy?.id, galaxy?.systems]);
 
   return (
     <View style={styles.overlay}>
@@ -181,6 +198,35 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
           <StatCard label="AVG THREAT" value={avgRaw.toFixed(1)}   color={THREAT_COLORS[getThreatLevel(avgRaw)]} />
           <StatCard label="DEFENSES"  value={totalDefended}        color="#44FF88" />
           <StatCard label="BREACHES"  value={totalBreaches}        color="#FF3D3D" />
+        </View>
+
+        <View style={styles.liveMapWrap}>
+          <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
+          <View style={[styles.liveMapFrame, { borderColor: qColor + '5c' }]}>
+            <Animated.View
+              pointerEvents="none"
+              style={{ width: '100%', height: '100%', transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] }}
+            >
+              {liveMapNodes.map((n) => (
+                <View
+                  key={n.id}
+                  style={{
+                    position: 'absolute',
+                    left: `${n.x}%`,
+                    top: `${n.y}%`,
+                    width: n.size,
+                    height: n.size,
+                    borderRadius: n.size / 2,
+                    backgroundColor: n.hot ? '#FFB56B' : '#79D8FF',
+                    shadowColor: n.hot ? '#FF9B46' : '#79D8FF',
+                    shadowOpacity: 0.55,
+                    shadowRadius: 5,
+                    shadowOffset: { width: 0, height: 0 },
+                  }}
+                />
+              ))}
+            </Animated.View>
+          </View>
         </View>
 
         {/* ── Attack alert ────────────────────────────────── */}
@@ -480,6 +526,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 4,
     marginBottom: 10,
+  },
+  liveMapWrap: {
+    marginBottom: 10,
+  },
+  liveMapTitle: {
+    fontFamily: 'Courier New',
+    fontSize: 8,
+    color: 'rgba(150,180,215,0.65)',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  liveMapFrame: {
+    height: 108,
+    borderRadius: 6,
+    borderWidth: 1,
+    backgroundColor: 'rgba(8,14,26,0.82)',
+    overflow: 'hidden',
   },
 
   // ── Alert ─────────────────────────────────────────────────
