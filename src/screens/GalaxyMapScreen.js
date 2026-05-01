@@ -11,11 +11,13 @@ import {
   Dimensions,
   SafeAreaView,
   Animated,
+  Platform,
 } from 'react-native';
 import { GALAXIES, QUADRANT_DEFS } from '../utils/constants';
 import { PART_TYPES, getMetaUpgradePartCost } from '../systems/MetaUpgradeSystem';
 import ConquestScreen from './ConquestScreen';
 import { getStationUpgradeCost } from '../systems/NemesisSystem';
+import TILE_MANIFEST from '../../no_blur_universe_system/assets/universe/manifest.json';
 
 const LOGICAL_MAP_WIDTH = 2400;
 const LOGICAL_MAP_HEIGHT = 1400;
@@ -23,6 +25,9 @@ const MAP_REPEAT_X = 1;
 const ZOOM_MAX = 4.2;
 const PINCH_SENSITIVITY = 0.96;
 const UNIVERSE_MAP_IMAGE = require('../../universe map.png');
+const USE_TILED_UNIVERSE_BG = Platform.OS === 'web';
+const TILED_SOURCE_WIDTH = Number(TILE_MANIFEST?.sourceWidth) || 12288;
+const TILED_SOURCE_HEIGHT = Number(TILE_MANIFEST?.sourceHeight) || 7080;
 let MAP_ASSET = {};
 try {
   MAP_ASSET = typeof Image.resolveAssetSource === 'function'
@@ -31,12 +36,27 @@ try {
 } catch (_) {
   MAP_ASSET = {};
 }
-const BASE_MAP_WIDTH = MAP_ASSET.width || LOGICAL_MAP_WIDTH;
-const BASE_MAP_HEIGHT = MAP_ASSET.height || LOGICAL_MAP_HEIGHT;
+const BASE_MAP_WIDTH = USE_TILED_UNIVERSE_BG ? TILED_SOURCE_WIDTH : (MAP_ASSET.width || LOGICAL_MAP_WIDTH);
+const BASE_MAP_HEIGHT = USE_TILED_UNIVERSE_BG ? TILED_SOURCE_HEIGHT : (MAP_ASSET.height || LOGICAL_MAP_HEIGHT);
 const MAP_SCALE_X = BASE_MAP_WIDTH / LOGICAL_MAP_WIDTH;
 const MAP_SCALE_Y = BASE_MAP_HEIGHT / LOGICAL_MAP_HEIGHT;
 const MAP_WIDTH = BASE_MAP_WIDTH * MAP_REPEAT_X;
 const MAP_HEIGHT = BASE_MAP_HEIGHT;
+const TILE_SIZE = Number(TILE_MANIFEST?.tileSize) || 512;
+const TILE_LEVELS = TILE_MANIFEST?.levels || {};
+const TILE_LEVEL_KEYS = Object.keys(TILE_LEVELS).map((k) => Number(k)).sort((a, b) => a - b);
+
+function chooseTileLevel(zoom) {
+  if (!TILE_LEVEL_KEYS.length) return 0;
+  if (zoom < 0.7) return Math.min(1, TILE_LEVEL_KEYS.length - 1);
+  if (zoom < 1.2) return Math.min(2, TILE_LEVEL_KEYS.length - 1);
+  if (zoom < 1.9) return Math.min(3, TILE_LEVEL_KEYS.length - 1);
+  return Math.min(4, TILE_LEVEL_KEYS.length - 1);
+}
+
+function getTileUri(level, col, row) {
+  return `/interstellar-elite/no_blur_universe_system/assets/universe/tiles/${level}/${col}_${row}.jpg`;
+}
 
 const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
   id: i,
@@ -191,6 +211,28 @@ export default function GalaxyMapScreen({
   const scaledHeight = Math.round(MAP_HEIGHT * zoom);
   const contentWidth = Math.max(scaledWidth, viewport.width || 0);
   const contentHeight = Math.max(scaledHeight, viewport.height || 0);
+  const tileLevel = useMemo(() => chooseTileLevel(zoom), [zoom]);
+  const activeLevel = TILE_LEVELS[String(tileLevel)] || null;
+  const backgroundTiles = useMemo(() => {
+    if (!USE_TILED_UNIVERSE_BG || !activeLevel) return [];
+    const levelScaleX = BASE_MAP_WIDTH / Math.max(1, activeLevel.width);
+    const levelScaleY = BASE_MAP_HEIGHT / Math.max(1, activeLevel.height);
+    const levelScale = Math.max(levelScaleX, levelScaleY);
+    const tiles = [];
+    for (let y = 0; y < activeLevel.rows; y++) {
+      for (let x = 0; x < activeLevel.cols; x++) {
+        tiles.push({
+          key: `z${tileLevel}-${x}-${y}`,
+          left: x * TILE_SIZE * levelScale * zoom,
+          top: y * TILE_SIZE * levelScale * zoom,
+          width: TILE_SIZE * levelScale * zoom,
+          height: TILE_SIZE * levelScale * zoom,
+          uri: getTileUri(tileLevel, x, y),
+        });
+      }
+    }
+    return tiles;
+  }, [activeLevel, tileLevel, zoom]);
 
   const avgThreat = useMemo(() => {
     const values = Object.values(territories || {});
@@ -543,11 +585,22 @@ export default function GalaxyMapScreen({
               onResponderRelease={endPinch}
               onResponderTerminate={endPinch}
             >
-            <Image
-              source={UNIVERSE_MAP_IMAGE}
-              style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
-              resizeMode="cover"
-            />
+            {USE_TILED_UNIVERSE_BG ? (
+              backgroundTiles.map((t) => (
+                <Image
+                  key={t.key}
+                  source={{ uri: t.uri }}
+                  style={[styles.mapImage, { left: t.left, top: t.top, width: t.width, height: t.height }]}
+                  resizeMode="cover"
+                />
+              ))
+            ) : (
+              <Image
+                source={UNIVERSE_MAP_IMAGE}
+                style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
+                resizeMode="cover"
+              />
+            )}
             <DoubleChevronArrow
               left={expansionArrow.mapX * MAP_SCALE_X * zoom - 58}
               top={expansionArrow.mapY * MAP_SCALE_Y * zoom - 58}
