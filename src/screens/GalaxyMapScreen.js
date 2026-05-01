@@ -56,7 +56,26 @@ function chooseTileLevel(zoom) {
 }
 
 function getTileUri(level, col, row) {
+  return `/interstellar-elite/assets/universe/tiles/${level}/${col}_${row}.png`;
+}
+
+function getJpgFallbackUri(level, col, row) {
   return `/interstellar-elite/assets/universe/tiles/${level}/${col}_${row}.jpg`;
+}
+
+function MapTileImage({ tile }) {
+  const [useJpg, setUseJpg] = useState(false);
+  const sourceUri = useJpg ? tile.jpgUri : tile.pngUri;
+  return (
+    <Image
+      source={{ uri: sourceUri }}
+      style={[styles.mapImage, { left: tile.left, top: tile.top, width: tile.width, height: tile.height }]}
+      resizeMode="stretch"
+      onError={() => {
+        if (!useJpg) setUseJpg(true);
+      }}
+    />
+  );
 }
 
 const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
@@ -233,7 +252,8 @@ export default function GalaxyMapScreen({
           top,
           width,
           height,
-          uri: getTileUri(tileLevel, x, y),
+          pngUri: getTileUri(tileLevel, x, y),
+          jpgUri: getJpgFallbackUri(tileLevel, x, y),
         });
       }
     }
@@ -636,12 +656,7 @@ export default function GalaxyMapScreen({
             >
             {USE_TILED_UNIVERSE_BG ? (
               backgroundTiles.map((t) => (
-                <Image
-                  key={t.key}
-                  source={{ uri: t.uri }}
-                  style={[styles.mapImage, { left: t.left, top: t.top, width: t.width, height: t.height }]}
-                  resizeMode="stretch"
-                />
+                <MapTileImage key={t.key} tile={t} />
               ))
             ) : (
               <Image
