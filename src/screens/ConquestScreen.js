@@ -203,9 +203,17 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
         <View style={styles.liveMapWrap}>
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c' }]}>
+            <View style={styles.galaxyHaloOuter} />
+            <View style={styles.galaxyHaloMid} />
+            <View style={styles.galaxyDisc} />
+            <View style={styles.galaxyArmA} />
+            <View style={styles.galaxyArmB} />
+            <View style={styles.galaxyArmC} />
+            <View style={styles.galaxyCoreGlow} />
+            <View style={styles.galaxyCoreHot} />
             <Animated.View
               pointerEvents="none"
-              style={{ width: '100%', height: '100%', transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] }}
+              style={[styles.liveNodesLayer, { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] }]}
             >
               {liveMapNodes.map((n) => (
                 <View
@@ -217,10 +225,10 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                     width: n.size,
                     height: n.size,
                     borderRadius: n.size / 2,
-                    backgroundColor: n.hot ? '#FFB56B' : '#79D8FF',
-                    shadowColor: n.hot ? '#FF9B46' : '#79D8FF',
-                    shadowOpacity: 0.55,
-                    shadowRadius: 5,
+                    backgroundColor: n.hot ? '#FFD3A0' : '#B9DFFF',
+                    shadowColor: n.hot ? '#FFBC73' : '#A7D1FF',
+                    shadowOpacity: 0.7,
+                    shadowRadius: 6,
                     shadowOffset: { width: 0, height: 0 },
                   }}
                 />
@@ -541,8 +549,92 @@ const styles = StyleSheet.create({
     height: 108,
     borderRadius: 6,
     borderWidth: 1,
-    backgroundColor: 'rgba(8,14,26,0.82)',
+    backgroundColor: '#071429',
     overflow: 'hidden',
+  },
+  galaxyHaloOuter: {
+    position: 'absolute',
+    left: '6%',
+    top: '-20%',
+    width: '88%',
+    height: '138%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(74,132,255,0.13)',
+    transform: [{ rotate: '-19deg' }],
+  },
+  galaxyHaloMid: {
+    position: 'absolute',
+    left: '14%',
+    top: '-8%',
+    width: '72%',
+    height: '120%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(120,176,255,0.14)',
+    transform: [{ rotate: '-19deg' }],
+  },
+  galaxyDisc: {
+    position: 'absolute',
+    left: '22%',
+    top: '12%',
+    width: '56%',
+    height: '78%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(145,196,255,0.2)',
+    transform: [{ rotate: '-19deg' }],
+  },
+  galaxyArmA: {
+    position: 'absolute',
+    left: '16%',
+    top: '22%',
+    width: '66%',
+    height: '16%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(154,196,255,0.25)',
+    transform: [{ rotate: '-17deg' }],
+  },
+  galaxyArmB: {
+    position: 'absolute',
+    left: '21%',
+    top: '45%',
+    width: '58%',
+    height: '13%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(123,181,255,0.27)',
+    transform: [{ rotate: '-17deg' }],
+  },
+  galaxyArmC: {
+    position: 'absolute',
+    left: '26%',
+    top: '63%',
+    width: '49%',
+    height: '10%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(108,168,255,0.23)',
+    transform: [{ rotate: '-17deg' }],
+  },
+  galaxyCoreGlow: {
+    position: 'absolute',
+    left: '39%',
+    top: '28%',
+    width: '24%',
+    height: '44%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,232,200,0.78)',
+    transform: [{ rotate: '-19deg' }],
+  },
+  galaxyCoreHot: {
+    position: 'absolute',
+    left: '45%',
+    top: '38%',
+    width: '12%',
+    height: '24%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,246,232,0.97)',
+    transform: [{ rotate: '-19deg' }],
+  },
+  liveNodesLayer: {
+    width: '100%',
+    height: '100%',
   },
 
   // ── Alert ─────────────────────────────────────────────────
