@@ -51,6 +51,10 @@ const FIRST_QUADRANT_SPECIAL_CHANCE = 0.05;
 const MAX_PARTICLES = 420;
 const MAX_PHOTONS = 220;
 const MAX_DESTROYER_MISSILES = 64;
+const FLAGSHIP_REINFORCE_BASE_COUNT = 20;
+const FLAGSHIP_REINFORCE_BASE_INTERVAL_MS = 10000;
+const FLAGSHIP_REINFORCE_MAX_COUNT = 50;
+const FLAGSHIP_REINFORCE_MIN_INTERVAL_MS = 5000;
 
 // Absorb damage into shield first; any overflow hits HP; resets regen timer.
 function applyPlayerDamage(player, amount, source = 'unknown') {
@@ -310,6 +314,19 @@ export function runCombatFrame(state, deltaMs) {
     const distSq = dx * dx + dy * dy;
     const quadrant = state?.galaxy?.quadrant || '';
     const inFirstQuadrant = quadrant === 'bayron';
+    const isFourthQuadrant = quadrant === 'ultra316';
+    const threat = Math.max(1, Number(state?.galaxy?.threat) || 1);
+    const fourthQuadrantScale = isFourthQuadrant
+      ? Math.max(0, Math.min(1, (threat - 3.6) / (5 - 3.6)))
+      : 0;
+    const reinforceCount = Math.round(
+      FLAGSHIP_REINFORCE_BASE_COUNT +
+      (FLAGSHIP_REINFORCE_MAX_COUNT - FLAGSHIP_REINFORCE_BASE_COUNT) * fourthQuadrantScale
+    );
+    const reinforceIntervalMs = Math.round(
+      FLAGSHIP_REINFORCE_BASE_INTERVAL_MS -
+      (FLAGSHIP_REINFORCE_BASE_INTERVAL_MS - FLAGSHIP_REINFORCE_MIN_INTERVAL_MS) * fourthQuadrantScale
+    );
 
     if (!enemy.flagshipPattern) {
       enemy.flagshipPattern = {
@@ -324,6 +341,12 @@ export function runCombatFrame(state, deltaMs) {
     enemy.flagshipChargeT = p.mode === 'charge' && p.modeEndsAt > now
       ? 1 - ((p.modeEndsAt - now) / FLAGSHIP_CHARGE_DURATION_MS)
       : 0;
+    if (!enemy.flagshipReinforceAt) {
+      enemy.flagshipReinforceAt = now + reinforceIntervalMs;
+    } else if (now >= enemy.flagshipReinforceAt) {
+      spawnFlagshipReinforcements(state, enemy, reinforceCount);
+      enemy.flagshipReinforceAt = now + reinforceIntervalMs;
+    }
 
     if (p.mode === 'charge') {
       if (now >= p.modeEndsAt) {
@@ -642,4 +665,42 @@ function distancePointToSegment(px, py, x1, y1, x2, y2) {
   const ex = px - lx;
   const ey = py - ly;
   return Math.sqrt(ex * ex + ey * ey);
+}
+
+function spawnFlagshipReinforcements(state, enemy, count) {
+  const worldW = state?.world?.width || 0;
+  const worldH = state?.world?.height || 0;
+  const c = Math.max(0, Math.floor(count));
+  for (let i = 0; i < c; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 48 + Math.random() * 42;
+    const x = enemy.x + Math.cos(a) * r;
+    const y = enemy.y + Math.sin(a) * r;
+    const def = ENEMY_TYPES.swarm;
+    const spawnX = worldW > 0 ? Math.max(16, Math.min(worldW - 16, x)) : x;
+    const spawnY = worldH > 0 ? Math.max(16, Math.min(worldH - 16, y)) : y;
+    state.enemies.push({
+      id: uid(),
+      type: def.type,
+      x: spawnX,
+      y: spawnY,
+      vx: 0,
+      vy: 0,
+      hp: def.hp,
+      maxHp: def.hp,
+      speed: def.speed,
+      damage: def.damage,
+      size: def.size,
+      color: def.color,
+      glow: def.glow,
+      score: def.score,
+      points: def.points,
+      dead: false,
+      hitFlash: 0,
+      angle: Math.random() * 360,
+      targetAngle: Math.random() * 360,
+      turnRate: 180,
+      lastLaserAt: 0,
+    });
+  }
 }
