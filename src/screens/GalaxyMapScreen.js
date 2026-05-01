@@ -152,6 +152,7 @@ export default function GalaxyMapScreen({
   onDefendStation,
 }) {
   const [zoom, setZoom] = useState(1);
+  const [lockCurrentGalaxy, setLockCurrentGalaxy] = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [conquestGalaxy, setConquestGalaxy] = useState(null);
   const [isPinching, setIsPinching] = useState(false);
@@ -263,6 +264,10 @@ export default function GalaxyMapScreen({
     const idx = Math.max(0, Math.min(unlockedGalaxyIndex, GALAXIES.length - 1));
     return GALAXIES[idx]?.id;
   }, [unlockedGalaxyIndex]);
+  const activeGalaxy = useMemo(
+    () => galaxies.find((g) => g.id === activeGalaxyId) || null,
+    [galaxies, activeGalaxyId]
+  );
 
   const organicBoundaries = useMemo(() => {
     const pointsV = [];
@@ -342,6 +347,23 @@ export default function GalaxyMapScreen({
       y: Math.max(0, Math.min(maxY, y)),
     };
   }, [viewport.width, viewport.height]);
+
+  const getCenteredScrollForGalaxy = useCallback((galaxy, targetZoom) => {
+    if (!galaxy || !viewport.width || !viewport.height) return null;
+    const targetX = galaxy.x * MAP_SCALE_X * targetZoom - viewport.width / 2;
+    const targetY = galaxy.y * MAP_SCALE_Y * targetZoom - viewport.height / 2;
+    return clampScroll(targetX, targetY, targetZoom);
+  }, [clampScroll, viewport.width, viewport.height]);
+
+  const centerOnCurrentGalaxy = useCallback((targetZoom = zoomRef.current, animated = false) => {
+    if (!activeGalaxy) return;
+    const centered = getCenteredScrollForGalaxy(activeGalaxy, targetZoom);
+    if (!centered) return;
+    scrollXRef.current = centered.x;
+    scrollYRef.current = centered.y;
+    outerScrollRef.current?.scrollTo?.({ x: centered.x, animated });
+    innerScrollRef.current?.scrollTo?.({ y: centered.y, animated });
+  }, [activeGalaxy, getCenteredScrollForGalaxy]);
 
   const pinchMetrics = useCallback((touches) => {
     if (!touches || touches.length < 2) return null;
@@ -452,14 +474,18 @@ export default function GalaxyMapScreen({
     const ratio = Math.max(0.15, 1 + (rawRatio - 1) * PINCH_SENSITIVITY);
     const nextZoom = Math.max(zoomMin, Math.min(ZOOM_MAX, pinchRef.current.startZoom * ratio));
 
-    const anchorViewportX = p.centerContentX - scrollXRef.current;
-    const anchorViewportY = p.centerContentY - scrollYRef.current;
-
-    const nextScrollX = pinchRef.current.startMapX * nextZoom - anchorViewportX;
-    const nextScrollY = pinchRef.current.startMapY * nextZoom - anchorViewportY;
-    const clamped = clampScroll(nextScrollX, nextScrollY, nextZoom);
+    let clamped;
+    if (lockCurrentGalaxy && activeGalaxy) {
+      clamped = getCenteredScrollForGalaxy(activeGalaxy, nextZoom) || clampScroll(0, 0, nextZoom);
+    } else {
+      const anchorViewportX = p.centerContentX - scrollXRef.current;
+      const anchorViewportY = p.centerContentY - scrollYRef.current;
+      const nextScrollX = pinchRef.current.startMapX * nextZoom - anchorViewportX;
+      const nextScrollY = pinchRef.current.startMapY * nextZoom - anchorViewportY;
+      clamped = clampScroll(nextScrollX, nextScrollY, nextZoom);
+    }
     schedulePinchFrame(nextZoom, clamped.x, clamped.y);
-  }, [beginPinch, clampScroll, pinchMetrics, schedulePinchFrame, zoomMin]);
+  }, [activeGalaxy, beginPinch, clampScroll, getCenteredScrollForGalaxy, lockCurrentGalaxy, pinchMetrics, schedulePinchFrame, zoomMin]);
 
   const endPinch = useCallback(() => {
     if (!pinchRef.current.active) return;
@@ -490,6 +516,11 @@ export default function GalaxyMapScreen({
     });
   }, [galaxies, viewport.height, viewport.width, zoomMin]);
 
+  useEffect(() => {
+    if (!lockCurrentGalaxy) return;
+    centerOnCurrentGalaxy(zoomRef.current, false);
+  }, [lockCurrentGalaxy, zoom, viewport.width, viewport.height, activeGalaxyId, centerOnCurrentGalaxy]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -505,6 +536,19 @@ export default function GalaxyMapScreen({
         <View style={styles.zoomControls}>
           <TouchableOpacity style={styles.overviewBtn} onPress={handleFullView} activeOpacity={0.8}>
             <Text style={styles.overviewBtnText}>FULL VIEW</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.lockBtn, lockCurrentGalaxy && styles.lockBtnActive]}
+            onPress={() => {
+              const next = !lockCurrentGalaxy;
+              setLockCurrentGalaxy(next);
+              if (next) centerOnCurrentGalaxy(zoomRef.current, true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.lockBtnText, lockCurrentGalaxy && styles.lockBtnTextActive]}>
+              CURRENT GALAXY {lockCurrentGalaxy ? 'ON' : 'OFF'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.storeBtn} onPress={() => setShowStore(true)} activeOpacity={0.8}>
             <Text style={styles.storeBtnText}>STORE</Text>
@@ -557,7 +601,7 @@ export default function GalaxyMapScreen({
         <ScrollView
           ref={outerScrollRef}
           horizontal
-          scrollEnabled={!isPinching}
+          scrollEnabled={!isPinching && !lockCurrentGalaxy}
           onScroll={(e) => { scrollXRef.current = e.nativeEvent.contentOffset.x; }}
           scrollEventThrottle={8}
           style={styles.outerScroll}
@@ -565,7 +609,7 @@ export default function GalaxyMapScreen({
         >
           <ScrollView
             ref={innerScrollRef}
-            scrollEnabled={!isPinching}
+            scrollEnabled={!isPinching && !lockCurrentGalaxy}
             onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
             scrollEventThrottle={8}
             style={styles.innerScroll}
@@ -1172,6 +1216,28 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: 'bold',
     letterSpacing: 0.8,
+  },
+  lockBtn: {
+    borderWidth: 1,
+    borderColor: 'rgba(121,216,255,0.6)',
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(41,107,145,0.15)',
+  },
+  lockBtnActive: {
+    borderColor: '#6CF7FF',
+    backgroundColor: 'rgba(54,182,205,0.24)',
+  },
+  lockBtnText: {
+    color: '#9DDFFF',
+    fontFamily: 'Courier New',
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.7,
+  },
+  lockBtnTextActive: {
+    color: '#BDFDFF',
   },
   storeBtn: {
     borderWidth: 1,
