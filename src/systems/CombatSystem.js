@@ -13,6 +13,7 @@ const HEAVY_PHOTON_DAMAGE    = 14;
 const HEAVY_PHOTON_SPEED     = 180;
 const HEAVY_PHOTON_SIZE      = 14;
 const HEAVY_PHOTON_LIFE_MS   = 3500;
+const DESTROYER_MISSILE_MIX_CHANCE = 0.5;
 const DESTROYER_MISSILE_RANGE_SQ = 380 * 380;
 const DESTROYER_MISSILE_RATE_MS = 2600;
 const DESTROYER_MISSILE_DAMAGE = 18;
@@ -35,6 +36,9 @@ const FLAGSHIP_BARRAGE_DAMAGE = 3.2;
 const FLAGSHIP_BARRAGE_SPEED = 300;
 const FLAGSHIP_BARRAGE_SIZE = 5;
 const FLAGSHIP_BARRAGE_LIFE_MS = 2200;
+const FLAGSHIP_RED_BARRAGE_CHANCE = 0.10;
+const FLAGSHIP_RED_BARRAGE_SPEED_MULT = 1.25;
+const FLAGSHIP_RED_BARRAGE_SIZE = 8;
 
 const FLAGSHIP_CHARGE_DURATION_MS = 5000;
 const FLAGSHIP_CHARGE_RANGE_SQ = 520 * 520;
@@ -237,21 +241,36 @@ export function runCombatFrame(state, deltaMs) {
     if (now - (enemy.lastPhotonAt || 0) >= DESTROYER_MISSILE_RATE_MS) {
       enemy.lastPhotonAt = now;
       const pDist = Math.sqrt(pDistSq);
-      state.destroyerMissiles.push({
-        id: uid(),
-        x: enemy.x, y: enemy.y,
-        vx: (pdx / pDist) * DESTROYER_MISSILE_SPEED,
-        vy: (pdy / pDist) * DESTROYER_MISSILE_SPEED,
-        speed: DESTROYER_MISSILE_SPEED,
-        turnRate: DESTROYER_MISSILE_TURN,
-        damage: DESTROYER_MISSILE_DAMAGE,
-        size: DESTROYER_MISSILE_SIZE,
-        life: DESTROYER_MISSILE_LIFE_MS,
-        maxLife: DESTROYER_MISSILE_LIFE_MS,
-        color: '#FFB857',
-        glowColor: 'rgba(255,128,72,0.22)',
-        missile: true,
-      });
+      if (Math.random() < DESTROYER_MISSILE_MIX_CHANCE) {
+        state.destroyerMissiles.push({
+          id: uid(),
+          x: enemy.x, y: enemy.y,
+          vx: (pdx / pDist) * DESTROYER_MISSILE_SPEED,
+          vy: (pdy / pDist) * DESTROYER_MISSILE_SPEED,
+          speed: DESTROYER_MISSILE_SPEED,
+          turnRate: DESTROYER_MISSILE_TURN,
+          damage: DESTROYER_MISSILE_DAMAGE,
+          size: DESTROYER_MISSILE_SIZE,
+          life: DESTROYER_MISSILE_LIFE_MS,
+          maxLife: DESTROYER_MISSILE_LIFE_MS,
+          color: '#FFB857',
+          glowColor: 'rgba(255,128,72,0.22)',
+          missile: true,
+        });
+      } else {
+        state.photons.push({
+          id: uid(),
+          x: enemy.x, y: enemy.y,
+          vx: (pdx / pDist) * HEAVY_PHOTON_SPEED,
+          vy: (pdy / pDist) * HEAVY_PHOTON_SPEED,
+          damage: HEAVY_PHOTON_DAMAGE,
+          size: HEAVY_PHOTON_SIZE,
+          life: HEAVY_PHOTON_LIFE_MS,
+          maxLife: HEAVY_PHOTON_LIFE_MS,
+          color: '#FFE566',
+          glowColor: 'rgba(255,193,58,0.15)',
+        });
+      }
     }
   }
   // ── Swarm photon balls (smallest enemy type) ────────────────────────────────
@@ -341,17 +360,18 @@ export function runCombatFrame(state, deltaMs) {
         const sin = Math.sin(spread);
         const nx = baseNx * cos - baseNy * sin;
         const ny = baseNx * sin + baseNy * cos;
+        const useRedBarrage = Math.random() < FLAGSHIP_RED_BARRAGE_CHANCE;
         state.photons.push({
           id: uid(),
           x: enemy.x, y: enemy.y,
-          vx: nx * FLAGSHIP_BARRAGE_SPEED,
-          vy: ny * FLAGSHIP_BARRAGE_SPEED,
+          vx: nx * FLAGSHIP_BARRAGE_SPEED * (useRedBarrage ? FLAGSHIP_RED_BARRAGE_SPEED_MULT : 1),
+          vy: ny * FLAGSHIP_BARRAGE_SPEED * (useRedBarrage ? FLAGSHIP_RED_BARRAGE_SPEED_MULT : 1),
           damage: FLAGSHIP_BARRAGE_DAMAGE,
-          size: FLAGSHIP_BARRAGE_SIZE,
+          size: useRedBarrage ? FLAGSHIP_RED_BARRAGE_SIZE : FLAGSHIP_BARRAGE_SIZE,
           life: FLAGSHIP_BARRAGE_LIFE_MS,
           maxLife: FLAGSHIP_BARRAGE_LIFE_MS,
-          color: '#86DFFF',
-          glowColor: 'rgba(105,207,255,0.16)',
+          color: useRedBarrage ? '#FF4E4E' : '#86DFFF',
+          glowColor: useRedBarrage ? 'rgba(255,70,70,0.2)' : 'rgba(105,207,255,0.16)',
         });
       }
       continue;
