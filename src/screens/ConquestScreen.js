@@ -1,6 +1,6 @@
 // src/screens/ConquestScreen.js
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Animated,
 } from 'react-native';
 import { QUADRANT_DEFS } from '../utils/constants';
 const SPACE_STATION_SPRITE = require('../../space station.png');
@@ -80,10 +81,42 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
   const totalBreaches  = gTerritories.reduce((s, t) => s + (t.losses || 0), 0);
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
+  const driftAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
   gTerritories.forEach((t) => { tierCounts[getThreatLevel(t.threat)]++; });
+  const driftStars = useMemo(() => {
+    let seed = 0;
+    const key = String(galaxy?.id || 'galaxy');
+    for (let i = 0; i < key.length; i++) seed = ((seed * 31) + key.charCodeAt(i)) >>> 0;
+    const rand = () => {
+      seed = (1664525 * seed + 1013904223) >>> 0;
+      return seed / 0xFFFFFFFF;
+    };
+    return Array.from({ length: 80 }, (_, i) => ({
+      id: `drift-${i}`,
+      left: `${(rand() * 100).toFixed(3)}%`,
+      top: `${(rand() * 100).toFixed(3)}%`,
+      size: 0.8 + rand() * 2.4,
+      opacity: 0.12 + rand() * 0.42,
+    }));
+  }, [galaxy?.id]);
+
+  useEffect(() => {
+    driftAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(driftAnim, { toValue: 1, duration: 14000, useNativeDriver: true }),
+        Animated.timing(driftAnim, { toValue: 0, duration: 14000, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [driftAnim, galaxy?.id]);
+
+  const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
+  const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
 
   return (
     <View style={styles.overlay}>
@@ -91,6 +124,26 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
       <View style={[styles.panel, { borderColor: qColor + '55' }]}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.driftLayer, { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] }]}
+        >
+          {driftStars.map((s) => (
+            <View
+              key={s.id}
+              style={{
+                position: 'absolute',
+                left: s.left,
+                top: s.top,
+                width: s.size,
+                height: s.size,
+                borderRadius: s.size / 2,
+                opacity: s.opacity,
+                backgroundColor: '#CFE6FF',
+              }}
+            />
+          ))}
+        </Animated.View>
 
         {/* ── Header ──────────────────────────────────────── */}
         <View style={styles.header}>
@@ -332,6 +385,14 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 22,
     maxHeight: '90%',
+    overflow: 'hidden',
+  },
+  driftLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 
   // ── Header ────────────────────────────────────────────────
