@@ -17,7 +17,7 @@ import { GALAXIES, QUADRANT_DEFS } from '../utils/constants';
 import { PART_TYPES, getMetaUpgradePartCost } from '../systems/MetaUpgradeSystem';
 import ConquestScreen from './ConquestScreen';
 import { getStationUpgradeCost } from '../systems/NemesisSystem';
-import TILE_MANIFEST from '../../no_blur_universe_system/assets/universe/manifest.json';
+import TILE_MANIFEST from '../../no_blur_universe_system_png_fixed/assets/universe/manifest.json';
 
 const LOGICAL_MAP_WIDTH = 2400;
 const LOGICAL_MAP_HEIGHT = 1400;

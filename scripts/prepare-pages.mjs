@@ -3,7 +3,7 @@ import path from "node:path";
 
 const repoBase = "/interstellar-elite";
 const distDir = path.resolve("dist");
-const tiledUniverseSrc = path.resolve("no_blur_universe_system", "assets", "universe");
+const tiledUniverseSrc = path.resolve("no_blur_universe_system_png_fixed", "assets", "universe");
 const tiledUniverseDest = path.join(distDir, "assets", "universe");
 
 if (!fs.existsSync(distDir)) {

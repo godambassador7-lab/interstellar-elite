@@ -1,0 +1,32 @@
+{
+  "tileSize": 512,
+  "levels": {
+    "0": {
+      "width": 1536,
+      "height": 885,
+      "cols": 3,
+      "rows": 2
+    },
+    "1": {
+      "width": 3072,
+      "height": 1770,
+      "cols": 6,
+      "rows": 4
+    },
+    "2": {
+      "width": 6144,
+      "height": 3540,
+      "cols": 12,
+      "rows": 7
+    },
+    "3": {
+      "width": 12288,
+      "height": 7080,
+      "cols": 24,
+      "rows": 14
+    }
+  },
+  "format": "png",
+  "sourceWidth": 12288,
+  "sourceHeight": 7080
+}
