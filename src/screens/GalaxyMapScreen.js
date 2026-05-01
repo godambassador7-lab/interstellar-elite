@@ -48,9 +48,10 @@ const TILE_LEVEL_KEYS = Object.keys(TILE_LEVELS).map((k) => Number(k)).sort((a, 
 
 function chooseTileLevel(zoom) {
   if (!TILE_LEVEL_KEYS.length) return 0;
-  if (zoom < 0.7) return Math.min(1, TILE_LEVEL_KEYS.length - 1);
-  if (zoom < 1.2) return Math.min(2, TILE_LEVEL_KEYS.length - 1);
-  if (zoom < 1.9) return Math.min(3, TILE_LEVEL_KEYS.length - 1);
+  // Bias toward higher-detail tiles earlier so 100% map zoom is sharp.
+  if (zoom < 0.22) return Math.min(1, TILE_LEVEL_KEYS.length - 1);
+  if (zoom < 0.45) return Math.min(2, TILE_LEVEL_KEYS.length - 1);
+  if (zoom < 0.75) return Math.min(3, TILE_LEVEL_KEYS.length - 1);
   return Math.min(4, TILE_LEVEL_KEYS.length - 1);
 }
 
