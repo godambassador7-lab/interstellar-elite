@@ -19,7 +19,7 @@ import { getStationUpgradeCost } from '../systems/NemesisSystem';
 
 const BASE_MAP_WIDTH = 2400;
 const BASE_MAP_HEIGHT = 1400;
-const MAP_REPEAT_X = 2;
+const MAP_REPEAT_X = 1;
 const MAP_WIDTH = BASE_MAP_WIDTH * MAP_REPEAT_X;
 const MAP_HEIGHT = BASE_MAP_HEIGHT;
 const ZOOM_MAX = 4.2;
@@ -523,11 +523,6 @@ export default function GalaxyMapScreen({
             <Image
               source={UNIVERSE_MAP_IMAGE}
               style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
-              resizeMode="cover"
-            />
-            <Image
-              source={UNIVERSE_MAP_IMAGE}
-              style={[styles.mapImage, { left: BASE_MAP_WIDTH * zoom, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom, opacity: 0.72 }]}
               resizeMode="cover"
             />
             <DoubleChevronArrow
