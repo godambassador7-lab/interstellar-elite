@@ -10,6 +10,7 @@ import {
   Image,
   Dimensions,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import { GALAXIES, QUADRANT_DEFS } from '../utils/constants';
 import { PART_TYPES, getMetaUpgradePartCost } from '../systems/MetaUpgradeSystem';
@@ -123,6 +124,7 @@ export default function GalaxyMapScreen({
   const [conquestGalaxy, setConquestGalaxy] = useState(null);
   const [isPinching, setIsPinching] = useState(false);
   const [viewport, setViewport] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const activeBeaconAnim = useRef(new Animated.Value(0)).current;
   const outerScrollRef = useRef(null);
   const innerScrollRef = useRef(null);
   const scrollXRef = useRef(0);
@@ -154,6 +156,25 @@ export default function GalaxyMapScreen({
     zoomRef.current = zoom;
   }, [zoom]);
 
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(activeBeaconAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(activeBeaconAnim, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [activeBeaconAnim]);
+
   const scaledWidth = Math.round(MAP_WIDTH * zoom);
   const scaledHeight = Math.round(MAP_HEIGHT * zoom);
 
@@ -181,6 +202,10 @@ export default function GalaxyMapScreen({
   const activeQuadrantId = useMemo(() => {
     const idx = Math.max(0, Math.min(unlockedGalaxyIndex, GALAXIES.length - 1));
     return GALAXIES[idx]?.quadrant || QUADRANT_DEFS[0]?.id;
+  }, [unlockedGalaxyIndex]);
+  const activeGalaxyId = useMemo(() => {
+    const idx = Math.max(0, Math.min(unlockedGalaxyIndex, GALAXIES.length - 1));
+    return GALAXIES[idx]?.id;
   }, [unlockedGalaxyIndex]);
 
   const organicBoundaries = useMemo(() => {
@@ -706,9 +731,60 @@ export default function GalaxyMapScreen({
               const x  = g.x * zoom;
               const y  = g.y * zoom;
               const sz = (g.unlocked ? 22 : 18) * zoom;
+              const isActiveGalaxy = g.id === activeGalaxyId;
+              const beaconScaleOuter = activeBeaconAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.9, 1.55],
+              });
+              const beaconOpacityOuter = activeBeaconAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.5, 0.08],
+              });
+              const beaconScaleInner = activeBeaconAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.78, 1.2],
+              });
+              const beaconOpacityInner = activeBeaconAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.42, 0.12],
+              });
 
               return (
                 <View key={g.id}>
+                  {isActiveGalaxy && g.unlocked && (
+                    <>
+                      <Animated.View
+                        pointerEvents="none"
+                        style={{
+                          position: 'absolute',
+                          left: x - sz * 1.32,
+                          top: y - sz * 1.32,
+                          width: sz * 2.64,
+                          height: sz * 2.64,
+                          borderRadius: sz * 1.32,
+                          borderWidth: Math.max(1.5, 2.2 * zoom),
+                          borderColor: '#33E7FF',
+                          opacity: beaconOpacityOuter,
+                          transform: [{ scale: beaconScaleOuter }],
+                        }}
+                      />
+                      <Animated.View
+                        pointerEvents="none"
+                        style={{
+                          position: 'absolute',
+                          left: x - sz * 1.02,
+                          top: y - sz * 1.02,
+                          width: sz * 2.04,
+                          height: sz * 2.04,
+                          borderRadius: sz * 1.02,
+                          borderWidth: Math.max(1, 1.5 * zoom),
+                          borderColor: '#86F6FF',
+                          opacity: beaconOpacityInner,
+                          transform: [{ scale: beaconScaleInner }],
+                        }}
+                      />
+                    </>
+                  )}
                   <TouchableOpacity
                     activeOpacity={g.unlocked ? 0.8 : 1}
                     disabled={!g.unlocked}
