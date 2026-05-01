@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Image,
   Dimensions,
   SafeAreaView,
   Animated,
@@ -20,9 +21,18 @@ const LOGICAL_MAP_WIDTH = 2400;
 const LOGICAL_MAP_HEIGHT = 1400;
 const MAP_REPEAT_X = 1;
 const PINCH_SENSITIVITY = 0.96;
+const UNIVERSE_MAP_IMAGE = require('../../universe map (1).png');
 const ZOOM_MAX = 4.2;
-const BASE_MAP_WIDTH = LOGICAL_MAP_WIDTH;
-const BASE_MAP_HEIGHT = LOGICAL_MAP_HEIGHT;
+let MAP_ASSET = {};
+try {
+  MAP_ASSET = typeof Image.resolveAssetSource === 'function'
+    ? (Image.resolveAssetSource(UNIVERSE_MAP_IMAGE) || {})
+    : {};
+} catch (_) {
+  MAP_ASSET = {};
+}
+const BASE_MAP_WIDTH = MAP_ASSET.width || LOGICAL_MAP_WIDTH;
+const BASE_MAP_HEIGHT = MAP_ASSET.height || LOGICAL_MAP_HEIGHT;
 const MAP_SCALE_X = BASE_MAP_WIDTH / LOGICAL_MAP_WIDTH;
 const MAP_SCALE_Y = BASE_MAP_HEIGHT / LOGICAL_MAP_HEIGHT;
 const MAP_WIDTH = BASE_MAP_WIDTH * MAP_REPEAT_X;
@@ -36,23 +46,6 @@ const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
   opacity: 0.2 + Math.random() * 0.7,
 }));
 
-const NEBULA_CLOUDS = [
-  { id: 'n1', x: 360, y: 260, w: 900, h: 520, color: 'rgba(104,140,255,0.23)', rot: '-8deg' },
-  { id: 'n2', x: 1280, y: 260, w: 980, h: 560, color: 'rgba(176,100,255,0.2)', rot: '16deg' },
-  { id: 'n3', x: 1940, y: 980, w: 840, h: 540, color: 'rgba(94,210,255,0.19)', rot: '-20deg' },
-  { id: 'n4', x: 760, y: 1020, w: 1100, h: 640, color: 'rgba(118,178,255,0.19)', rot: '10deg' },
-  { id: 'n5', x: 1980, y: 420, w: 620, h: 440, color: 'rgba(255,124,218,0.16)', rot: '28deg' },
-  { id: 'n6', x: 190, y: 1130, w: 640, h: 440, color: 'rgba(255,168,96,0.16)', rot: '-24deg' },
-];
-
-const SWIRL_STREAMS = [
-  { id: 's1', x: 240, y: 330, len: 1100, thick: 9, color: 'rgba(180,218,255,0.42)', rot: '-20deg' },
-  { id: 's2', x: 940, y: 260, len: 1240, thick: 10, color: 'rgba(164,215,255,0.4)', rot: '12deg' },
-  { id: 's3', x: 460, y: 760, len: 1340, thick: 9, color: 'rgba(170,190,255,0.38)', rot: '24deg' },
-  { id: 's4', x: 1140, y: 930, len: 1120, thick: 8, color: 'rgba(186,236,255,0.4)', rot: '-17deg' },
-  { id: 's5', x: 130, y: 1120, len: 980, thick: 8, color: 'rgba(255,192,126,0.28)', rot: '8deg' },
-  { id: 's6', x: 1450, y: 520, len: 880, thick: 8, color: 'rgba(230,166,255,0.3)', rot: '-27deg' },
-];
 
 function DoubleChevronArrow({ left, top, scale = 1, color = '#33D6FF', rotation = 0 }) {
   const w = 116 * scale;
@@ -151,6 +144,7 @@ export default function GalaxyMapScreen({
   const scrollXRef = useRef(0);
   const scrollYRef = useRef(0);
   const zoomRef = useRef(1);
+  const didInitZoomRef = useRef(false);
   const pinchRafRef = useRef(null);
   const pendingPinchRef = useRef(null);
   const pinchRef = useRef({
@@ -173,6 +167,12 @@ export default function GalaxyMapScreen({
   useEffect(() => {
     setZoom((z) => Math.max(zoomMin, Math.min(ZOOM_MAX, z)));
   }, [zoomMin]);
+  useEffect(() => {
+    if (didInitZoomRef.current) return;
+    if (!viewport.width || !viewport.height) return;
+    setZoom(zoomMin);
+    didInitZoomRef.current = true;
+  }, [zoomMin, viewport.width, viewport.height]);
   useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
@@ -595,59 +595,11 @@ export default function GalaxyMapScreen({
               onResponderRelease={endPinch}
               onResponderTerminate={endPinch}
             >
-            <View
-              pointerEvents="none"
-              style={[
-                styles.proceduralBackdrop,
-                { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom },
-              ]}
+            <Image
+              source={UNIVERSE_MAP_IMAGE}
+              style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
+              resizeMode="cover"
             />
-
-            {NEBULA_CLOUDS.map((cloud) => (
-              <View
-                key={cloud.id}
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  left: (cloud.x - cloud.w / 2) * zoom,
-                  top: (cloud.y - cloud.h / 2) * zoom,
-                  width: cloud.w * zoom,
-                  height: cloud.h * zoom,
-                  borderRadius: 9999,
-                  backgroundColor: cloud.color,
-                  transform: [{ rotate: cloud.rot }],
-                }}
-              />
-            ))}
-
-            {SWIRL_STREAMS.map((stream) => (
-              <View key={stream.id} pointerEvents="none">
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: stream.x * zoom,
-                    top: stream.y * zoom,
-                    width: stream.len * zoom,
-                    height: Math.max(1, stream.thick * zoom),
-                    borderRadius: 9999,
-                    backgroundColor: stream.color,
-                    transform: [{ rotate: stream.rot }],
-                  }}
-                />
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: (stream.x + 28) * zoom,
-                    top: (stream.y + 10) * zoom,
-                    width: (stream.len * 0.9) * zoom,
-                    height: Math.max(1, stream.thick * 0.38 * zoom),
-                    borderRadius: 9999,
-                    backgroundColor: 'rgba(228,245,255,0.42)',
-                    transform: [{ rotate: stream.rot }],
-                  }}
-                />
-              </View>
-            ))}
             <DoubleChevronArrow
               left={expansionArrow.mapX * MAP_SCALE_X * zoom - 58}
               top={expansionArrow.mapY * MAP_SCALE_Y * zoom - 58}
@@ -906,8 +858,8 @@ export default function GalaxyMapScreen({
                   <TouchableOpacity
                     activeOpacity={g.unlocked ? 0.8 : 1}
                     disabled={!g.unlocked}
-                    onPress={() => onSelectGalaxy(g)}
-                    onLongPress={() => setConquestGalaxy(g)}
+                    onPress={() => setConquestGalaxy(g)}
+                    onLongPress={() => onSelectGalaxy(g)}
                     delayLongPress={420}
                     style={{
                       position: 'absolute',
@@ -1297,9 +1249,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#060A14',
     overflow: 'hidden',
   },
-  proceduralBackdrop: {
+  mapImage: {
     position: 'absolute',
-    backgroundColor: '#041024',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 1,
   },
   quadLegend: {
     flexDirection: 'row',
