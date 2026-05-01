@@ -7,93 +7,26 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
   Dimensions,
   SafeAreaView,
   Animated,
-  Platform,
 } from 'react-native';
 import { GALAXIES, QUADRANT_DEFS } from '../utils/constants';
 import { PART_TYPES, getMetaUpgradePartCost } from '../systems/MetaUpgradeSystem';
 import ConquestScreen from './ConquestScreen';
 import { getStationUpgradeCost } from '../systems/NemesisSystem';
-import TILE_MANIFEST from '../../no_blur_universe_system_png_fixed/assets/universe/manifest.json';
 
 const LOGICAL_MAP_WIDTH = 2400;
 const LOGICAL_MAP_HEIGHT = 1400;
 const MAP_REPEAT_X = 1;
 const PINCH_SENSITIVITY = 0.96;
-const UNIVERSE_MAP_IMAGE = require('../../universe map.png');
-const USE_TILED_UNIVERSE_BG = Platform.OS === 'web';
-const ZOOM_MAX = USE_TILED_UNIVERSE_BG ? 1 : 4.2;
-const TILED_SOURCE_WIDTH = Number(TILE_MANIFEST?.sourceWidth) || 12288;
-const TILED_SOURCE_HEIGHT = Number(TILE_MANIFEST?.sourceHeight) || 7080;
-let MAP_ASSET = {};
-try {
-  MAP_ASSET = typeof Image.resolveAssetSource === 'function'
-    ? (Image.resolveAssetSource(UNIVERSE_MAP_IMAGE) || {})
-    : {};
-} catch (_) {
-  MAP_ASSET = {};
-}
-const BASE_MAP_WIDTH = USE_TILED_UNIVERSE_BG ? TILED_SOURCE_WIDTH : (MAP_ASSET.width || LOGICAL_MAP_WIDTH);
-const BASE_MAP_HEIGHT = USE_TILED_UNIVERSE_BG ? TILED_SOURCE_HEIGHT : (MAP_ASSET.height || LOGICAL_MAP_HEIGHT);
+const ZOOM_MAX = 4.2;
+const BASE_MAP_WIDTH = LOGICAL_MAP_WIDTH;
+const BASE_MAP_HEIGHT = LOGICAL_MAP_HEIGHT;
 const MAP_SCALE_X = BASE_MAP_WIDTH / LOGICAL_MAP_WIDTH;
 const MAP_SCALE_Y = BASE_MAP_HEIGHT / LOGICAL_MAP_HEIGHT;
 const MAP_WIDTH = BASE_MAP_WIDTH * MAP_REPEAT_X;
 const MAP_HEIGHT = BASE_MAP_HEIGHT;
-const TILE_SIZE = Number(TILE_MANIFEST?.tileSize) || 512;
-const TILE_LEVELS = TILE_MANIFEST?.levels || {};
-const TILE_LEVEL_KEYS = Object.keys(TILE_LEVELS).map((k) => Number(k)).sort((a, b) => a - b);
-
-function chooseTileLevel(zoom) {
-  if (!TILE_LEVEL_KEYS.length) return 0;
-  // Force top-detail tiles for normal interaction zooms to eliminate blur.
-  if (zoom < 0.08) return Math.min(1, TILE_LEVEL_KEYS.length - 1);
-  if (zoom < 0.14) return Math.min(2, TILE_LEVEL_KEYS.length - 1);
-  if (zoom < 0.22) return Math.min(3, TILE_LEVEL_KEYS.length - 1);
-  return Math.min(4, TILE_LEVEL_KEYS.length - 1);
-}
-
-function getTileUri(level, col, row) {
-  return `/interstellar-elite/assets/universe/tiles/${level}/${col}_${row}.png`;
-}
-
-function getJpgFallbackUri(level, col, row) {
-  return `/interstellar-elite/assets/universe/tiles/${level}/${col}_${row}.jpg`;
-}
-
-function MapTileImage({ tile }) {
-  const [useJpg, setUseJpg] = useState(false);
-  const sourceUri = useJpg ? tile.jpgUri : tile.pngUri;
-  const tileStyle = { left: tile.left, top: tile.top, width: tile.width, height: tile.height };
-  if (Platform.OS === 'web') {
-    return (
-      <img
-        alt=""
-        draggable={false}
-        src={sourceUri}
-        onError={() => {
-          if (!useJpg) setUseJpg(true);
-        }}
-        style={{
-          ...styles.webMapTile,
-          ...tileStyle,
-        }}
-      />
-    );
-  }
-  return (
-    <Image
-      source={{ uri: sourceUri }}
-      style={[styles.mapImage, tileStyle]}
-      resizeMode="stretch"
-      onError={() => {
-        if (!useJpg) setUseJpg(true);
-      }}
-    />
-  );
-}
 
 const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
   id: i,
@@ -102,6 +35,24 @@ const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
   size: 0.8 + Math.random() * 2.1,
   opacity: 0.2 + Math.random() * 0.7,
 }));
+
+const NEBULA_CLOUDS = [
+  { id: 'n1', x: 360, y: 260, w: 900, h: 520, color: 'rgba(104,140,255,0.23)', rot: '-8deg' },
+  { id: 'n2', x: 1280, y: 260, w: 980, h: 560, color: 'rgba(176,100,255,0.2)', rot: '16deg' },
+  { id: 'n3', x: 1940, y: 980, w: 840, h: 540, color: 'rgba(94,210,255,0.19)', rot: '-20deg' },
+  { id: 'n4', x: 760, y: 1020, w: 1100, h: 640, color: 'rgba(118,178,255,0.19)', rot: '10deg' },
+  { id: 'n5', x: 1980, y: 420, w: 620, h: 440, color: 'rgba(255,124,218,0.16)', rot: '28deg' },
+  { id: 'n6', x: 190, y: 1130, w: 640, h: 440, color: 'rgba(255,168,96,0.16)', rot: '-24deg' },
+];
+
+const SWIRL_STREAMS = [
+  { id: 's1', x: 240, y: 330, len: 1100, thick: 9, color: 'rgba(180,218,255,0.42)', rot: '-20deg' },
+  { id: 's2', x: 940, y: 260, len: 1240, thick: 10, color: 'rgba(164,215,255,0.4)', rot: '12deg' },
+  { id: 's3', x: 460, y: 760, len: 1340, thick: 9, color: 'rgba(170,190,255,0.38)', rot: '24deg' },
+  { id: 's4', x: 1140, y: 930, len: 1120, thick: 8, color: 'rgba(186,236,255,0.4)', rot: '-17deg' },
+  { id: 's5', x: 130, y: 1120, len: 980, thick: 8, color: 'rgba(255,192,126,0.28)', rot: '8deg' },
+  { id: 's6', x: 1450, y: 520, len: 880, thick: 8, color: 'rgba(230,166,255,0.3)', rot: '-27deg' },
+];
 
 function DoubleChevronArrow({ left, top, scale = 1, color = '#33D6FF', rotation = 0 }) {
   const w = 116 * scale;
@@ -249,33 +200,6 @@ export default function GalaxyMapScreen({
   const scaledHeight = Math.round(MAP_HEIGHT * zoom);
   const contentWidth = Math.max(scaledWidth, viewport.width || 0);
   const contentHeight = Math.max(scaledHeight, viewport.height || 0);
-  const tileLevel = useMemo(() => chooseTileLevel(zoom), [zoom]);
-  const activeLevel = TILE_LEVELS[String(tileLevel)] || null;
-  const backgroundTiles = useMemo(() => {
-    if (!USE_TILED_UNIVERSE_BG || !activeLevel) return [];
-    const levelScaleX = BASE_MAP_WIDTH / Math.max(1, activeLevel.width);
-    const levelScaleY = BASE_MAP_HEIGHT / Math.max(1, activeLevel.height);
-    const levelScale = Math.max(levelScaleX, levelScaleY);
-    const tiles = [];
-    for (let y = 0; y < activeLevel.rows; y++) {
-      for (let x = 0; x < activeLevel.cols; x++) {
-        const left = Math.round(x * TILE_SIZE * levelScale * zoom);
-        const top = Math.round(y * TILE_SIZE * levelScale * zoom);
-        const width = Math.round(TILE_SIZE * levelScale * zoom);
-        const height = Math.round(TILE_SIZE * levelScale * zoom);
-        tiles.push({
-          key: `z${tileLevel}-${x}-${y}`,
-          left,
-          top,
-          width,
-          height,
-          pngUri: getTileUri(tileLevel, x, y),
-          jpgUri: getJpgFallbackUri(tileLevel, x, y),
-        });
-      }
-    }
-    return tiles;
-  }, [activeLevel, tileLevel, zoom]);
 
   const avgThreat = useMemo(() => {
     const values = Object.values(territories || {});
@@ -671,17 +595,59 @@ export default function GalaxyMapScreen({
               onResponderRelease={endPinch}
               onResponderTerminate={endPinch}
             >
-            {USE_TILED_UNIVERSE_BG ? (
-              backgroundTiles.map((t) => (
-                <MapTileImage key={t.key} tile={t} />
-              ))
-            ) : (
-              <Image
-                source={UNIVERSE_MAP_IMAGE}
-                style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
-                resizeMode="cover"
+            <View
+              pointerEvents="none"
+              style={[
+                styles.proceduralBackdrop,
+                { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom },
+              ]}
+            />
+
+            {NEBULA_CLOUDS.map((cloud) => (
+              <View
+                key={cloud.id}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: (cloud.x - cloud.w / 2) * zoom,
+                  top: (cloud.y - cloud.h / 2) * zoom,
+                  width: cloud.w * zoom,
+                  height: cloud.h * zoom,
+                  borderRadius: 9999,
+                  backgroundColor: cloud.color,
+                  transform: [{ rotate: cloud.rot }],
+                }}
               />
-            )}
+            ))}
+
+            {SWIRL_STREAMS.map((stream) => (
+              <View key={stream.id} pointerEvents="none">
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: stream.x * zoom,
+                    top: stream.y * zoom,
+                    width: stream.len * zoom,
+                    height: Math.max(1, stream.thick * zoom),
+                    borderRadius: 9999,
+                    backgroundColor: stream.color,
+                    transform: [{ rotate: stream.rot }],
+                  }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: (stream.x + 28) * zoom,
+                    top: (stream.y + 10) * zoom,
+                    width: (stream.len * 0.9) * zoom,
+                    height: Math.max(1, stream.thick * 0.38 * zoom),
+                    borderRadius: 9999,
+                    backgroundColor: 'rgba(228,245,255,0.42)',
+                    transform: [{ rotate: stream.rot }],
+                  }}
+                />
+              </View>
+            ))}
             <DoubleChevronArrow
               left={expansionArrow.mapX * MAP_SCALE_X * zoom - 58}
               top={expansionArrow.mapY * MAP_SCALE_Y * zoom - 58}
@@ -1331,6 +1297,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#060A14',
     overflow: 'hidden',
   },
+  proceduralBackdrop: {
+    position: 'absolute',
+    backgroundColor: '#041024',
+  },
   quadLegend: {
     flexDirection: 'row',
     paddingHorizontal: 14,
@@ -1353,25 +1323,6 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: 'bold',
     letterSpacing: 1,
-  },
-  mapImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-    opacity: 1,
-    imageRendering: 'crisp-edges',
-  },
-  webMapTile: {
-    position: 'absolute',
-    objectFit: 'fill',
-    imageRendering: 'pixelated',
-    userSelect: 'none',
-    WebkitUserDrag: 'none',
-    pointerEvents: 'none',
   },
   galaxyName: {
     fontFamily: 'Courier New',
