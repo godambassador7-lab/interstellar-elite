@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>No-Blur Universe Tile Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { margin:0; height:100%; overflow:hidden; background:#02030a; }
+    #viewport { width:100vw; height:100vh; overflow:hidden; position:relative; cursor:grab; }
+    #world { position:absolute; transform-origin:0 0; }
+    .tile { position:absolute; width:512px; height:512px; user-select:none; pointer-events:none; }
+    #hud {
+      position:absolute; left:14px; top:14px; z-index:10;
+      color:white; font-family:system-ui, sans-serif; font-size:13px;
+      background:rgba(0,0,0,.45); padding:10px 12px; border:1px solid rgba(255,255,255,.2);
+      border-radius:12px; backdrop-filter: blur(8px);
+    }
+  </style>
+</head>
+<body>
+  <div id="viewport">
+    <div id="hud">Drag to pan • Wheel to zoom • Double-click to reset<br><span id="zoomText"></span></div>
+    <div id="world"></div>
+  </div>
+
+<script>
+const manifest = {
+  TILE_SIZE: 512,
+  levels: {"0": {"width": 768, "height": 442, "cols": 2, "rows": 1}, "1": {"width": 1536, "height": 885, "cols": 3, "rows": 2}, "2": {"width": 3072, "height": 1770, "cols": 6, "rows": 4}, "3": {"width": 6144, "height": 3540, "cols": 12, "rows": 7}, "4": {"width": 12288, "height": 7080, "cols": 24, "rows": 14}}
+};
+
+const viewport = document.getElementById("viewport");
+const world = document.getElementById("world");
+const zoomText = document.getElementById("zoomText");
+
+let scale = 1;
+let tx = 0;
+let ty = 0;
+let isDragging = false;
+let lastX = 0;
+let lastY = 0;
+let currentLevel = 0;
+
+function chooseLevel(s) {
+  if (s < 1.35) return 0;
+  if (s < 2.1) return 1;
+  if (s < 3.4) return 2;
+  if (s < 5.2) return 3;
+  return 4;
+}
+
+function renderTiles(levelIndex) {
+  const level = manifest.levels[String(levelIndex)];
+  world.innerHTML = "";
+  world.style.width = level.width + "px";
+  world.style.height = level.height + "px";
+
+  for (let y = 0; y < level.rows; y++) {
+    for (let x = 0; x < level.cols; x++) {
+      const img = document.createElement("img");
+      img.className = "tile";
+      img.src = `assets/universe/tiles/${levelIndex}/${x}_${y}.jpg`;
+      img.style.left = (x * manifest.TILE_SIZE) + "px";
+      img.style.top = (y * manifest.TILE_SIZE) + "px";
+      world.appendChild(img);
+    }
+  }
+}
+
+function applyTransform() {
+  const nextLevel = chooseLevel(scale);
+  if (nextLevel !== currentLevel) {
+    currentLevel = nextLevel;
+    renderTiles(currentLevel);
+  }
+  world.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  zoomText.textContent = `Zoom: ${scale.toFixed(2)}x • Tile level: ${currentLevel}`;
+}
+
+viewport.addEventListener("mousedown", e => {
+  isDragging = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  viewport.style.cursor = "grabbing";
+});
+
+window.addEventListener("mouseup", () => {
+  isDragging = false;
+  viewport.style.cursor = "grab";
+});
+
+window.addEventListener("mousemove", e => {
+  if (!isDragging) return;
+  tx += e.clientX - lastX;
+  ty += e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  applyTransform();
+});
+
+viewport.addEventListener("wheel", e => {
+  e.preventDefault();
+  const before = scale;
+  const delta = e.deltaY < 0 ? 1.13 : 0.88;
+  scale = Math.max(0.55, Math.min(6, scale * delta));
+
+  const rect = viewport.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  tx = mx - ((mx - tx) * (scale / before));
+  ty = my - ((my - ty) * (scale / before));
+  applyTransform();
+}, { passive:false });
+
+viewport.addEventListener("dblclick", () => {
+  scale = 1;
+  tx = 0;
+  ty = 0;
+  applyTransform();
+});
+
+renderTiles(currentLevel);
+applyTransform();
+</script>
+</body>
+</html>
