@@ -189,6 +189,8 @@ export default function GalaxyMapScreen({
 
   const scaledWidth = Math.round(MAP_WIDTH * zoom);
   const scaledHeight = Math.round(MAP_HEIGHT * zoom);
+  const contentWidth = Math.max(scaledWidth, viewport.width || 0);
+  const contentHeight = Math.max(scaledHeight, viewport.height || 0);
 
   const avgThreat = useMemo(() => {
     const values = Object.values(territories || {});
@@ -517,7 +519,7 @@ export default function GalaxyMapScreen({
           onScroll={(e) => { scrollXRef.current = e.nativeEvent.contentOffset.x; }}
           scrollEventThrottle={8}
           style={styles.outerScroll}
-          contentContainerStyle={styles.outerScrollContent}
+          contentContainerStyle={[styles.outerScrollContent, { width: contentWidth }]}
         >
           <ScrollView
             ref={innerScrollRef}
@@ -525,7 +527,12 @@ export default function GalaxyMapScreen({
             onScroll={(e) => { scrollYRef.current = e.nativeEvent.contentOffset.y; }}
             scrollEventThrottle={8}
             style={styles.innerScroll}
-            contentContainerStyle={{ width: scaledWidth, height: scaledHeight }}
+            contentContainerStyle={{
+              width: contentWidth,
+              height: contentHeight,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             <View
               style={[styles.mapCanvas, { width: scaledWidth, height: scaledHeight }]}
