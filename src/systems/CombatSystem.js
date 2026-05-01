@@ -51,10 +51,12 @@ const FIRST_QUADRANT_SPECIAL_CHANCE = 0.05;
 const MAX_PARTICLES = 420;
 const MAX_PHOTONS = 220;
 const MAX_DESTROYER_MISSILES = 64;
-const FLAGSHIP_REINFORCE_BASE_COUNT = 20;
-const FLAGSHIP_REINFORCE_BASE_INTERVAL_MS = 10000;
-const FLAGSHIP_REINFORCE_MAX_COUNT = 50;
-const FLAGSHIP_REINFORCE_MIN_INTERVAL_MS = 5000;
+const FLAGSHIP_REINFORCE_BY_QUADRANT = {
+  bayron: { count: 20, intervalMs: 10000 },   // Quadrant I
+  crimson: { count: 30, intervalMs: 8500 },   // Quadrant II
+  watupi: { count: 40, intervalMs: 7000 },    // Quadrant III
+  ultra316: { count: 50, intervalMs: 5000 },  // Quadrant IV
+};
 
 // Absorb damage into shield first; any overflow hits HP; resets regen timer.
 function applyPlayerDamage(player, amount, source = 'unknown') {
@@ -314,19 +316,9 @@ export function runCombatFrame(state, deltaMs) {
     const distSq = dx * dx + dy * dy;
     const quadrant = state?.galaxy?.quadrant || '';
     const inFirstQuadrant = quadrant === 'bayron';
-    const isFourthQuadrant = quadrant === 'ultra316';
-    const threat = Math.max(1, Number(state?.galaxy?.threat) || 1);
-    const fourthQuadrantScale = isFourthQuadrant
-      ? Math.max(0, Math.min(1, (threat - 3.6) / (5 - 3.6)))
-      : 0;
-    const reinforceCount = Math.round(
-      FLAGSHIP_REINFORCE_BASE_COUNT +
-      (FLAGSHIP_REINFORCE_MAX_COUNT - FLAGSHIP_REINFORCE_BASE_COUNT) * fourthQuadrantScale
-    );
-    const reinforceIntervalMs = Math.round(
-      FLAGSHIP_REINFORCE_BASE_INTERVAL_MS -
-      (FLAGSHIP_REINFORCE_BASE_INTERVAL_MS - FLAGSHIP_REINFORCE_MIN_INTERVAL_MS) * fourthQuadrantScale
-    );
+    const reinforceCfg = FLAGSHIP_REINFORCE_BY_QUADRANT[quadrant] || FLAGSHIP_REINFORCE_BY_QUADRANT.bayron;
+    const reinforceCount = reinforceCfg.count;
+    const reinforceIntervalMs = reinforceCfg.intervalMs;
 
     if (!enemy.flagshipPattern) {
       enemy.flagshipPattern = {
