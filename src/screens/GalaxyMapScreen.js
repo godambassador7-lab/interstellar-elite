@@ -17,14 +17,19 @@ import { PART_TYPES, getMetaUpgradePartCost } from '../systems/MetaUpgradeSystem
 import ConquestScreen from './ConquestScreen';
 import { getStationUpgradeCost } from '../systems/NemesisSystem';
 
-const BASE_MAP_WIDTH = 2400;
-const BASE_MAP_HEIGHT = 1400;
+const LOGICAL_MAP_WIDTH = 2400;
+const LOGICAL_MAP_HEIGHT = 1400;
 const MAP_REPEAT_X = 1;
-const MAP_WIDTH = BASE_MAP_WIDTH * MAP_REPEAT_X;
-const MAP_HEIGHT = BASE_MAP_HEIGHT;
 const ZOOM_MAX = 4.2;
 const PINCH_SENSITIVITY = 0.96;
 const UNIVERSE_MAP_IMAGE = require('../../universe map.png');
+const MAP_ASSET = Image.resolveAssetSource(UNIVERSE_MAP_IMAGE) || {};
+const BASE_MAP_WIDTH = MAP_ASSET.width || LOGICAL_MAP_WIDTH;
+const BASE_MAP_HEIGHT = MAP_ASSET.height || LOGICAL_MAP_HEIGHT;
+const MAP_SCALE_X = BASE_MAP_WIDTH / LOGICAL_MAP_WIDTH;
+const MAP_SCALE_Y = BASE_MAP_HEIGHT / LOGICAL_MAP_HEIGHT;
+const MAP_WIDTH = BASE_MAP_WIDTH * MAP_REPEAT_X;
+const MAP_HEIGHT = BASE_MAP_HEIGHT;
 
 const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
   id: i,
@@ -215,9 +220,9 @@ export default function GalaxyMapScreen({
     const hStep = 24;
     const ampV = 44;
     const ampH = 40;
-    const jitterV = Array.from({ length: Math.ceil(BASE_MAP_HEIGHT / vStep) + 2 }, (_, i) => Math.sin(i * 3.11) * 10 + Math.cos(i * 1.73) * 6);
-    const jitterH = Array.from({ length: Math.ceil(BASE_MAP_WIDTH / hStep) + 2 }, (_, i) => Math.sin(i * 2.67) * 9 + Math.cos(i * 1.39) * 7);
-    for (let y = 0; y <= BASE_MAP_HEIGHT; y += vStep) {
+    const jitterV = Array.from({ length: Math.ceil(LOGICAL_MAP_HEIGHT / vStep) + 2 }, (_, i) => Math.sin(i * 3.11) * 10 + Math.cos(i * 1.73) * 6);
+    const jitterH = Array.from({ length: Math.ceil(LOGICAL_MAP_WIDTH / hStep) + 2 }, (_, i) => Math.sin(i * 2.67) * 9 + Math.cos(i * 1.39) * 7);
+    for (let y = 0; y <= LOGICAL_MAP_HEIGHT; y += vStep) {
       const idx = Math.floor(y / vStep);
       const x = 1200
         + Math.sin(y * 0.0105) * ampV
@@ -225,7 +230,7 @@ export default function GalaxyMapScreen({
         + jitterV[idx];
       pointsV.push({ x, y });
     }
-    for (let x = 0; x <= BASE_MAP_WIDTH; x += hStep) {
+    for (let x = 0; x <= LOGICAL_MAP_WIDTH; x += hStep) {
       const idx = Math.floor(x / hStep);
       const y = 700
         + Math.sin(x * 0.0096) * ampH
@@ -249,31 +254,31 @@ export default function GalaxyMapScreen({
 
   const expansionArrow = useMemo(() => {
     if (!galaxies.length) {
-      return { mapX: BASE_MAP_WIDTH * 0.9, mapY: BASE_MAP_HEIGHT * 0.5, rotation: 90 };
+      return { mapX: LOGICAL_MAP_WIDTH * 0.9, mapY: LOGICAL_MAP_HEIGHT * 0.5, rotation: 90 };
     }
 
     const xs = galaxies.map((g) => g.x);
     const ys = galaxies.map((g) => g.y);
     const minX = Math.max(0, Math.min(...xs));
-    const maxX = Math.min(MAP_WIDTH, Math.max(...xs));
+    const maxX = Math.min(LOGICAL_MAP_WIDTH, Math.max(...xs));
     const minY = Math.max(0, Math.min(...ys));
-    const maxY = Math.min(MAP_HEIGHT, Math.max(...ys));
+    const maxY = Math.min(LOGICAL_MAP_HEIGHT, Math.max(...ys));
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
 
     const spaces = [
       { dir: 'left', value: minX },
-      { dir: 'right', value: MAP_WIDTH - maxX },
+      { dir: 'right', value: LOGICAL_MAP_WIDTH - maxX },
       { dir: 'up', value: minY },
-      { dir: 'down', value: MAP_HEIGHT - maxY },
+      { dir: 'down', value: LOGICAL_MAP_HEIGHT - maxY },
     ];
     spaces.sort((a, b) => b.value - a.value);
     const winner = spaces[0]?.dir || 'right';
 
     if (winner === 'left') return { mapX: Math.max(96, minX - 120), mapY: centerY, rotation: -90 };
     if (winner === 'up') return { mapX: centerX, mapY: Math.max(96, minY - 120), rotation: 0 };
-    if (winner === 'down') return { mapX: centerX, mapY: Math.min(MAP_HEIGHT - 96, maxY + 120), rotation: 180 };
-    return { mapX: Math.min(MAP_WIDTH - 96, maxX + 120), mapY: centerY, rotation: 90 };
+    if (winner === 'down') return { mapX: centerX, mapY: Math.min(LOGICAL_MAP_HEIGHT - 96, maxY + 120), rotation: 180 };
+    return { mapX: Math.min(LOGICAL_MAP_WIDTH - 96, maxX + 120), mapY: centerY, rotation: 90 };
   }, [galaxies]);
 
   const clampScroll = useCallback((x, y, targetZoom) => {
@@ -348,23 +353,27 @@ export default function GalaxyMapScreen({
     const xs = unlocked.map((g) => g.x);
     const ys = unlocked.map((g) => g.y);
     const minX = Math.max(0, Math.min(...xs) - padding);
-    const maxX = Math.min(BASE_MAP_WIDTH, Math.max(...xs) + padding);
+    const maxX = Math.min(LOGICAL_MAP_WIDTH, Math.max(...xs) + padding);
     const minY = Math.max(0, Math.min(...ys) - padding);
-    const maxY = Math.min(BASE_MAP_HEIGHT, Math.max(...ys) + padding);
+    const maxY = Math.min(LOGICAL_MAP_HEIGHT, Math.max(...ys) + padding);
 
     const { width, height } = Dimensions.get('window');
     const viewportW = Math.max(280, width - 24);
     const viewportH = Math.max(320, height - 300);
     const targetZoom = Math.max(
       zoomMin,
-      Math.min(ZOOM_MAX, viewportW / (maxX - minX), viewportH / (maxY - minY))
+      Math.min(
+        ZOOM_MAX,
+        viewportW / Math.max(1, (maxX - minX) * MAP_SCALE_X),
+        viewportH / Math.max(1, (maxY - minY) * MAP_SCALE_Y)
+      )
     );
 
     setZoom(targetZoom);
 
     requestAnimationFrame(() => {
-      const centerX = ((minX + maxX) / 2) * targetZoom;
-      const centerY = ((minY + maxY) / 2) * targetZoom;
+      const centerX = ((minX + maxX) / 2) * MAP_SCALE_X * targetZoom;
+      const centerY = ((minY + maxY) / 2) * MAP_SCALE_Y * targetZoom;
       const scrollX = Math.max(0, centerX - viewportW / 2);
       const scrollY = Math.max(0, centerY - viewportH / 2);
       outerScrollRef.current?.scrollTo?.({ x: scrollX, animated: true });
@@ -419,8 +428,8 @@ export default function GalaxyMapScreen({
     const targetZoom = Math.max(zoomMin, Math.min(ZOOM_MAX, 2.15));
     setZoom(targetZoom);
     requestAnimationFrame(() => {
-      const targetX = g.x * targetZoom - viewport.width / 2;
-      const targetY = g.y * targetZoom - viewport.height / 2;
+      const targetX = g.x * MAP_SCALE_X * targetZoom - viewport.width / 2;
+      const targetY = g.y * MAP_SCALE_Y * targetZoom - viewport.height / 2;
       const maxX = Math.max(0, MAP_WIDTH * targetZoom - viewport.width);
       const maxY = Math.max(0, MAP_HEIGHT * targetZoom - viewport.height);
       const scrollX = Math.max(0, Math.min(maxX, targetX));
@@ -526,8 +535,8 @@ export default function GalaxyMapScreen({
               resizeMode="cover"
             />
             <DoubleChevronArrow
-              left={expansionArrow.mapX * zoom - 58}
-              top={expansionArrow.mapY * zoom - 58}
+              left={expansionArrow.mapX * MAP_SCALE_X * zoom - 58}
+              top={expansionArrow.mapY * MAP_SCALE_Y * zoom - 58}
               scale={Math.max(0.8, zoom * 0.9)}
               color="#2FD8FF"
               rotation={expansionArrow.rotation}
@@ -539,10 +548,10 @@ export default function GalaxyMapScreen({
                 key={`qbg-${q.id}`}
                 style={{
                   position: 'absolute',
-                  left: q.x1 * zoom,
-                  top: q.y1 * zoom,
-                  width: (q.x2 - q.x1) * zoom,
-                  height: (q.y2 - q.y1) * zoom,
+                  left: q.x1 * MAP_SCALE_X * zoom,
+                  top: q.y1 * MAP_SCALE_Y * zoom,
+                  width: (q.x2 - q.x1) * MAP_SCALE_X * zoom,
+                  height: (q.y2 - q.y1) * MAP_SCALE_Y * zoom,
                   backgroundColor: q.bgColor,
                 }}
               />
@@ -552,10 +561,10 @@ export default function GalaxyMapScreen({
             {organicBoundaries.pointsV.map((p, i) => {
               if (i === 0) return null;
               const prev = organicBoundaries.pointsV[i - 1];
-              const x1 = prev.x * zoom;
-              const y1 = prev.y * zoom;
-              const x2 = p.x * zoom;
-              const y2 = p.y * zoom;
+              const x1 = prev.x * MAP_SCALE_X * zoom;
+              const y1 = prev.y * MAP_SCALE_Y * zoom;
+              const x2 = p.x * MAP_SCALE_X * zoom;
+              const y2 = p.y * MAP_SCALE_Y * zoom;
               const dx = x2 - x1;
               const dy = y2 - y1;
               const len = Math.sqrt(dx * dx + dy * dy);
@@ -598,10 +607,10 @@ export default function GalaxyMapScreen({
             {organicBoundaries.pointsH.map((p, i) => {
               if (i === 0) return null;
               const prev = organicBoundaries.pointsH[i - 1];
-              const x1 = prev.x * zoom;
-              const y1 = prev.y * zoom;
-              const x2 = p.x * zoom;
-              const y2 = p.y * zoom;
+              const x1 = prev.x * MAP_SCALE_X * zoom;
+              const y1 = prev.y * MAP_SCALE_Y * zoom;
+              const x2 = p.x * MAP_SCALE_X * zoom;
+              const y2 = p.y * MAP_SCALE_Y * zoom;
               const dx = x2 - x1;
               const dy = y2 - y1;
               const len = Math.sqrt(dx * dx + dy * dy);
@@ -661,10 +670,10 @@ export default function GalaxyMapScreen({
             ))}
 
             {ownedLinks.map((link, idx) => {
-              const x1 = link.from.x * zoom;
-              const y1 = link.from.y * zoom;
-              const x2 = link.to.x * zoom;
-              const y2 = link.to.y * zoom;
+              const x1 = link.from.x * MAP_SCALE_X * zoom;
+              const y1 = link.from.y * MAP_SCALE_Y * zoom;
+              const x2 = link.to.x * MAP_SCALE_X * zoom;
+              const y2 = link.to.y * MAP_SCALE_Y * zoom;
               const dx = x2 - x1;
               const dy = y2 - y1;
               const len = Math.sqrt(dx * dx + dy * dy);
@@ -708,8 +717,8 @@ export default function GalaxyMapScreen({
                 key={`qlbl-${q.id}`}
                 style={{
                   position: 'absolute',
-                  left: (q.x1 + 24) * zoom,
-                  top: (q.y1 + 18) * zoom,
+                  left: (q.x1 + 24) * MAP_SCALE_X * zoom,
+                  top: (q.y1 + 18) * MAP_SCALE_Y * zoom,
                   color: q.accent,
                   opacity: 0.42,
                   fontFamily: 'Courier New',
@@ -723,8 +732,8 @@ export default function GalaxyMapScreen({
             ))}
 
             {galaxies.map((g) => {
-              const x  = g.x * zoom;
-              const y  = g.y * zoom;
+              const x  = g.x * MAP_SCALE_X * zoom;
+              const y  = g.y * MAP_SCALE_Y * zoom;
               const sz = (g.unlocked ? 22 : 18) * zoom;
               const isActiveGalaxy = g.id === activeGalaxyId;
               const beaconScaleOuter = activeBeaconAnim.interpolate({
