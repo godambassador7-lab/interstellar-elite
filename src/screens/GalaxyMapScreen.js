@@ -22,10 +22,10 @@ import TILE_MANIFEST from '../../no_blur_universe_system_png_fixed/assets/univer
 const LOGICAL_MAP_WIDTH = 2400;
 const LOGICAL_MAP_HEIGHT = 1400;
 const MAP_REPEAT_X = 1;
-const ZOOM_MAX = 4.2;
 const PINCH_SENSITIVITY = 0.96;
 const UNIVERSE_MAP_IMAGE = require('../../universe map.png');
 const USE_TILED_UNIVERSE_BG = Platform.OS === 'web';
+const ZOOM_MAX = USE_TILED_UNIVERSE_BG ? 1 : 4.2;
 const TILED_SOURCE_WIDTH = Number(TILE_MANIFEST?.sourceWidth) || 12288;
 const TILED_SOURCE_HEIGHT = Number(TILE_MANIFEST?.sourceHeight) || 7080;
 let MAP_ASSET = {};
@@ -66,10 +66,27 @@ function getJpgFallbackUri(level, col, row) {
 function MapTileImage({ tile }) {
   const [useJpg, setUseJpg] = useState(false);
   const sourceUri = useJpg ? tile.jpgUri : tile.pngUri;
+  const tileStyle = { left: tile.left, top: tile.top, width: tile.width, height: tile.height };
+  if (Platform.OS === 'web') {
+    return (
+      <img
+        alt=""
+        draggable={false}
+        src={sourceUri}
+        onError={() => {
+          if (!useJpg) setUseJpg(true);
+        }}
+        style={{
+          ...styles.webMapTile,
+          ...tileStyle,
+        }}
+      />
+    );
+  }
   return (
     <Image
       source={{ uri: sourceUri }}
-      style={[styles.mapImage, { left: tile.left, top: tile.top, width: tile.width, height: tile.height }]}
+      style={[styles.mapImage, tileStyle]}
       resizeMode="stretch"
       onError={() => {
         if (!useJpg) setUseJpg(true);
@@ -1347,6 +1364,14 @@ const styles = StyleSheet.create({
     height: '100%',
     opacity: 1,
     imageRendering: 'crisp-edges',
+  },
+  webMapTile: {
+    position: 'absolute',
+    objectFit: 'fill',
+    imageRendering: 'pixelated',
+    userSelect: 'none',
+    WebkitUserDrag: 'none',
+    pointerEvents: 'none',
   },
   galaxyName: {
     fontFamily: 'Courier New',
