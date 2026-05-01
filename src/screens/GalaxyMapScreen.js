@@ -23,7 +23,14 @@ const MAP_REPEAT_X = 1;
 const ZOOM_MAX = 4.2;
 const PINCH_SENSITIVITY = 0.96;
 const UNIVERSE_MAP_IMAGE = require('../../universe map.png');
-const MAP_ASSET = Image.resolveAssetSource(UNIVERSE_MAP_IMAGE) || {};
+let MAP_ASSET = {};
+try {
+  MAP_ASSET = typeof Image.resolveAssetSource === 'function'
+    ? (Image.resolveAssetSource(UNIVERSE_MAP_IMAGE) || {})
+    : {};
+} catch (_) {
+  MAP_ASSET = {};
+}
 const BASE_MAP_WIDTH = MAP_ASSET.width || LOGICAL_MAP_WIDTH;
 const BASE_MAP_HEIGHT = MAP_ASSET.height || LOGICAL_MAP_HEIGHT;
 const MAP_SCALE_X = BASE_MAP_WIDTH / LOGICAL_MAP_WIDTH;
