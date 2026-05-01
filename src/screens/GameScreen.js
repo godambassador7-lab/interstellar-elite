@@ -490,6 +490,41 @@ function EscapeChevronArrow({ angle = 0 }) {
   );
 }
 
+function ExplosionFireEdge({ x, y, radius, time = 0, color = 'rgba(255,120,52,0.95)' }) {
+  const count = 18;
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => {
+        const a = (i / count) * Math.PI * 2;
+        const wobble = Math.sin(time * 7.5 + i * 0.9) * (radius * 0.03);
+        const px = x + Math.cos(a) * (radius + wobble);
+        const py = y + Math.sin(a) * (radius + wobble);
+        const sz = 4 + Math.abs(Math.sin(time * 9 + i)) * 6;
+        return (
+          <View
+            key={`fe-${i}`}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: px - sz * 0.5,
+              top: py - sz * 0.5,
+              width: sz,
+              height: sz,
+              borderRadius: sz * 0.5,
+              backgroundColor: color,
+              opacity: 0.45 + Math.abs(Math.sin(time * 10 + i * 0.37)) * 0.5,
+              shadowColor: '#FFB05A',
+              shadowOpacity: 0.9,
+              shadowRadius: 7,
+              shadowOffset: { width: 0, height: 0 },
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 function applyGravityFromWells(entity, wells, dtSec, weight = 1) {
   if (!entity || !wells?.length) return;
   for (const w of wells) {
@@ -1535,6 +1570,45 @@ export default function GameScreen({
                 pointerEvents="none"
                 style={{
                   position: 'absolute',
+                  left: flagshipEscape.x - flagshipEscape.blastRadius * 0.86,
+                  top: flagshipEscape.y - flagshipEscape.blastRadius * 0.86,
+                  width: flagshipEscape.blastRadius * 1.72,
+                  height: flagshipEscape.blastRadius * 1.72,
+                  borderRadius: flagshipEscape.blastRadius * 0.86,
+                  backgroundColor: 'rgba(255,208,92,0.22)',
+                  opacity: 0.65 + 0.2 * Math.abs(Math.sin(time * 2.4)),
+                }}
+              />
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: flagshipEscape.x - flagshipEscape.blastRadius * 0.68,
+                  top: flagshipEscape.y - flagshipEscape.blastRadius * 0.68,
+                  width: flagshipEscape.blastRadius * 1.36,
+                  height: flagshipEscape.blastRadius * 1.36,
+                  borderRadius: flagshipEscape.blastRadius * 0.68,
+                  backgroundColor: 'rgba(255,154,52,0.2)',
+                  opacity: 0.62 + 0.22 * Math.abs(Math.sin(time * 3.1 + 0.8)),
+                }}
+              />
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: flagshipEscape.x - flagshipEscape.blastRadius * 0.48,
+                  top: flagshipEscape.y - flagshipEscape.blastRadius * 0.48,
+                  width: flagshipEscape.blastRadius * 0.96,
+                  height: flagshipEscape.blastRadius * 0.96,
+                  borderRadius: flagshipEscape.blastRadius * 0.48,
+                  backgroundColor: 'rgba(255,214,120,0.16)',
+                  opacity: 0.58 + 0.25 * Math.abs(Math.sin(time * 4.2 + 1.6)),
+                }}
+              />
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
                   left: flagshipEscape.x - flagshipEscape.blastRadius * 1.18,
                   top: flagshipEscape.y - flagshipEscape.blastRadius * 1.18,
                   width: flagshipEscape.blastRadius * 2.36,
@@ -1544,6 +1618,13 @@ export default function GameScreen({
                   borderColor: 'rgba(255,66,150,0.78)',
                   backgroundColor: 'rgba(255,80,210,0.08)',
                 }}
+              />
+              <ExplosionFireEdge
+                x={flagshipEscape.x}
+                y={flagshipEscape.y}
+                radius={flagshipEscape.blastRadius * 1.18}
+                time={time}
+                color="rgba(255,96,52,0.9)"
               />
               <View
                 pointerEvents="none"
@@ -1559,6 +1640,13 @@ export default function GameScreen({
                   backgroundColor: 'rgba(255,170,66,0.12)',
                 }}
               />
+              <ExplosionFireEdge
+                x={flagshipEscape.x}
+                y={flagshipEscape.y}
+                radius={flagshipEscape.blastRadius}
+                time={time + 0.35}
+                color="rgba(255,170,66,0.92)"
+              />
               <View
                 pointerEvents="none"
                 style={{
@@ -1572,6 +1660,13 @@ export default function GameScreen({
                   borderColor: 'rgba(117,246,255,0.88)',
                   backgroundColor: 'rgba(117,246,255,0.1)',
                 }}
+              />
+              <ExplosionFireEdge
+                x={flagshipEscape.x}
+                y={flagshipEscape.y}
+                radius={flagshipEscape.blastRadius * 0.72}
+                time={time + 0.7}
+                color="rgba(255,232,140,0.86)"
               />
               {coreCountdownActive && (
                 <>
