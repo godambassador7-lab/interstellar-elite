@@ -223,12 +223,16 @@ export default function GalaxyMapScreen({
     const tiles = [];
     for (let y = 0; y < activeLevel.rows; y++) {
       for (let x = 0; x < activeLevel.cols; x++) {
+        const left = Math.round(x * TILE_SIZE * levelScale * zoom);
+        const top = Math.round(y * TILE_SIZE * levelScale * zoom);
+        const width = Math.round(TILE_SIZE * levelScale * zoom);
+        const height = Math.round(TILE_SIZE * levelScale * zoom);
         tiles.push({
           key: `z${tileLevel}-${x}-${y}`,
-          left: x * TILE_SIZE * levelScale * zoom,
-          top: y * TILE_SIZE * levelScale * zoom,
-          width: TILE_SIZE * levelScale * zoom,
-          height: TILE_SIZE * levelScale * zoom,
+          left,
+          top,
+          width,
+          height,
           uri: getTileUri(tileLevel, x, y),
         });
       }
@@ -636,7 +640,7 @@ export default function GalaxyMapScreen({
                   key={t.key}
                   source={{ uri: t.uri }}
                   style={[styles.mapImage, { left: t.left, top: t.top, width: t.width, height: t.height }]}
-                  resizeMode="cover"
+                  resizeMode="stretch"
                 />
               ))
             ) : (
