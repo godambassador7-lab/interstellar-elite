@@ -311,6 +311,7 @@ function makeUiState() {
     time: 0,
     gameTime: 0,
     isDead: false,
+    deathCause: 'unknown',
     isVictory: false,
     showUpgrade: false,
     upgradeChoices: [],
@@ -556,6 +557,7 @@ export default function GameScreen({
   systemNumber = 1,
   metaUpgrades = {},
   meteorUnlocked = false,
+  runProfile = 'combat',
   onSystemComplete,
   onMainMenu,
 }) {
@@ -682,11 +684,21 @@ export default function GameScreen({
     isRunning.current = false;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
+    const profileConfig = {
+      cadet: { playerHpMult: 1.18, playerShieldMult: 1.18, enemyThreatMult: 0.86 },
+      combat: { playerHpMult: 1, playerShieldMult: 1, enemyThreatMult: 1 },
+      onslaught: { playerHpMult: 0.9, playerShieldMult: 0.88, enemyThreatMult: 1.16 },
+    }[runProfile] || { playerHpMult: 1, playerShieldMult: 1, enemyThreatMult: 1 };
+    const combatGalaxy = {
+      ...galaxy,
+      threat: Math.max(0.6, (galaxy?.threat ?? 1) * profileConfig.enemyThreatMult),
+    };
+
     const baseWaves = galaxy?.waves ?? 4;
     const extraWaves = Math.min(4, Math.floor((systemNumber - 1) / 12));
     const maxWaves = baseWaves + extraWaves;
     const runUpgradeThresholds = getUpgradeThresholdsForRun({
-      threat: galaxy?.threat ?? 1,
+      threat: combatGalaxy.threat ?? 1,
       systemNumber,
       maxWaves,
     });
@@ -697,6 +709,10 @@ export default function GameScreen({
     basePlayerDamageRef.current = player.damage;
     const abilities = createAbilities();
     applyMetaUpgrades(player, abilities, metaUpgrades);
+    player.maxHp = Math.round(player.maxHp * profileConfig.playerHpMult);
+    player.hp = player.maxHp;
+    player.maxShield = Math.round(player.maxShield * profileConfig.playerShieldMult);
+    player.shield = player.maxShield;
 
     G.current = {
       world: BATTLE_WORLD,
@@ -714,10 +730,10 @@ export default function GameScreen({
       gameStartTime: Date.now(),
       lastSpawnTime: 0,
       gameTime: 0,
-      galaxy,
+      galaxy: combatGalaxy,
       currentWave: 1,
       maxWaves,
-      waveSpawnRemaining: getWaveEnemyCount(1, galaxy),
+      waveSpawnRemaining: getWaveEnemyCount(1, combatGalaxy),
       nextWaveSpawnAt: Date.now() + 500,
       nextShopWave: randomShopInterval(),
       upgradeThresholds: runUpgradeThresholds,
@@ -1025,6 +1041,7 @@ export default function GameScreen({
         setUiState((prev) => ({
           ...prev,
           isDead: true,
+          deathCause: g.player.lastDamageSource || 'unknown',
           playerHp: 0,
           score: g.score,
           gameTime: g.gameTime,
@@ -1043,6 +1060,7 @@ export default function GameScreen({
           const dy = g.player.y - g.flagshipEscape.centerY;
           const distFromBlast = Math.sqrt(dx * dx + dy * dy);
           if (distFromBlast <= g.flagshipEscape.blastRadius + 16) {
+            g.player.lastDamageSource = 'core_blast';
             g.player.hp = 0;
           } else if (g.flagshipEscape.blastRadius >= Math.min(g.world.width, g.world.height) * 0.56) {
             g.victory = true;
@@ -1059,7 +1077,7 @@ export default function GameScreen({
           const clearedWave = g.currentWave;
           const shouldOpenShop = clearedWave >= g.nextShopWave;
           g.currentWave += 1;
-          g.waveSpawnRemaining = getWaveEnemyCount(g.currentWave, galaxy);
+          g.waveSpawnRemaining = getWaveEnemyCount(g.currentWave, g.galaxy);
           g.nextWaveSpawnAt = Date.now() + (shouldOpenShop ? 350 : 900);
 
           if (shouldOpenShop) {
@@ -1068,7 +1086,7 @@ export default function GameScreen({
             const offers = pickShopOffers({
               count: 3,
               systemNumber,
-              threat: galaxy?.threat ?? 1,
+              threat: g.galaxy?.threat ?? galaxy?.threat ?? 1,
               currentWave: g.currentWave,
               guaranteeWeaponSlot: true,
             });
@@ -1825,7 +1843,7 @@ export default function GameScreen({
         )}
 
         {isDead && (
-          <GameOver score={score} combo={peakCombo} gameTime={gameTime} onRestart={handleRestart} />
+          <GameOver score={score} combo={peakCombo} gameTime={gameTime} deathCause={uiState.deathCause} onRestart={handleRestart} />
         )}
 
         {isVictory && (

@@ -48,9 +48,12 @@ const FLAGSHIP_CHARGE_SIZE = 30;
 const FLAGSHIP_CHARGE_LIFE_MS = 3800;
 const FLAGSHIP_PATTERN_COOLDOWN_MS = 4500;
 const FIRST_QUADRANT_SPECIAL_CHANCE = 0.05;
+const MAX_PARTICLES = 420;
+const MAX_PHOTONS = 220;
+const MAX_DESTROYER_MISSILES = 64;
 
 // Absorb damage into shield first; any overflow hits HP; resets regen timer.
-function applyPlayerDamage(player, amount) {
+function applyPlayerDamage(player, amount, source = 'unknown') {
   if (player.phaseShift) return;
   if (player.shield > 0) {
     const absorbed = Math.min(player.shield, amount);
@@ -61,6 +64,7 @@ function applyPlayerDamage(player, amount) {
     player.hp = Math.max(0, player.hp - amount);
   }
   player.shieldRegenDelay = PLAYER.SHIELD_REGEN_DELAY;
+  if (amount > 0) player.lastDamageSource = source;
 }
 
 /**
@@ -224,7 +228,7 @@ export function runCombatFrame(state, deltaMs) {
     if (now - enemy.lastLaserAt >= ELITE_LASER_RATE_MS) {
       enemy.lastLaserAt = now;
       enemy.laserFlash  = 80;
-      applyPlayerDamage(player, ELITE_LASER_DAMAGE);
+      applyPlayerDamage(player, ELITE_LASER_DAMAGE, 'elite_laser');
       playerTookDamage = true;
       if (player.hitFlash < 4) player.hitFlash = 4;
     }
@@ -350,7 +354,10 @@ export function runCombatFrame(state, deltaMs) {
       if (now >= p.modeEndsAt) {
         p.mode = 'idle';
         p.nextAt = now + FLAGSHIP_PATTERN_COOLDOWN_MS;
-      } else if (distSq <= FLAGSHIP_BARRAGE_RANGE_SQ && now - p.lastShotAt >= FLAGSHIP_BARRAGE_RATE_MS) {
+      } else {
+        const hpPct = enemy.hp / Math.max(1, enemy.maxHp);
+        const barrageRate = hpPct < 0.35 ? 84 : hpPct < 0.6 ? 96 : FLAGSHIP_BARRAGE_RATE_MS;
+        if (distSq <= FLAGSHIP_BARRAGE_RANGE_SQ && now - p.lastShotAt >= barrageRate) {
         p.lastShotAt = now;
         const d = Math.max(1, Math.sqrt(distSq));
         const baseNx = dx / d;
@@ -373,6 +380,7 @@ export function runCombatFrame(state, deltaMs) {
           color: useRedBarrage ? '#FF4E4E' : '#86DFFF',
           glowColor: useRedBarrage ? 'rgba(255,70,70,0.2)' : 'rgba(105,207,255,0.16)',
         });
+        }
       }
       continue;
     }
@@ -399,7 +407,7 @@ export function runCombatFrame(state, deltaMs) {
       ph.y    += ph.vy * dt;
       ph.life -= deltaMs;
       if (circlesOverlap(player.x, player.y, playerRadius, ph.x, ph.y, ph.size)) {
-        applyPlayerDamage(player, ph.damage);
+        applyPlayerDamage(player, ph.damage, ph.color === '#FF4E4E' ? 'flagship_red_barrage' : 'enemy_photon');
         playerTookDamage = true;
         player.hitFlash   = 14;
         state.screenShake = Math.max(state.screenShake, 8);
@@ -421,7 +429,7 @@ export function runCombatFrame(state, deltaMs) {
       missile.y += missile.vy * dt;
       missile.life -= deltaMs;
       if (circlesOverlap(player.x, player.y, playerRadius, missile.x, missile.y, missile.size || DESTROYER_MISSILE_SIZE)) {
-        applyPlayerDamage(player, missile.damage || DESTROYER_MISSILE_DAMAGE);
+        applyPlayerDamage(player, missile.damage || DESTROYER_MISSILE_DAMAGE, 'destroyer_missile');
         playerTookDamage = true;
         player.hitFlash = 14;
         state.screenShake = Math.max(state.screenShake, 10);
@@ -464,6 +472,11 @@ export function runCombatFrame(state, deltaMs) {
   // ── Add particles ────────────────────────────────────────────────────────────
   for (const p of newParticles) {
     particles.push(p);
+  }
+  if (state.particles.length > MAX_PARTICLES) state.particles = state.particles.slice(-MAX_PARTICLES);
+  if (state.photons.length > MAX_PHOTONS) state.photons = state.photons.slice(-MAX_PHOTONS);
+  if (state.destroyerMissiles.length > MAX_DESTROYER_MISSILES) {
+    state.destroyerMissiles = state.destroyerMissiles.slice(-MAX_DESTROYER_MISSILES);
   }
 }
 

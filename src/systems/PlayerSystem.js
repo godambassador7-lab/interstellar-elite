@@ -297,6 +297,7 @@ export function createPlayer() {
     attackDamageFlash: 0,
     invincibleUntil: 0,
     comboWindowBonus: 0,
+    lastDamageSource: 'unknown',
   };
 }
 

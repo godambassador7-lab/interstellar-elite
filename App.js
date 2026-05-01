@@ -32,6 +32,7 @@ export default function App() {
   const [coreAssetsReady, setCoreAssetsReady] = useState(false);
   const [screen, setScreen] = useState('menu'); // menu | map | game | defense_prep | defense
   const [selectedGalaxy, setSelectedGalaxy] = useState(GALAXIES[0]);
+  const [runProfile, setRunProfile] = useState('combat');
   const [selectedSystemNumber, setSelectedSystemNumber] = useState(1);
   const [selectedDefenseTerritory, setSelectedDefenseTerritory] = useState(null);
   const [selectedDefenseDoctrine, setSelectedDefenseDoctrine] = useState('fortress');
@@ -414,7 +415,14 @@ export default function App() {
 
       {coreAssetsReady && (
         <>
-          {screen === 'menu' && <MenuScreen onStart={() => setScreen('map')} />}
+          {screen === 'menu' && (
+            <MenuScreen
+              onStart={(profile) => {
+                setRunProfile(profile || 'combat');
+                setScreen('map');
+              }}
+            />
+          )}
 
           {screen === 'map' && (
             <GalaxyMapScreen
@@ -443,6 +451,7 @@ export default function App() {
               systemNumber={selectedSystemNumber}
               metaUpgrades={ownedMetaUpgrades}
               meteorUnlocked={meteorUnlocked}
+              runProfile={runProfile}
               onSystemComplete={handleSystemComplete}
               onMainMenu={() => setScreen('menu')}
             />

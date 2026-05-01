@@ -3,7 +3,16 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 
-export function GameOver({ score, combo, gameTime, onRestart }) {
+const CAUSE_LABELS = {
+  enemy_photon: 'Destroyed by enemy plasma volley',
+  flagship_red_barrage: 'Destroyed by flagship red barrage',
+  destroyer_missile: 'Destroyed by destroyer missile lock',
+  elite_laser: 'Destroyed by elite beam laser',
+  core_blast: 'Destroyed by flagship core detonation',
+  unknown: 'Destroyed in close-quarters combat',
+};
+
+export function GameOver({ score, combo, gameTime, deathCause = 'unknown', onRestart }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const titleAnim = useRef(new Animated.Value(-40)).current;
 
@@ -34,6 +43,7 @@ export function GameOver({ score, combo, gameTime, onRestart }) {
           <StatRow label="FINAL SCORE" value={score.toLocaleString()} color="#00FFFF" large />
           <StatRow label="PEAK COMBO" value={`${combo}x`} color="#FFD700" />
           <StatRow label="SURVIVAL TIME" value={`${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`} color="#00FF88" />
+          <StatRow label="FINAL HIT" value={(CAUSE_LABELS[deathCause] || CAUSE_LABELS.unknown).toUpperCase()} color="#FF93A5" />
         </View>
 
         <View style={styles.divider} />

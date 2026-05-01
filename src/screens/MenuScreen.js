@@ -1,6 +1,6 @@
 // src/screens/MenuScreen.js
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -15,6 +15,7 @@ const STARS = Array.from({ length: 60 }, () => ({
 }));
 
 export default function MenuScreen({ onStart }) {
+  const [runProfile, setRunProfile] = useState('combat');
   const titleScale = useRef(new Animated.Value(0.7)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
   const btnOpacity = useRef(new Animated.Value(0)).current;
@@ -72,7 +73,7 @@ export default function MenuScreen({ onStart }) {
       </Animated.View>
 
       <Animated.View style={{ opacity: btnOpacity, transform: [{ scale: pulseAnim }] }}>
-        <TouchableOpacity style={styles.startBtn} onPress={onStart} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.startBtn} onPress={() => onStart?.(runProfile)} activeOpacity={0.8}>
           <View style={styles.startBtnInner}>
             <Text style={styles.startText}>LAUNCH MISSION</Text>
           </View>
@@ -80,6 +81,26 @@ export default function MenuScreen({ onStart }) {
           <View style={styles.startBtnGlowBottom} />
         </TouchableOpacity>
       </Animated.View>
+
+      <View style={styles.profileRow}>
+        {[
+          { id: 'cadet', label: 'CADET' },
+          { id: 'combat', label: 'COMBAT' },
+          { id: 'onslaught', label: 'ONSLAUGHT' },
+        ].map((p) => {
+          const active = runProfile === p.id;
+          return (
+            <TouchableOpacity
+              key={p.id}
+              style={[styles.profileChip, active && styles.profileChipActive]}
+              onPress={() => setRunProfile(p.id)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.profileChipText, active && styles.profileChipTextActive]}>{p.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       <Animated.Text style={[styles.hint, { opacity: subtitleOpacity }]}> 
         Use joystick to move | Abilities activate on tap
@@ -268,5 +289,32 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.9)',
     textShadowRadius: 5,
     textShadowOffset: { width: 0, height: 1 },
+  },
+  profileRow: {
+    marginTop: 14,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  profileChip: {
+    borderWidth: 1,
+    borderColor: 'rgba(127,196,255,0.5)',
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(7,20,38,0.66)',
+  },
+  profileChipActive: {
+    borderColor: '#6BF6FF',
+    backgroundColor: 'rgba(19,75,94,0.8)',
+  },
+  profileChipText: {
+    color: 'rgba(193,219,241,0.85)',
+    fontFamily: 'Courier New',
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 1.2,
+  },
+  profileChipTextActive: {
+    color: '#6BF6FF',
   },
 });

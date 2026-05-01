@@ -16,7 +16,8 @@ export function getWaveEnemyCount(wave, galaxy) {
   const baseEnemies = galaxy?.baseEnemies ?? 14;
   const enemyGrowth = galaxy?.enemyGrowth ?? 5;
   const threat = galaxy?.threat ?? 1;
-  return Math.max(6, Math.round((baseEnemies + (wave - 1) * enemyGrowth) * threat));
+  const curve = 1 + Math.min(0.42, Math.max(0, wave - 1) * 0.035);
+  return Math.max(6, Math.round((baseEnemies + (wave - 1) * enemyGrowth) * threat * curve));
 }
 
 /**
@@ -28,16 +29,17 @@ export function trySpawn(state) {
   if (state.waveSpawnRemaining <= 0) return null;
   if (now < (state.nextWaveSpawnAt || 0)) return null;
   const threat = state.galaxy?.threat ?? 1;
-  const maxActive = Math.round((12 + state.currentWave * 2) * threat);
+  const maxActive = Math.round((10 + state.currentWave * 1.8) * threat);
   if (state.enemies.length >= maxActive) return null;
 
-  const interval = Math.max(220, (780 - state.currentWave * 58) / threat);
+  const waveSoft = Math.min(11, state.currentWave);
+  const interval = Math.max(260, (840 - waveSoft * 44) / threat);
   if (now - state.lastSpawnTime < interval) return null;
   state.lastSpawnTime = now;
 
   const waveProgress = state.currentWave / Math.max(1, state.maxWaves);
-  const eliteChance = Math.min(0.3, 0.04 + waveProgress * 0.14 + state.currentWave * 0.018 * threat);
-  const heavyChance = Math.min(0.34, 0.1 + waveProgress * 0.12 + state.currentWave * 0.02 * threat);
+  const eliteChance = Math.min(0.28, 0.035 + waveProgress * 0.13 + state.currentWave * 0.015 * threat);
+  const heavyChance = Math.min(0.3, 0.085 + waveProgress * 0.11 + state.currentWave * 0.016 * threat);
 
   const r = Math.random();
   let typeDef;
@@ -101,9 +103,13 @@ export function trySpawn(state) {
 }
 
 function createEnemy(def, pos) {
+  const heavyRole = def.type === 'heavy'
+    ? (Math.random() < 0.5 ? 'siege' : 'hunter')
+    : null;
   return {
     id: uid(),
     type: def.type,
+    heavyRole,
     x: pos.x,
     y: pos.y,
     vx: 0,
@@ -178,8 +184,19 @@ export function updateEnemyMovement(state, deltaMs) {
     } else if (enemy.type === 'heavy') {
       const targetVx = nx * enemy.speed;
       const targetVy = ny * enemy.speed;
-      enemy.vx += (targetVx - enemy.vx) * 0.04;
-      enemy.vy += (targetVy - enemy.vy) * 0.04;
+      if (enemy.heavyRole === 'siege') {
+        const standOff = 220;
+        const toward = d > standOff ? 1 : 0.25;
+        enemy.vx += (targetVx * toward - enemy.vx) * 0.034;
+        enemy.vy += (targetVy * toward - enemy.vy) * 0.034;
+      } else {
+        const perpX = -ny;
+        const perpY = nx;
+        const strafe = Math.sin((enemy.zigZagTimer || 0) * 2.2 + (enemy.zigZagPhase || 0)) * 0.42;
+        enemy.zigZagTimer = (enemy.zigZagTimer || 0) + dt;
+        enemy.vx += ((targetVx + perpX * enemy.speed * strafe) - enemy.vx) * 0.05;
+        enemy.vy += ((targetVy + perpY * enemy.speed * strafe) - enemy.vy) * 0.05;
+      }
     } else if (enemy.type === 'elite') {
       enemy.zigZagTimer += dt;
 
