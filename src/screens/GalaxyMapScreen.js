@@ -22,7 +22,8 @@ const LOGICAL_MAP_HEIGHT = 1400;
 const MAP_REPEAT_X = 1;
 const PINCH_SENSITIVITY = 0.96;
 const UNIVERSE_MAP_IMAGE = require('../../universe map (1).png');
-const ZOOM_MAX = 4.2;
+const ZOOM_MAX = 1.05;
+const NODE_MIN_SPACING = 72;
 let MAP_ASSET = {};
 try {
   MAP_ASSET = typeof Image.resolveAssetSource === 'function'
@@ -207,7 +208,7 @@ export default function GalaxyMapScreen({
     return values.reduce((acc, t) => acc + (t.threat || 0), 0) / values.length;
   }, [territories]);
 
-  const galaxies = useMemo(
+  const baseGalaxies = useMemo(
     () =>
       GALAXIES.map((g, index) => {
         const completedSystems = completedSystemsByGalaxy?.[index] || 0;
@@ -221,6 +222,34 @@ export default function GalaxyMapScreen({
       }),
     [unlockedGalaxyIndex, completedSystemsByGalaxy]
   );
+  const galaxies = useMemo(() => {
+    const next = baseGalaxies.map((g) => ({ ...g }));
+    const margin = 52;
+    for (let iter = 0; iter < 16; iter++) {
+      for (let i = 0; i < next.length; i++) {
+        for (let j = i + 1; j < next.length; j++) {
+          const a = next[i];
+          const b = next[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.sqrt((dx * dx) + (dy * dy)) || 0.0001;
+          if (dist >= NODE_MIN_SPACING) continue;
+          const push = ((NODE_MIN_SPACING - dist) / 2) * 0.95;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          a.x -= nx * push;
+          a.y -= ny * push;
+          b.x += nx * push;
+          b.y += ny * push;
+        }
+      }
+      for (const g of next) {
+        g.x = Math.max(margin, Math.min(LOGICAL_MAP_WIDTH - margin, g.x));
+        g.y = Math.max(margin, Math.min(LOGICAL_MAP_HEIGHT - margin, g.y));
+      }
+    }
+    return next;
+  }, [baseGalaxies]);
 
   const activeQuadrantId = useMemo(() => {
     const idx = Math.max(0, Math.min(unlockedGalaxyIndex, GALAXIES.length - 1));
@@ -858,6 +887,7 @@ export default function GalaxyMapScreen({
                   <TouchableOpacity
                     activeOpacity={g.unlocked ? 0.8 : 1}
                     disabled={!g.unlocked}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     onPress={() => setConquestGalaxy(g)}
                     onLongPress={() => onSelectGalaxy(g)}
                     delayLongPress={420}
