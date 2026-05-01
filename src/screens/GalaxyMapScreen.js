@@ -55,7 +55,7 @@ function chooseTileLevel(zoom) {
 }
 
 function getTileUri(level, col, row) {
-  return `/interstellar-elite/no_blur_universe_system/assets/universe/tiles/${level}/${col}_${row}.jpg`;
+  return `/interstellar-elite/assets/universe/tiles/${level}/${col}_${row}.jpg`;
 }
 
 const BG_STARS = Array.from({ length: 180 }, (_, i) => ({

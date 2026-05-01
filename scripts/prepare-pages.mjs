@@ -3,10 +3,17 @@ import path from "node:path";
 
 const repoBase = "/interstellar-elite";
 const distDir = path.resolve("dist");
+const tiledUniverseSrc = path.resolve("no_blur_universe_system", "assets", "universe");
+const tiledUniverseDest = path.join(distDir, "assets", "universe");
 
 if (!fs.existsSync(distDir)) {
   console.error("dist directory not found. Run Expo export first.");
   process.exit(1);
+}
+
+if (fs.existsSync(tiledUniverseSrc)) {
+  fs.mkdirSync(path.dirname(tiledUniverseDest), { recursive: true });
+  fs.cpSync(tiledUniverseSrc, tiledUniverseDest, { recursive: true, force: true });
 }
 
 const rewriteRootRelativePaths = (content) =>
