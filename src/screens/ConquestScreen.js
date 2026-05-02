@@ -161,6 +161,8 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     }
     return stars;
   }, [galaxy?.id]);
+  const backRingStars = useMemo(() => ringStars.filter((s) => s.y < 50), [ringStars]);
+  const frontRingStars = useMemo(() => ringStars.filter((s) => s.y >= 50), [ringStars]);
   const unconqueredTargets = useMemo(() => {
     const held = new Set(gTerritories.map((t) => Number(t.systemNumber)));
     const systems = [];
@@ -266,7 +268,7 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
               ]}
             >
               <Animated.View pointerEvents="none" style={[styles.ringStarsLayer, { transform: [{ rotate: ringRotate }] }]}>
-                {ringStars.map((s) => (
+                {backRingStars.map((s) => (
                   <View
                     key={s.id}
                     style={{
@@ -290,6 +292,27 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
               <View style={styles.orbAuraMid} />
               <View style={styles.orbBody} />
               <View style={styles.orbCore} />
+              <Animated.View pointerEvents="none" style={[styles.ringStarsLayer, { transform: [{ rotate: ringRotate }] }]}>
+                {frontRingStars.map((s) => (
+                  <View
+                    key={`${s.id}-front`}
+                    style={{
+                      position: 'absolute',
+                      left: `${s.x}%`,
+                      top: `${s.y}%`,
+                      width: s.size,
+                      height: s.size,
+                      borderRadius: s.size / 2,
+                      opacity: Math.min(1, s.opacity + 0.08),
+                      backgroundColor: s.color,
+                      shadowColor: s.color,
+                      shadowOpacity: 0.85,
+                      shadowRadius: 5,
+                      shadowOffset: { width: 0, height: 0 },
+                    }}
+                  />
+                ))}
+              </Animated.View>
             </Animated.View>
           </View>
         </View>
