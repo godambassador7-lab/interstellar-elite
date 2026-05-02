@@ -11,6 +11,7 @@ import {
   Dimensions,
   SafeAreaView,
   Animated,
+  Platform,
 } from 'react-native';
 import { GALAXIES, QUADRANT_DEFS } from '../utils/constants';
 import { PART_TYPES, getMetaUpgradePartCost } from '../systems/MetaUpgradeSystem';
@@ -21,7 +22,9 @@ const LOGICAL_MAP_WIDTH = 2400;
 const LOGICAL_MAP_HEIGHT = 1400;
 const MAP_REPEAT_X = 1;
 const PINCH_SENSITIVITY = 0.96;
-const UNIVERSE_MAP_IMAGE = require('../../universe map (1).png');
+const UNIVERSE_MAP_IMAGE = Platform.OS === 'web'
+  ? require('../../universe map (1)-web.jpg')
+  : require('../../universe map (1).png');
 const ZOOM_MAX = 1.05;
 const NODE_MIN_SPACING = 72;
 let MAP_ASSET = {};
