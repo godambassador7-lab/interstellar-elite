@@ -16,6 +16,7 @@ const SPACE_STATION_SPRITE = require('../../space station.png');
 // Threat level 1-5 mapped from raw 0-10 scale
 const THREAT_COLORS = ['#44FF88', '#52D8FF', '#FFC13A', '#FF7A2E', '#FF3D3D'];
 const THREAT_LABELS = ['SAFE', 'ELEV', 'MOD', 'HIGH', 'CRIT'];
+const REWARD_PART_TYPES = ['MECH', 'PLASMA', 'VOID', 'BIO'];
 
 function getThreatLevel(raw) {
   if (raw < 2) return 0;
@@ -158,6 +159,45 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     }
     return out;
   }, [galaxy?.id, galaxy?.systems]);
+  const unconqueredTargets = useMemo(() => {
+    const held = new Set(gTerritories.map((t) => Number(t.systemNumber)));
+    const systems = [];
+    const key = String(galaxy?.id || 'rewards');
+    for (let i = 1; i <= (galaxy?.systems || 0); i++) {
+      if (held.has(i)) continue;
+      let seed = 0;
+      const tag = `${key}:${i}`;
+      for (let c = 0; c < tag.length; c++) seed = ((seed * 37) + tag.charCodeAt(c)) >>> 0;
+      const rand = () => {
+        seed = (1664525 * seed + 1013904223) >>> 0;
+        return seed / 0xFFFFFFFF;
+      };
+      const difficulty = Math.max(1, Math.min(10, Math.floor((i / Math.max(1, galaxy.systems)) * 10) + Math.floor(rand() * 3)));
+      const creditReward = Math.floor(120 + difficulty * 70 + rand() * 180);
+      const partType = REWARD_PART_TYPES[Math.floor(rand() * REWARD_PART_TYPES.length)];
+      const partReward = 1 + Math.floor(rand() * Math.max(2, Math.ceil(difficulty / 2)));
+      systems.push({
+        systemNumber: i,
+        difficulty,
+        creditReward,
+        partType,
+        partReward,
+      });
+    }
+    systems.sort((a, b) => b.difficulty - a.difficulty || a.systemNumber - b.systemNumber);
+    return systems;
+  }, [gTerritories, galaxy?.id, galaxy?.systems]);
+  const unconqueredMarkers = useMemo(() => {
+    return unconqueredTargets.slice(0, 28).map((t, idx) => {
+      const n = liveMapNodes[idx % Math.max(1, liveMapNodes.length)];
+      return {
+        ...t,
+        id: `mk-${t.systemNumber}`,
+        x: n ? n.x : 50,
+        y: n ? n.y : 50,
+      };
+    });
+  }, [unconqueredTargets, liveMapNodes]);
   const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '300deg'] });
 
   return (
@@ -265,9 +305,46 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                     }}
                   />
                 ))}
+                {unconqueredMarkers.map((m) => (
+                  <View
+                    key={m.id}
+                    style={{
+                      position: 'absolute',
+                      left: `${m.x}%`,
+                      top: `${m.y}%`,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      borderWidth: 1.3,
+                      borderColor: '#FFE26D',
+                      backgroundColor: 'rgba(255,226,109,0.28)',
+                      shadowColor: '#FFE26D',
+                      shadowOpacity: 0.9,
+                      shadowRadius: 5,
+                      shadowOffset: { width: 0, height: 0 },
+                    }}
+                  />
+                ))}
               </Animated.View>
             </View>
           </View>
+        </View>
+
+        <View style={styles.targetsWrap}>
+          <View style={styles.targetsHeader}>
+            <Text style={styles.targetsTitle}>UNCONQUERED TARGETS</Text>
+            <Text style={styles.targetsCount}>{unconqueredTargets.length} SYSTEMS</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.targetsList}>
+            {unconqueredTargets.slice(0, 14).map((t) => (
+              <TouchableOpacity key={`target-${t.systemNumber}`} style={styles.targetCard} activeOpacity={0.82}>
+                <Text style={styles.targetSystem}>SYS-{String(t.systemNumber).padStart(3, '0')}</Text>
+                <Text style={styles.targetDifficulty}>DIFF {t.difficulty}/10</Text>
+                <Text style={styles.targetReward}>+{t.creditReward} CREDITS</Text>
+                <Text style={styles.targetReward}>+{t.partReward} {t.partType}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
         {/* ── Attack alert ────────────────────────────────── */}
@@ -632,6 +709,61 @@ const styles = StyleSheet.create({
   liveNodesLayer: {
     width: '100%',
     height: '100%',
+  },
+  targetsWrap: {
+    marginBottom: 10,
+  },
+  targetsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  targetsTitle: {
+    fontFamily: 'Courier New',
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#FFE26D',
+    letterSpacing: 1,
+  },
+  targetsCount: {
+    fontFamily: 'Courier New',
+    fontSize: 8,
+    color: 'rgba(255,226,109,0.72)',
+  },
+  targetsList: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  targetCard: {
+    width: 138,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,226,109,0.52)',
+    backgroundColor: 'rgba(52,42,8,0.35)',
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  targetSystem: {
+    fontFamily: 'Courier New',
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFF2AE',
+    letterSpacing: 0.6,
+  },
+  targetDifficulty: {
+    marginTop: 3,
+    fontFamily: 'Courier New',
+    fontSize: 8,
+    color: '#FFD467',
+    letterSpacing: 0.6,
+  },
+  targetReward: {
+    marginTop: 2,
+    fontFamily: 'Courier New',
+    fontSize: 7,
+    color: 'rgba(235,225,185,0.92)',
+    letterSpacing: 0.5,
   },
 
   // ── Alert ─────────────────────────────────────────────────
