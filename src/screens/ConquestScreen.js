@@ -194,8 +194,8 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     });
   }, [unconqueredTargets, liveMapNodes]);
   const orbitRotA = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const orbitRotB = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-250deg'] });
-  const orbitRotC = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '170deg'] });
+  const orbitRotB = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const orbitRotC = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
     <View style={styles.overlay}>
@@ -276,8 +276,6 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                   styles.liveNodesLayer,
                   {
                     transform: [
-                      { translateX: driftTranslateX },
-                      { translateY: driftTranslateY },
                       { rotate: orbitRotA },
                     ],
                   },
