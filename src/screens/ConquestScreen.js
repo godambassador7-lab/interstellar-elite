@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   liveMapFrame: {
-    height: 108,
+    height: 168,
     borderRadius: 6,
     borderWidth: 1,
     backgroundColor: '#02060D',
