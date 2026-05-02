@@ -46,6 +46,10 @@ const FLAGSHIP_CHARGE_DAMAGE = 34;
 const FLAGSHIP_CHARGE_SPEED = 210;
 const FLAGSHIP_CHARGE_SIZE = 30;
 const FLAGSHIP_CHARGE_LIFE_MS = 3800;
+const FLAGSHIP_SUPER_ORB_TRAVEL_MS = 5000;
+const FLAGSHIP_SUPER_ORB_EXPAND_MS = 5000;
+const FLAGSHIP_SUPER_ORB_MAX_SIZE = 140;
+const FLAGSHIP_SUPER_ORB_FREEZE_MS = 3000;
 const FLAGSHIP_PATTERN_COOLDOWN_MS = 4500;
 const FIRST_QUADRANT_SPECIAL_CHANCE = 0.05;
 const MAX_PARTICLES = 420;
@@ -72,6 +76,11 @@ function applyPlayerDamage(player, amount, source = 'unknown') {
   }
   player.shieldRegenDelay = PLAYER.SHIELD_REGEN_DELAY;
   if (amount > 0) player.lastDamageSource = source;
+}
+
+function applyPlayerFreeze(player, now, durationMs = FLAGSHIP_SUPER_ORB_FREEZE_MS) {
+  player.freezeUntil = Math.max(player.freezeUntil || 0, now + durationMs);
+  player.hitFlash = Math.max(player.hitFlash || 0, 10);
 }
 
 /**
@@ -352,10 +361,14 @@ export function runCombatFrame(state, deltaMs) {
             vy: (dy / d) * FLAGSHIP_CHARGE_SPEED,
             damage: FLAGSHIP_CHARGE_DAMAGE,
             size: FLAGSHIP_CHARGE_SIZE,
-            life: FLAGSHIP_CHARGE_LIFE_MS,
-            maxLife: FLAGSHIP_CHARGE_LIFE_MS,
+            baseSize: FLAGSHIP_CHARGE_SIZE,
+            life: FLAGSHIP_SUPER_ORB_TRAVEL_MS + FLAGSHIP_SUPER_ORB_EXPAND_MS + 1200,
+            maxLife: FLAGSHIP_SUPER_ORB_TRAVEL_MS + FLAGSHIP_SUPER_ORB_EXPAND_MS + 1200,
             color: '#7BD8FF',
             glowColor: 'rgba(106,206,255,0.28)',
+            specialType: 'flagship_super_orb',
+            bornAt: now,
+            exploded: false,
           });
         }
         p.mode = 'idle';
@@ -419,6 +432,51 @@ export function runCombatFrame(state, deltaMs) {
     const dt = deltaMs / 1000;
     const playerRadius = PLAYER.SIZE / 2 + 4;
     for (const ph of state.photons) {
+      if (ph.specialType === 'flagship_super_orb') {
+        const age = now - (ph.bornAt || now);
+        if (age < FLAGSHIP_SUPER_ORB_TRAVEL_MS) {
+          ph.x += ph.vx * dt;
+          ph.y += ph.vy * dt;
+        } else if (age < FLAGSHIP_SUPER_ORB_TRAVEL_MS + FLAGSHIP_SUPER_ORB_EXPAND_MS) {
+          const t = (age - FLAGSHIP_SUPER_ORB_TRAVEL_MS) / FLAGSHIP_SUPER_ORB_EXPAND_MS;
+          ph.vx *= 0.95;
+          ph.vy *= 0.95;
+          ph.x += ph.vx * dt;
+          ph.y += ph.vy * dt;
+          ph.size = (ph.baseSize || FLAGSHIP_CHARGE_SIZE) + ((FLAGSHIP_SUPER_ORB_MAX_SIZE - (ph.baseSize || FLAGSHIP_CHARGE_SIZE)) * t);
+          if (circlesOverlap(player.x, player.y, playerRadius, ph.x, ph.y, ph.size)) {
+            applyPlayerFreeze(player, now);
+            playerTookDamage = true;
+          }
+        } else {
+          if (!ph.exploded) {
+            ph.exploded = true;
+            ph.size = FLAGSHIP_SUPER_ORB_MAX_SIZE;
+            if (circlesOverlap(player.x, player.y, playerRadius, ph.x, ph.y, ph.size)) {
+              applyPlayerFreeze(player, now);
+              playerTookDamage = true;
+            }
+            for (let i = 0; i < 18; i++) {
+              const a = (i / 18) * Math.PI * 2;
+              newParticles.push({
+                id: uid(),
+                x: ph.x,
+                y: ph.y,
+                vx: Math.cos(a) * 165 * (0.65 + Math.random() * 0.5),
+                vy: Math.sin(a) * 165 * (0.65 + Math.random() * 0.5),
+                life: 620,
+                maxLife: 620,
+                size: 3 + Math.random() * 3,
+                color: '#7BD8FF',
+                type: 'explosion',
+              });
+            }
+          }
+          ph.life = -1;
+        }
+        ph.life -= deltaMs;
+        continue;
+      }
       ph.x    += ph.vx * dt;
       ph.y    += ph.vy * dt;
       ph.life -= deltaMs;
@@ -693,8 +751,12 @@ function spawnFlagshipReinforcements(state, enemy, count) {
       angle: Math.random() * 360,
       targetAngle: Math.random() * 360,
       turnRate: 180,
-        lastLaserAt: 0,
-        lastSwarmPhotonAt: 0,
+      lastLaserAt: 0,
+      lastSwarmPhotonAt: 0,
+      isFlagshipMinion: true,
+      launchVx: Math.cos(a) * DESTROYER_MISSILE_SPEED * 0.82,
+      launchVy: Math.sin(a) * DESTROYER_MISSILE_SPEED * 0.82,
+      launchUntil: Date.now() + 900,
       });
     }
   }

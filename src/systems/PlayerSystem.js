@@ -9,6 +9,7 @@ import { clamp, uid } from '../utils/mathUtils';
 export function updatePlayer(state, joystick, deltaMs, abilities) {
   const dt = deltaMs / 1000;
   const { player } = state;
+  const hardFrozen = (player.freezeUntil || 0) > Date.now();
   const hyperspaceActive = !!state?.inIntercept;
   const phaseActive = !!abilities.phase?.active;
   const phaseSpeedMult = phaseActive ? abilities.phase.speedMult || 1.35 : 1;
@@ -18,7 +19,7 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
     : 1;
 
   // ── Input → velocity ─────────────────────────────────────────────────────────
-  if (!abilities.dash.active) {
+  if (!abilities.dash.active && !hardFrozen) {
     const inputX = joystick.dx;
     const inputY = joystick.dy;
     const len = Math.sqrt(inputX * inputX + inputY * inputY);
@@ -40,13 +41,19 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   }
 
   // Apply friction
-  const friction = abilities.dash.active
+  const friction = hardFrozen
+    ? 0.74
+    : abilities.dash.active
     ? 0.96
     : hyperspaceActive
       ? 0.93
       : PLAYER.FRICTION;
   player.vx *= Math.pow(friction, deltaMs / 16.67);
   player.vy *= Math.pow(friction, deltaMs / 16.67);
+  if (hardFrozen) {
+    player.vx = 0;
+    player.vy = 0;
+  }
 
   if (hyperspaceActive) {
     // Add slight lateral slip so controls feel drifty in hyperspace.
@@ -72,8 +79,10 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   }
 
   // Apply position
-  player.x += player.vx * dt;
-  player.y += player.vy * dt;
+  if (!hardFrozen) {
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+  }
 
   // Wall bounce
   const worldWidth = state?.world?.width || SCREEN.width;

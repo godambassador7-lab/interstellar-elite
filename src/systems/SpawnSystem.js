@@ -81,7 +81,7 @@ export function trySpawn(state) {
     nemesis.isNemesis = true;
     nemesis.size = FLAGSHIP_SIZE;
     nemesis.name = 'RIVAL NEMESIS';
-    nemesis.hp *= 2.2;
+    nemesis.hp *= 4.4;
     nemesis.maxHp = nemesis.hp;
     nemesis.speed *= 1.2;
     nemesis.damage *= 1.35;
@@ -141,12 +141,26 @@ function createEnemy(def, pos) {
 export function updateEnemyMovement(state, deltaMs) {
   const dt = deltaMs / 1000;
   const { player, enemies } = state;
+  const now = Date.now();
   const worldWidth = state?.world?.width || SCREEN.width;
   const worldHeight = state?.world?.height || SCREEN.height;
   const frozen = !!state?.abilities?.quantum?.active && (state?.abilities?.quantum?.freezeRemaining || 0) > 0;
 
   for (const enemy of enemies) {
     if (enemy.dead) continue;
+
+    // Flagship reinforcements launch outward first before converging.
+    if (enemy.isFlagshipMinion && enemy.launchUntil && now < enemy.launchUntil) {
+      enemy.vx = enemy.launchVx ?? 0;
+      enemy.vy = enemy.launchVy ?? 0;
+      enemy.x += enemy.vx * dt;
+      enemy.y += enemy.vy * dt;
+      const hr = enemy.size / 2;
+      enemy.x = Math.max(hr, Math.min(worldWidth - hr, enemy.x));
+      enemy.y = Math.max(hr, Math.min(worldHeight - hr, enemy.y));
+      if (enemy.hitFlash > 0) enemy.hitFlash--;
+      continue;
+    }
 
     if (frozen) {
       enemy.vx *= 0.82;
