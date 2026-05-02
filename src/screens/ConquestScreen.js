@@ -67,7 +67,14 @@ const card = StyleSheet.create({
   },
 });
 
-export default function ConquestScreen({ galaxy, territories, completedSystems, onClose, onDefendStation }) {
+export default function ConquestScreen({
+  galaxy,
+  territories,
+  completedSystems,
+  onClose,
+  onDefendStation,
+  onLaunchSystem,
+}) {
   const qDef   = QUADRANT_DEFS.find((q) => q.id === galaxy.quadrant);
   const qColor = qDef?.accent || '#67F3FF';
 
@@ -89,7 +96,6 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
   const driftAnim = useRef(new Animated.Value(0)).current;
-  const ringAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
@@ -122,53 +128,41 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     loop.start();
     return () => loop.stop();
   }, [driftAnim, galaxy?.id]);
-  useEffect(() => {
-    ringAnim.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(ringAnim, { toValue: 1, duration: 9000, useNativeDriver: true })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [ringAnim, galaxy?.id]);
-
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
-  const ringStars = useMemo(() => {
+  const galaxyStars = useMemo(() => {
     let seed = 0;
-    const key = String(galaxy?.id || 'ring');
+    const key = String(galaxy?.id || 'galaxy-cloud');
     for (let i = 0; i < key.length; i++) seed = ((seed * 39) + key.charCodeAt(i)) >>> 0;
     const rand = () => {
       seed = (1664525 * seed + 1013904223) >>> 0;
       return seed / 0xFFFFFFFF;
     };
-    const palette = ['#FFFFFF', '#7DC7FF', '#FF7474', '#FFD86A'];
-    const count = 120;
+    const palette = ['#FFFFFF', '#CFE8FF', '#89C7FF', '#FFB58E', '#FFD96C', '#FF8E8E'];
+    const count = 420;
     const stars = [];
     for (let i = 0; i < count; i++) {
       const a = rand() * Math.PI * 2;
-      const r = 18 + rand() * 34;
-      const front = Math.sin(a) > 0;
+      const rNorm = Math.pow(rand(), 0.58);
+      const rx = 42 * rNorm;
+      const ry = 24 * rNorm;
       stars.push({
-        id: `rs-${i}`,
-        x: 50 + Math.cos(a) * r,
-        y: 50 + Math.sin(a) * r * 0.22,
-        size: 0.8 + rand() * 2.1,
-        opacity: 0.28 + rand() * 0.62,
+        id: `gs-${i}`,
+        x: 50 + Math.cos(a) * rx + (rand() - 0.5) * 3,
+        y: 50 + Math.sin(a) * ry + (rand() - 0.5) * 2.2,
+        size: 0.7 + rand() * 2.3,
+        opacity: 0.2 + rand() * 0.75,
         color: palette[Math.floor(rand() * palette.length)],
-        front,
       });
     }
     return stars;
   }, [galaxy?.id]);
-  const ringRotate = ringAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const backRingStars = useMemo(() => ringStars.filter((s) => !s.front), [ringStars]);
-  const frontRingStars = useMemo(() => ringStars.filter((s) => s.front), [ringStars]);
-  const unconqueredTargets = useMemo(() => {
+  const systemTargets = useMemo(() => {
     const held = new Set(gTerritories.map((t) => Number(t.systemNumber)));
+    const bySystem = new Map(gTerritories.map((t) => [Number(t.systemNumber), t]));
     const systems = [];
     const key = String(galaxy?.id || 'rewards');
     for (let i = 1; i <= (galaxy?.systems || 0); i++) {
-      if (held.has(i)) continue;
       let seed = 0;
       const tag = `${key}:${i}`;
       for (let c = 0; c < tag.length; c++) seed = ((seed * 37) + tag.charCodeAt(c)) >>> 0;
@@ -180,15 +174,19 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
       const creditReward = Math.floor(120 + difficulty * 70 + rand() * 180);
       const partType = REWARD_PART_TYPES[Math.floor(rand() * REWARD_PART_TYPES.length)];
       const partReward = 1 + Math.floor(rand() * Math.max(2, Math.ceil(difficulty / 2)));
+      const territory = bySystem.get(i);
       systems.push({
         systemNumber: i,
         difficulty,
         creditReward,
         partType,
         partReward,
+        conquered: held.has(i),
+        underAttack: Boolean(territory?.underAttack),
+        threat: territory?.threat ?? null,
       });
     }
-    systems.sort((a, b) => b.difficulty - a.difficulty || a.systemNumber - b.systemNumber);
+    systems.sort((a, b) => a.systemNumber - b.systemNumber);
     return systems;
   }, [gTerritories, galaxy?.id, galaxy?.systems]);
 
@@ -268,7 +266,7 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
               ]}
             >
               <Animated.View pointerEvents="none" style={[styles.ringStarsLayer, { transform: [{ rotate: ringRotate }] }]}>
-                {backRingStars.map((s) => (
+                {galaxyStars.map((s) => (
                   <View
                     key={s.id}
                     style={{
@@ -284,27 +282,11 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                   />
                 ))}
               </Animated.View>
-              <View style={styles.orbAuraOuter} />
-              <View style={styles.orbAuraMid} />
-              <View style={styles.orbBody} />
-              <View style={styles.orbCore} />
-              <Animated.View pointerEvents="none" style={[styles.ringStarsLayer, { transform: [{ rotate: ringRotate }] }]}>
-                {frontRingStars.map((s) => (
-                  <View
-                    key={`${s.id}-front`}
-                    style={{
-                      position: 'absolute',
-                      left: `${s.x}%`,
-                      top: `${s.y}%`,
-                      width: s.size,
-                      height: s.size,
-                      borderRadius: s.size / 2,
-                      opacity: Math.min(1, s.opacity + 0.08),
-                      backgroundColor: s.color,
-                    }}
-                  />
-                ))}
-              </Animated.View>
+              <View style={styles.orbHaloOuter} />
+              <View style={styles.orbHaloMid} />
+              <View style={styles.orbAccretionDisk} />
+              <View style={styles.orbShadowOuter} />
+              <View style={styles.orbCoreBlack} />
             </Animated.View>
           </View>
         </View>
@@ -312,10 +294,10 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
         <View style={styles.targetsWrap}>
           <View style={styles.targetsHeader}>
             <Text style={styles.targetsTitle}>UNCONQUERED TARGETS</Text>
-            <Text style={styles.targetsCount}>{unconqueredTargets.length} SYSTEMS</Text>
+            <Text style={styles.targetsCount}>{systemTargets.length} SYSTEMS</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.targetsList}>
-            {unconqueredTargets.slice(0, 14).map((t) => (
+            {systemTargets.map((t) => (
               <TouchableOpacity
                 key={`target-${t.systemNumber}`}
                 style={[
@@ -326,13 +308,23 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                   },
                 ]}
                 activeOpacity={0.82}
+                onPress={() => {
+                  if (onLaunchSystem) onLaunchSystem(t.systemNumber);
+                }}
               >
                 <Text style={styles.targetSystem}>SYS-{String(t.systemNumber).padStart(3, '0')}</Text>
                 <Text style={styles.targetDifficulty}>DIFF {t.difficulty}/10</Text>
+                <Text style={[styles.targetReward, { color: t.conquered ? '#63FF9E' : '#FFE26D' }]}>
+                  {t.conquered ? 'CONQUERED' : 'UNCONQUERED'}
+                  {t.underAttack ? '  UNDER ATTACK' : ''}
+                </Text>
                 <Text style={styles.targetReward}>+{t.creditReward} CREDITS</Text>
                 <Text style={[styles.targetReward, { color: REWARD_TYPE_COLORS[t.partType] || '#FFF2AE' }]}>
                   +{t.partReward} {t.partType}
                 </Text>
+                {typeof t.threat === 'number' && (
+                  <Text style={styles.targetReward}>THREAT {t.threat.toFixed(1)}</Text>
+                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -667,33 +659,40 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  orbAuraOuter: {
+  orbHaloOuter: {
     position: 'absolute',
-    width: 140,
-    height: 140,
+    width: 164,
+    height: 164,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,182,66,0.24)',
+    backgroundColor: 'rgba(255,198,110,0.12)',
   },
-  orbAuraMid: {
+  orbHaloMid: {
     position: 'absolute',
-    width: 104,
-    height: 104,
+    width: 126,
+    height: 126,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,214,110,0.4)',
+    backgroundColor: 'rgba(255,170,74,0.18)',
   },
-  orbBody: {
+  orbAccretionDisk: {
     position: 'absolute',
-    width: 74,
-    height: 74,
+    width: 150,
+    height: 58,
     borderRadius: 999,
-    backgroundColor: '#FFB347',
+    backgroundColor: 'rgba(255,188,112,0.46)',
   },
-  orbCore: {
+  orbShadowOuter: {
     position: 'absolute',
-    width: 38,
-    height: 38,
+    width: 86,
+    height: 86,
     borderRadius: 999,
-    backgroundColor: '#FFF1A6',
+    backgroundColor: 'rgba(12,14,24,0.9)',
+  },
+  orbCoreBlack: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: '#020205',
   },
   targetsWrap: {
     marginBottom: 10,

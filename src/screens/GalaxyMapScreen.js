@@ -1070,6 +1070,10 @@ export default function GalaxyMapScreen({
           completedSystems={conquestGalaxy.completedSystems}
           onClose={() => setConquestGalaxy(null)}
           onDefendStation={onDefendStation}
+          onLaunchSystem={(systemNumber) => {
+            onSelectGalaxy?.(conquestGalaxy, systemNumber);
+            setConquestGalaxy(null);
+          }}
         />
       )}
       </View>

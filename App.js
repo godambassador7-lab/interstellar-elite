@@ -224,12 +224,14 @@ export default function App() {
     return 'balanced';
   }, [doctrineUsage]);
 
-  const handleSelectGalaxy = (galaxy) => {
+  const handleSelectGalaxy = (galaxy, systemNumberOverride = null) => {
     const idx = GALAXIES.findIndex((g) => g.id === galaxy.id);
     if (idx < 0 || idx > unlockedGalaxyIndex) return;
 
     const completed = completedSystemsByGalaxy[idx] || 0;
-    const nextSystem = Math.min(galaxy.systems, completed + 1);
+    const nextSystem = Number.isFinite(systemNumberOverride)
+      ? Math.max(1, Math.min(galaxy.systems, Math.floor(systemNumberOverride)))
+      : Math.min(galaxy.systems, completed + 1);
 
     setSelectedGalaxy(galaxy);
     setSelectedSystemNumber(nextSystem);
