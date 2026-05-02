@@ -89,6 +89,7 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
   const driftAnim = useRef(new Animated.Value(0)).current;
+  const ringAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
@@ -121,9 +122,45 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     loop.start();
     return () => loop.stop();
   }, [driftAnim, galaxy?.id]);
+  useEffect(() => {
+    ringAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(ringAnim, { toValue: 1, duration: 18000, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [ringAnim, galaxy?.id]);
 
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
+  const ringRotate = ringAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const ringStars = useMemo(() => {
+    let seed = 0;
+    const key = String(galaxy?.id || 'ring');
+    for (let i = 0; i < key.length; i++) seed = ((seed * 39) + key.charCodeAt(i)) >>> 0;
+    const rand = () => {
+      seed = (1664525 * seed + 1013904223) >>> 0;
+      return seed / 0xFFFFFFFF;
+    };
+    const palette = ['#FFFFFF', '#7DC7FF', '#FF7474', '#FFD86A'];
+    const count = 520;
+    const stars = [];
+    for (let i = 0; i < count; i++) {
+      const a = rand() * Math.PI * 2;
+      const r = 26 + rand() * 40 + (rand() - 0.5) * 6;
+      const x = 50 + Math.cos(a) * r;
+      const y = 50 + Math.sin(a) * r * 0.58;
+      stars.push({
+        id: `rs-${i}`,
+        x,
+        y,
+        size: 0.8 + rand() * 2.1,
+        opacity: 0.28 + rand() * 0.62,
+        color: palette[Math.floor(rand() * palette.length)],
+      });
+    }
+    return stars;
+  }, [galaxy?.id]);
   const unconqueredTargets = useMemo(() => {
     const held = new Set(gTerritories.map((t) => Number(t.systemNumber)));
     const systems = [];
@@ -228,6 +265,27 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                 { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] },
               ]}
             >
+              <Animated.View pointerEvents="none" style={[styles.ringStarsLayer, { transform: [{ rotate: ringRotate }] }]}>
+                {ringStars.map((s) => (
+                  <View
+                    key={s.id}
+                    style={{
+                      position: 'absolute',
+                      left: `${s.x}%`,
+                      top: `${s.y}%`,
+                      width: s.size,
+                      height: s.size,
+                      borderRadius: s.size / 2,
+                      opacity: s.opacity,
+                      backgroundColor: s.color,
+                      shadowColor: s.color,
+                      shadowOpacity: 0.7,
+                      shadowRadius: 4,
+                      shadowOffset: { width: 0, height: 0 },
+                    }}
+                  />
+                ))}
+              </Animated.View>
               <View style={styles.orbAuraOuter} />
               <View style={styles.orbAuraMid} />
               <View style={styles.orbBody} />
@@ -588,6 +646,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  ringStarsLayer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
   },
   orbAuraOuter: {
     position: 'absolute',
