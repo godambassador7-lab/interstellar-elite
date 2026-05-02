@@ -55,13 +55,15 @@ const FIRST_QUADRANT_SPECIAL_CHANCE = 0.05;
 const MAX_PARTICLES = 420;
 const MAX_PHOTONS = 220;
 const MAX_DESTROYER_MISSILES = 64;
+const FLAGSHIP_MINION_LAUNCH_SPACING_MS = 120;
+const FLAGSHIP_MINION_LAUNCH_DURATION_MS = 2000;
+const FLAGSHIP_MINION_LAUNCH_SPEED_MULT = 2.0;
 const FLAGSHIP_REINFORCE_BY_QUADRANT = {
   bayron: { count: 20, intervalMs: 10000 },   // Quadrant I
   crimson: { count: 30, intervalMs: 8500 },   // Quadrant II
   watupi: { count: 40, intervalMs: 7000 },    // Quadrant III
   ultra316: { count: 50, intervalMs: 5000 },  // Quadrant IV
 };
-const FLAGSHIP_SWARM_SPEED_MULT = 1.32; // push spawned fighters toward missile-like intercept speed
 
 // Absorb damage into shield first; any overflow hits HP; resets regen timer.
 function applyPlayerDamage(player, amount, source = 'unknown') {
@@ -346,8 +348,16 @@ export function runCombatFrame(state, deltaMs) {
     if (!enemy.flagshipReinforceAt) {
       enemy.flagshipReinforceAt = now + reinforceIntervalMs;
     } else if (now >= enemy.flagshipReinforceAt) {
-      spawnFlagshipReinforcements(state, enemy, reinforceCount);
+      enemy.pendingReinforcements = (enemy.pendingReinforcements || 0) + reinforceCount;
+      if (!enemy.nextReinforcementShotAt) {
+        enemy.nextReinforcementShotAt = now;
+      }
       enemy.flagshipReinforceAt = now + reinforceIntervalMs;
+    }
+    if ((enemy.pendingReinforcements || 0) > 0 && now >= (enemy.nextReinforcementShotAt || 0)) {
+      spawnFlagshipReinforcements(state, enemy, 1);
+      enemy.pendingReinforcements = Math.max(0, (enemy.pendingReinforcements || 0) - 1);
+      enemy.nextReinforcementShotAt = now + FLAGSHIP_MINION_LAUNCH_SPACING_MS;
     }
 
     if (p.mode === 'charge') {
@@ -728,6 +738,11 @@ function spawnFlagshipReinforcements(state, enemy, count) {
     const x = enemy.x + Math.cos(a) * r;
     const y = enemy.y + Math.sin(a) * r;
     const def = ENEMY_TYPES.swarm;
+    const dx = state.player.x - enemy.x;
+    const dy = state.player.y - enemy.y;
+    const distToPlayer = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    const launchNx = dx / distToPlayer;
+    const launchNy = dy / distToPlayer;
     const spawnX = worldW > 0 ? Math.max(16, Math.min(worldW - 16, x)) : x;
     const spawnY = worldH > 0 ? Math.max(16, Math.min(worldH - 16, y)) : y;
       state.enemies.push({
@@ -739,7 +754,7 @@ function spawnFlagshipReinforcements(state, enemy, count) {
       vy: 0,
       hp: def.hp,
       maxHp: def.hp,
-        speed: def.speed * FLAGSHIP_SWARM_SPEED_MULT,
+      speed: def.speed,
       damage: def.damage,
       size: def.size,
       color: def.color,
@@ -751,12 +766,12 @@ function spawnFlagshipReinforcements(state, enemy, count) {
       angle: Math.random() * 360,
       targetAngle: Math.random() * 360,
       turnRate: 180,
-      lastLaserAt: 0,
-      lastSwarmPhotonAt: 0,
+        lastLaserAt: 0,
+        lastSwarmPhotonAt: 0,
       isFlagshipMinion: true,
-      launchVx: Math.cos(a) * DESTROYER_MISSILE_SPEED * 0.82,
-      launchVy: Math.sin(a) * DESTROYER_MISSILE_SPEED * 0.82,
-      launchUntil: Date.now() + 900,
+      launchVx: launchNx * def.speed * FLAGSHIP_MINION_LAUNCH_SPEED_MULT,
+      launchVy: launchNy * def.speed * FLAGSHIP_MINION_LAUNCH_SPEED_MULT,
+      launchUntil: Date.now() + FLAGSHIP_MINION_LAUNCH_DURATION_MS,
       });
     }
   }
