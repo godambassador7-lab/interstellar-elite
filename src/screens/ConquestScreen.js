@@ -1,6 +1,6 @@
 // src/screens/ConquestScreen.js
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -89,7 +89,7 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
   const driftAnim = useRef(new Animated.Value(0)).current;
-  const [ringPhase, setRingPhase] = useState(0);
+  const ringAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
@@ -123,19 +123,13 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     return () => loop.stop();
   }, [driftAnim, galaxy?.id]);
   useEffect(() => {
-    let raf = 0;
-    let last = Date.now();
-    const step = () => {
-      const now = Date.now();
-      const dt = now - last;
-      last = now;
-      // Side-view orbital angular speed; tuned to be obvious but smooth.
-      setRingPhase((p) => (p + (dt * 0.0022)) % (Math.PI * 2));
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [galaxy?.id]);
+    ringAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(ringAnim, { toValue: 1, duration: 9000, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [ringAnim, galaxy?.id]);
 
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
@@ -151,27 +145,22 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     const count = 260;
     const stars = [];
     for (let i = 0; i < count; i++) {
+      const front = Math.sin(a) > 0;
       stars.push({
         id: `rs-${i}`,
-        baseAngle: rand() * Math.PI * 2,
-        radius: 32 + rand() * 18 + (rand() - 0.5) * 2.2,
+        x: 50 + Math.cos(a) * r,
+        y: 50 + Math.sin(a) * r * 0.22,
         size: 0.8 + rand() * 2.1,
         opacity: 0.28 + rand() * 0.62,
         color: palette[Math.floor(rand() * palette.length)],
+        front,
       });
     }
     return stars;
   }, [galaxy?.id]);
-  const ringPositions = useMemo(() => {
-    return ringStars.map((s) => {
-      const a = s.baseAngle + ringPhase;
-      const x = 50 + Math.cos(a) * s.radius;
-      const y = 50 + Math.sin(a) * s.radius * 0.22;
-      return { ...s, x, y, front: Math.sin(a) > 0 };
-    });
-  }, [ringStars, ringPhase]);
-  const backRingStars = useMemo(() => ringPositions.filter((s) => !s.front), [ringPositions]);
-  const frontRingStars = useMemo(() => ringPositions.filter((s) => s.front), [ringPositions]);
+  const ringRotate = ringAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const backRingStars = useMemo(() => ringStars.filter((s) => !s.front), [ringStars]);
+  const frontRingStars = useMemo(() => ringStars.filter((s) => s.front), [ringStars]);
   const unconqueredTargets = useMemo(() => {
     const held = new Set(gTerritories.map((t) => Number(t.systemNumber)));
     const systems = [];
