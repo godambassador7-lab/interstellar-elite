@@ -145,6 +145,8 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     const count = 120;
     const stars = [];
     for (let i = 0; i < count; i++) {
+      const a = rand() * Math.PI * 2;
+      const r = 18 + rand() * 34;
       const front = Math.sin(a) > 0;
       stars.push({
         id: `rs-${i}`,
