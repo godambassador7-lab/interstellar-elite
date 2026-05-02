@@ -265,7 +265,7 @@ export default function ConquestScreen({
                 { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] },
               ]}
             >
-              <Animated.View pointerEvents="none" style={[styles.ringStarsLayer, { transform: [{ rotate: ringRotate }] }]}>
+              <Animated.View pointerEvents="none" style={styles.ringStarsLayer}>
                 {galaxyStars.map((s) => (
                   <View
                     key={s.id}
