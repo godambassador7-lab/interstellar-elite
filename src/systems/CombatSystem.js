@@ -57,6 +57,7 @@ const FLAGSHIP_REINFORCE_BY_QUADRANT = {
   watupi: { count: 40, intervalMs: 7000 },    // Quadrant III
   ultra316: { count: 50, intervalMs: 5000 },  // Quadrant IV
 };
+const FLAGSHIP_SWARM_SPEED_MULT = 1.32; // push spawned fighters toward missile-like intercept speed
 
 // Absorb damage into shield first; any overflow hits HP; resets regen timer.
 function applyPlayerDamage(player, amount, source = 'unknown') {
@@ -671,7 +672,7 @@ function spawnFlagshipReinforcements(state, enemy, count) {
     const def = ENEMY_TYPES.swarm;
     const spawnX = worldW > 0 ? Math.max(16, Math.min(worldW - 16, x)) : x;
     const spawnY = worldH > 0 ? Math.max(16, Math.min(worldH - 16, y)) : y;
-    state.enemies.push({
+      state.enemies.push({
       id: uid(),
       type: def.type,
       x: spawnX,
@@ -680,7 +681,7 @@ function spawnFlagshipReinforcements(state, enemy, count) {
       vy: 0,
       hp: def.hp,
       maxHp: def.hp,
-      speed: def.speed,
+        speed: def.speed * FLAGSHIP_SWARM_SPEED_MULT,
       damage: def.damage,
       size: def.size,
       color: def.color,
@@ -692,7 +693,8 @@ function spawnFlagshipReinforcements(state, enemy, count) {
       angle: Math.random() * 360,
       targetAngle: Math.random() * 360,
       turnRate: 180,
-      lastLaserAt: 0,
-    });
+        lastLaserAt: 0,
+        lastSwarmPhotonAt: 0,
+      });
+    }
   }
-}

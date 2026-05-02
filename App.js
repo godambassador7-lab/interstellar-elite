@@ -35,6 +35,7 @@ export default function App() {
   const [runProfile, setRunProfile] = useState('combat');
   const [selectedSystemNumber, setSelectedSystemNumber] = useState(1);
   const [selectedDefenseTerritory, setSelectedDefenseTerritory] = useState(null);
+  const [autoOpenGalaxyId, setAutoOpenGalaxyId] = useState(null);
   const [selectedDefenseDoctrine, setSelectedDefenseDoctrine] = useState('fortress');
   const [warCredits, setWarCredits] = useState(0);
   const [shipPartsByType, setShipPartsByType] = useState({
@@ -235,7 +236,23 @@ export default function App() {
 
     setSelectedGalaxy(galaxy);
     setSelectedSystemNumber(nextSystem);
+    setAutoOpenGalaxyId(galaxy.id);
     setScreen('game');
+  };
+
+  const handleNodeLongPressDefense = (galaxy) => {
+    if (!galaxy?.id) return;
+    const idx = GALAXIES.findIndex((g) => g.id === galaxy.id);
+    if (idx < 0 || idx > unlockedGalaxyIndex) return;
+
+    const galaxyTerritories = Object.values(territories || {}).filter((t) => t.galaxyId === galaxy.id);
+    const preferred =
+      galaxyTerritories.find((t) => t.underAttack) ||
+      galaxyTerritories[0] ||
+      createTerritory(galaxy.id, Math.max(1, Math.min(galaxy.systems || 1, (completedSystemsByGalaxy[idx] || 0) + 1)));
+
+    setSelectedDefenseTerritory(preferred);
+    setScreen('defense_prep');
   };
 
   const applySystemLosses = (losses = []) => {
@@ -299,7 +316,7 @@ export default function App() {
       ...nemesis.events,
     ];
     setDefenseEvents((prev) => [...newEvents, ...prev].slice(0, 24));
-
+    setAutoOpenGalaxyId(galaxyId);
     setScreen('map');
   };
 
@@ -442,6 +459,9 @@ export default function App() {
               onBuyMetaUpgrade={handleBuyMetaUpgrade}
               onBuyStationUpgrade={handleBuyStationUpgrade}
               onSelectGalaxy={handleSelectGalaxy}
+              onNodeLongPressDefense={handleNodeLongPressDefense}
+              autoOpenGalaxyId={autoOpenGalaxyId}
+              onAutoOpenGalaxyHandled={() => setAutoOpenGalaxyId(null)}
               onBack={() => setScreen('menu')}
               onDefendStation={handleDefendStation}
             />

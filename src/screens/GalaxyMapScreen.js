@@ -133,6 +133,9 @@ export default function GalaxyMapScreen({
   onBuyMetaUpgrade,
   onBuyStationUpgrade,
   onSelectGalaxy,
+  onNodeLongPressDefense,
+  autoOpenGalaxyId,
+  onAutoOpenGalaxyHandled,
   onBack,
   onDefendStation,
 }) {
@@ -519,6 +522,15 @@ export default function GalaxyMapScreen({
     centerOnCurrentGalaxy(zoomRef.current, false);
   }, [lockCurrentGalaxy, zoom, viewport.width, viewport.height, activeGalaxyId, centerOnCurrentGalaxy]);
 
+  useEffect(() => {
+    if (!autoOpenGalaxyId) return;
+    const g = galaxies.find((item) => item.id === autoOpenGalaxyId);
+    if (!g) return;
+    setConquestGalaxy(g);
+    centerOnCurrentGalaxy(zoomRef.current, false);
+    onAutoOpenGalaxyHandled?.();
+  }, [autoOpenGalaxyId, galaxies, centerOnCurrentGalaxy, onAutoOpenGalaxyHandled]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -892,7 +904,7 @@ export default function GalaxyMapScreen({
                     disabled={!g.unlocked}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     onPress={() => setConquestGalaxy(g)}
-                    onLongPress={() => onSelectGalaxy(g)}
+                    onLongPress={() => onNodeLongPressDefense?.(g)}
                     delayLongPress={420}
                     style={{
                       position: 'absolute',
