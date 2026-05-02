@@ -138,20 +138,20 @@ export default function ConquestScreen({
       seed = (1664525 * seed + 1013904223) >>> 0;
       return seed / 0xFFFFFFFF;
     };
-    const palette = ['#FFFFFF', '#CFE8FF', '#89C7FF', '#FFB58E', '#FFD96C', '#FF8E8E'];
-    const count = 420;
+    const palette = ['#FFFFFF', '#EAF4FF', '#CFE8FF', '#89C7FF', '#FFB58E', '#FFD96C', '#FF8E8E'];
+    const count = 860;
     const stars = [];
     for (let i = 0; i < count; i++) {
       const a = rand() * Math.PI * 2;
       const rNorm = Math.pow(rand(), 0.58);
-      const rx = 42 * rNorm;
-      const ry = 24 * rNorm;
+      const rx = 48 * rNorm;
+      const ry = 28 * rNorm;
       stars.push({
         id: `gs-${i}`,
         x: 50 + Math.cos(a) * rx + (rand() - 0.5) * 3,
         y: 50 + Math.sin(a) * ry + (rand() - 0.5) * 2.2,
-        size: 0.7 + rand() * 2.3,
-        opacity: 0.2 + rand() * 0.75,
+        size: 0.65 + rand() * 2.35,
+        opacity: 0.24 + rand() * 0.76,
         color: palette[Math.floor(rand() * palette.length)],
       });
     }
@@ -283,9 +283,13 @@ export default function ConquestScreen({
                 ))}
               </Animated.View>
               <View style={styles.orbHaloOuter} />
+              <View style={styles.orbHaloWarm} />
               <View style={styles.orbHaloMid} />
+              <View style={styles.orbAccretionOuter} />
               <View style={styles.orbAccretionDisk} />
+              <View style={styles.orbAccretionInner} />
               <View style={styles.orbShadowOuter} />
+              <View style={styles.orbEventHorizonGlow} />
               <View style={styles.orbCoreBlack} />
             </Animated.View>
           </View>
@@ -666,12 +670,26 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(255,198,110,0.12)',
   },
+  orbHaloWarm: {
+    position: 'absolute',
+    width: 144,
+    height: 144,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,148,76,0.12)',
+  },
   orbHaloMid: {
     position: 'absolute',
     width: 126,
     height: 126,
     borderRadius: 999,
     backgroundColor: 'rgba(255,170,74,0.18)',
+  },
+  orbAccretionOuter: {
+    position: 'absolute',
+    width: 176,
+    height: 66,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,220,140,0.24)',
   },
   orbAccretionDisk: {
     position: 'absolute',
@@ -680,12 +698,26 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(255,188,112,0.46)',
   },
+  orbAccretionInner: {
+    position: 'absolute',
+    width: 122,
+    height: 42,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,146,74,0.34)',
+  },
   orbShadowOuter: {
     position: 'absolute',
     width: 86,
     height: 86,
     borderRadius: 999,
     backgroundColor: 'rgba(12,14,24,0.9)',
+  },
+  orbEventHorizonGlow: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 999,
+    backgroundColor: 'rgba(8,10,18,0.95)',
   },
   orbCoreBlack: {
     position: 'absolute',
