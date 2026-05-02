@@ -17,6 +17,12 @@ const SPACE_STATION_SPRITE = require('../../space station.png');
 const THREAT_COLORS = ['#44FF88', '#52D8FF', '#FFC13A', '#FF7A2E', '#FF3D3D'];
 const THREAT_LABELS = ['SAFE', 'ELEV', 'MOD', 'HIGH', 'CRIT'];
 const REWARD_PART_TYPES = ['MECH', 'PLASMA', 'VOID', 'BIO'];
+const REWARD_TYPE_COLORS = {
+  MECH: '#8DFF9F',
+  PLASMA: '#64D7FF',
+  VOID: '#C488FF',
+  BIO: '#FFD26B',
+};
 
 function getThreatLevel(raw) {
   if (raw < 2) return 0;
@@ -344,6 +350,14 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                   <View
                     key={m.id}
                     style={{
+                      ...(function () {
+                        const c = REWARD_TYPE_COLORS[m.partType] || '#FFE26D';
+                        return {
+                          borderColor: c,
+                          backgroundColor: `${c}44`,
+                          shadowColor: c,
+                        };
+                      })(),
                       position: 'absolute',
                       left: `${m.x}%`,
                       top: `${m.y}%`,
@@ -351,9 +365,6 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                       height: 8,
                       borderRadius: 4,
                       borderWidth: 1.3,
-                      borderColor: '#FFE26D',
-                      backgroundColor: 'rgba(255,226,109,0.28)',
-                      shadowColor: '#FFE26D',
                       shadowOpacity: 0.9,
                       shadowRadius: 5,
                       shadowOffset: { width: 0, height: 0 },
@@ -372,11 +383,23 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.targetsList}>
             {unconqueredTargets.slice(0, 14).map((t) => (
-              <TouchableOpacity key={`target-${t.systemNumber}`} style={styles.targetCard} activeOpacity={0.82}>
+              <TouchableOpacity
+                key={`target-${t.systemNumber}`}
+                style={[
+                  styles.targetCard,
+                  {
+                    borderColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}AA`,
+                    backgroundColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}22`,
+                  },
+                ]}
+                activeOpacity={0.82}
+              >
                 <Text style={styles.targetSystem}>SYS-{String(t.systemNumber).padStart(3, '0')}</Text>
                 <Text style={styles.targetDifficulty}>DIFF {t.difficulty}/10</Text>
                 <Text style={styles.targetReward}>+{t.creditReward} CREDITS</Text>
-                <Text style={styles.targetReward}>+{t.partReward} {t.partType}</Text>
+                <Text style={[styles.targetReward, { color: REWARD_TYPE_COLORS[t.partType] || '#FFF2AE' }]}>
+                  +{t.partReward} {t.partType}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
