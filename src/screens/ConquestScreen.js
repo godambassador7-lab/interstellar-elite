@@ -89,7 +89,6 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
   const driftAnim = useRef(new Animated.Value(0)).current;
-  const spinAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
@@ -122,44 +121,9 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     loop.start();
     return () => loop.stop();
   }, [driftAnim, galaxy?.id]);
-  useEffect(() => {
-    spinAnim.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 12000, useNativeDriver: true })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [spinAnim, galaxy?.id]);
 
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
-  const liveMapNodes = useMemo(() => {
-    let seed = 0;
-    const key = String(galaxy?.id || 'live');
-    for (let i = 0; i < key.length; i++) seed = ((seed * 33) + key.charCodeAt(i)) >>> 0;
-    const rand = () => {
-      seed = (1103515245 * seed + 12345) >>> 0;
-      return seed / 0xFFFFFFFF;
-    };
-    const count = Math.max(900, Math.min(1700, (galaxy?.systems || 24) * 45));
-    const rings = [10, 16, 22, 29, 36, 43];
-    const out = [];
-    for (let i = 0; i < count; i++) {
-      const ring = rings[i % rings.length];
-      const a = rand() * Math.PI * 2;
-      const r = ring + ((rand() - 0.5) * (2.2 + ring * 0.07));
-      const x = 50 + Math.cos(a) * r;
-      const y = 50 + Math.sin(a) * r * 0.34;
-      out.push({
-        id: `n-${i}`,
-        x,
-        y,
-        size: 0.4 + rand() * 1.9,
-        opacity: 0.15 + rand() * 0.7,
-      });
-    }
-    return out;
-  }, [galaxy?.id, galaxy?.systems]);
   const unconqueredTargets = useMemo(() => {
     const held = new Set(gTerritories.map((t) => Number(t.systemNumber)));
     const systems = [];
@@ -188,20 +152,6 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     systems.sort((a, b) => b.difficulty - a.difficulty || a.systemNumber - b.systemNumber);
     return systems;
   }, [gTerritories, galaxy?.id, galaxy?.systems]);
-  const unconqueredMarkers = useMemo(() => {
-    return unconqueredTargets.slice(0, 28).map((t, idx) => {
-      const n = liveMapNodes[idx % Math.max(1, liveMapNodes.length)];
-      return {
-        ...t,
-        id: `mk-${t.systemNumber}`,
-        x: n ? n.x : 50,
-        y: n ? n.y : 50,
-      };
-    });
-  }, [unconqueredTargets, liveMapNodes]);
-  const orbitRotA = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const orbitRotB = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const orbitRotC = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
     <View style={styles.overlay}>
@@ -271,108 +221,18 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
         <View style={styles.liveMapWrap}>
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c' }]}>
-            <View style={styles.galaxyDiskLayer}>
-              <View style={styles.accretionRingOuter} />
-              <View style={styles.accretionRingInner} />
-              <View style={styles.blackHoleShadow} />
-              <View style={styles.blackHoleCore} />
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.liveNodesLayer,
-                  {
-                    transform: [
-                      { rotate: orbitRotA },
-                    ],
-                  },
-                ]}
-              >
-                {liveMapNodes.filter((_, i) => i % 3 === 0).map((n) => (
-                  <View
-                    key={n.id}
-                    style={{
-                      position: 'absolute',
-                      left: `${n.x}%`,
-                      top: `${n.y}%`,
-                      width: n.size,
-                      height: n.size,
-                      borderRadius: n.size / 2,
-                      opacity: n.opacity,
-                      backgroundColor: '#FFFFFF',
-                      shadowColor: '#FFFFFF',
-                      shadowOpacity: 0.6,
-                      shadowRadius: 3,
-                      shadowOffset: { width: 0, height: 0 },
-                    }}
-                  />
-                ))}
-              </Animated.View>
-              <Animated.View
-                pointerEvents="none"
-                style={[styles.liveNodesLayer, { transform: [{ rotate: orbitRotB }] }]}
-              >
-                {liveMapNodes.filter((_, i) => i % 3 === 1).map((n) => (
-                  <View
-                    key={`${n.id}-b`}
-                    style={{
-                      position: 'absolute',
-                      left: `${n.x}%`,
-                      top: `${n.y}%`,
-                      width: n.size * 0.9,
-                      height: n.size * 0.9,
-                      borderRadius: n.size / 2,
-                      opacity: n.opacity * 0.78,
-                      backgroundColor: '#F8FCFF',
-                    }}
-                  />
-                ))}
-              </Animated.View>
-              <Animated.View
-                pointerEvents="none"
-                style={[styles.liveNodesLayer, { transform: [{ rotate: orbitRotC }] }]}
-              >
-                {liveMapNodes.filter((_, i) => i % 3 === 2).map((n) => (
-                  <View
-                    key={`${n.id}-c`}
-                    style={{
-                      position: 'absolute',
-                      left: `${n.x}%`,
-                      top: `${n.y}%`,
-                      width: n.size * 0.8,
-                      height: n.size * 0.8,
-                      borderRadius: n.size / 2,
-                      opacity: n.opacity * 0.62,
-                      backgroundColor: '#EAF6FF',
-                    }}
-                  />
-                ))}
-                {unconqueredMarkers.map((m) => (
-                  <View
-                    key={m.id}
-                    style={{
-                      ...(function () {
-                        const c = REWARD_TYPE_COLORS[m.partType] || '#FFE26D';
-                        return {
-                          borderColor: c,
-                          backgroundColor: `${c}44`,
-                          shadowColor: c,
-                        };
-                      })(),
-                      position: 'absolute',
-                      left: `${m.x}%`,
-                      top: `${m.y}%`,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      borderWidth: 1.3,
-                      shadowOpacity: 0.9,
-                      shadowRadius: 5,
-                      shadowOffset: { width: 0, height: 0 },
-                    }}
-                  />
-                ))}
-              </Animated.View>
-            </View>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.orbFloatLayer,
+                { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] },
+              ]}
+            >
+              <View style={styles.orbAuraOuter} />
+              <View style={styles.orbAuraMid} />
+              <View style={styles.orbBody} />
+              <View style={styles.orbCore} />
+            </Animated.View>
           </View>
         </View>
 
@@ -720,57 +580,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#02060D',
     overflow: 'hidden',
   },
-  galaxyDiskLayer: {
+  orbFloatLayer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    transform: [{ scaleY: 0.46 }],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  accretionRingOuter: {
+  orbAuraOuter: {
     position: 'absolute',
-    left: '31%',
-    top: '30%',
-    width: '38%',
-    height: '38%',
+    width: 140,
+    height: 140,
     borderRadius: 999,
-    borderWidth: 2,
-    borderColor: 'rgba(255,236,155,0.45)',
-    backgroundColor: 'rgba(255,226,110,0.12)',
+    backgroundColor: 'rgba(255,182,66,0.24)',
   },
-  accretionRingInner: {
+  orbAuraMid: {
     position: 'absolute',
-    left: '38%',
-    top: '37%',
-    width: '24%',
-    height: '24%',
+    width: 104,
+    height: 104,
     borderRadius: 999,
-    borderWidth: 1.4,
-    borderColor: 'rgba(255,244,190,0.6)',
-    backgroundColor: 'rgba(255,226,110,0.1)',
+    backgroundColor: 'rgba(255,214,110,0.4)',
   },
-  blackHoleShadow: {
+  orbBody: {
     position: 'absolute',
-    left: '42.3%',
-    top: '41.3%',
-    width: '14.2%',
-    height: '14.2%',
+    width: 74,
+    height: 74,
     borderRadius: 999,
-    backgroundColor: 'rgba(10,10,14,0.86)',
+    backgroundColor: '#FFB347',
   },
-  blackHoleCore: {
+  orbCore: {
     position: 'absolute',
-    left: '45%',
-    top: '44%',
-    width: '8.8%',
-    height: '8.8%',
+    width: 38,
+    height: 38,
     borderRadius: 999,
-    backgroundColor: '#020207',
-  },
-  liveNodesLayer: {
-    width: '100%',
-    height: '100%',
+    backgroundColor: '#FFF1A6',
   },
   targetsWrap: {
     marginBottom: 10,
