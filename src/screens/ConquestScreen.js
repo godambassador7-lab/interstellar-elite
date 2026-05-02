@@ -125,7 +125,7 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
   useEffect(() => {
     spinAnim.setValue(0);
     const loop = Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 52000, useNativeDriver: true })
+      Animated.timing(spinAnim, { toValue: 1, duration: 12000, useNativeDriver: true })
     );
     loop.start();
     return () => loop.stop();
@@ -200,8 +200,8 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     });
   }, [unconqueredTargets, liveMapNodes]);
   const orbitRotA = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const orbitRotB = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const orbitRotC = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const orbitRotB = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '300deg'] });
+  const orbitRotC = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '240deg'] });
 
   return (
     <View style={styles.overlay}>
