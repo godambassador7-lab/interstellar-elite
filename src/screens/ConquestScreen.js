@@ -142,7 +142,7 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
       return seed / 0xFFFFFFFF;
     };
     const palette = ['#FFFFFF', '#7DC7FF', '#FF7474', '#FFD86A'];
-    const count = 260;
+    const count = 120;
     const stars = [];
     for (let i = 0; i < count; i++) {
       const front = Math.sin(a) > 0;
@@ -278,10 +278,6 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                       borderRadius: s.size / 2,
                       opacity: s.opacity,
                       backgroundColor: s.color,
-                      shadowColor: s.color,
-                      shadowOpacity: 0.7,
-                      shadowRadius: 4,
-                      shadowOffset: { width: 0, height: 0 },
                     }}
                   />
                 ))}
@@ -303,10 +299,6 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                       borderRadius: s.size / 2,
                       opacity: Math.min(1, s.opacity + 0.08),
                       backgroundColor: s.color,
-                      shadowColor: s.color,
-                      shadowOpacity: 0.85,
-                      shadowRadius: 5,
-                      shadowOffset: { width: 0, height: 0 },
                     }}
                   />
                 ))}
