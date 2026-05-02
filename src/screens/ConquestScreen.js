@@ -158,7 +158,7 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
     }
     return out;
   }, [galaxy?.id, galaxy?.systems]);
-  const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '300deg'] });
 
   return (
     <View style={styles.overlay}>
@@ -228,41 +228,45 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
         <View style={styles.liveMapWrap}>
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c' }]}>
-            <View style={styles.galaxyCoreGlow} />
-            <View style={styles.galaxyCoreHot} />
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.liveNodesLayer,
-                {
-                  transform: [
-                    { translateX: driftTranslateX },
-                    { translateY: driftTranslateY },
-                    { rotate: spinRotate },
-                  ],
-                },
-              ]}
-            >
-              {liveMapNodes.map((n) => (
-                <View
-                  key={n.id}
-                  style={{
-                    position: 'absolute',
-                    left: `${n.x}%`,
-                    top: `${n.y}%`,
-                    width: n.size,
-                    height: n.size,
-                    borderRadius: n.size / 2,
-                    opacity: n.opacity,
-                    backgroundColor: '#FFFFFF',
-                    shadowColor: '#FFFFFF',
-                    shadowOpacity: 0.6,
-                    shadowRadius: 3,
-                    shadowOffset: { width: 0, height: 0 },
-                  }}
-                />
-              ))}
-            </Animated.View>
+            <View style={styles.galaxyDiskLayer}>
+              <View style={styles.galaxyCoreCloudA} />
+              <View style={styles.galaxyCoreCloudB} />
+              <View style={styles.galaxyCoreCloudC} />
+              <View style={styles.galaxyCoreHot} />
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.liveNodesLayer,
+                  {
+                    transform: [
+                      { translateX: driftTranslateX },
+                      { translateY: driftTranslateY },
+                      { rotate: spinRotate },
+                    ],
+                  },
+                ]}
+              >
+                {liveMapNodes.map((n) => (
+                  <View
+                    key={n.id}
+                    style={{
+                      position: 'absolute',
+                      left: `${n.x}%`,
+                      top: `${n.y}%`,
+                      width: n.size,
+                      height: n.size,
+                      borderRadius: n.size / 2,
+                      opacity: n.opacity,
+                      backgroundColor: '#FFFFFF',
+                      shadowColor: '#FFFFFF',
+                      shadowOpacity: 0.6,
+                      shadowRadius: 3,
+                      shadowOffset: { width: 0, height: 0 },
+                    }}
+                  />
+                ))}
+              </Animated.View>
+            </View>
           </View>
         </View>
 
@@ -581,23 +585,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#02060D',
     overflow: 'hidden',
   },
-  galaxyCoreGlow: {
+  galaxyDiskLayer: {
     position: 'absolute',
-    left: '42%',
-    top: '35%',
-    width: '16%',
-    height: '30%',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    transform: [{ scaleY: 0.62 }, { rotate: '-10deg' }],
+  },
+  galaxyCoreCloudA: {
+    position: 'absolute',
+    left: '38%',
+    top: '31%',
+    width: '24%',
+    height: '38%',
     borderRadius: 999,
-    backgroundColor: 'rgba(255,243,220,0.95)',
+    backgroundColor: 'rgba(255,221,133,0.74)',
+  },
+  galaxyCoreCloudB: {
+    position: 'absolute',
+    left: '41%',
+    top: '34%',
+    width: '18%',
+    height: '31%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,238,179,0.85)',
+  },
+  galaxyCoreCloudC: {
+    position: 'absolute',
+    left: '44%',
+    top: '38%',
+    width: '12%',
+    height: '23%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,245,210,0.9)',
   },
   galaxyCoreHot: {
     position: 'absolute',
-    left: '46.5%',
-    top: '42%',
-    width: '7%',
-    height: '14%',
+    left: '47.2%',
+    top: '42.5%',
+    width: '5.8%',
+    height: '11.5%',
     borderRadius: 999,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFDF8',
   },
   liveNodesLayer: {
     width: '100%',
