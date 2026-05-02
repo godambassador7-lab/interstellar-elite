@@ -135,20 +135,15 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
       seed = (1103515245 * seed + 12345) >>> 0;
       return seed / 0xFFFFFFFF;
     };
-    const count = Math.max(700, Math.min(1400, (galaxy?.systems || 24) * 35));
-    const arms = 4;
+    const count = Math.max(900, Math.min(1700, (galaxy?.systems || 24) * 45));
+    const rings = [10, 16, 22, 29, 36, 43];
     const out = [];
     for (let i = 0; i < count; i++) {
-      const t = i / count;
-      const arm = i % arms;
-      const radius = Math.pow(t, 0.72) * 47;
-      const baseAngle = radius * 0.34 + (arm * (Math.PI * 2 / arms));
-      const jitterA = (rand() - 0.5) * 0.9;
-      const jitterR = (rand() - 0.5) * 5.5;
-      const a = baseAngle + jitterA;
-      const r = Math.max(0, radius + jitterR);
+      const ring = rings[i % rings.length];
+      const a = rand() * Math.PI * 2;
+      const r = ring + ((rand() - 0.5) * (2.2 + ring * 0.07));
       const x = 50 + Math.cos(a) * r;
-      const y = 52 + Math.sin(a) * r * 0.62;
+      const y = 50 + Math.sin(a) * r;
       out.push({
         id: `n-${i}`,
         x,
@@ -198,7 +193,9 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
       };
     });
   }, [unconqueredTargets, liveMapNodes]);
-  const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '300deg'] });
+  const orbitRotA = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const orbitRotB = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-250deg'] });
+  const orbitRotC = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '170deg'] });
 
   return (
     <View style={styles.overlay}>
@@ -269,10 +266,10 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c' }]}>
             <View style={styles.galaxyDiskLayer}>
-              <View style={styles.galaxyCoreCloudA} />
-              <View style={styles.galaxyCoreCloudB} />
-              <View style={styles.galaxyCoreCloudC} />
-              <View style={styles.galaxyCoreHot} />
+              <View style={styles.accretionRingOuter} />
+              <View style={styles.accretionRingInner} />
+              <View style={styles.blackHoleShadow} />
+              <View style={styles.blackHoleCore} />
               <Animated.View
                 pointerEvents="none"
                 style={[
@@ -281,12 +278,12 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                     transform: [
                       { translateX: driftTranslateX },
                       { translateY: driftTranslateY },
-                      { rotate: spinRotate },
+                      { rotate: orbitRotA },
                     ],
                   },
                 ]}
               >
-                {liveMapNodes.map((n) => (
+                {liveMapNodes.filter((_, i) => i % 3 === 0).map((n) => (
                   <View
                     key={n.id}
                     style={{
@@ -302,6 +299,46 @@ export default function ConquestScreen({ galaxy, territories, completedSystems, 
                       shadowOpacity: 0.6,
                       shadowRadius: 3,
                       shadowOffset: { width: 0, height: 0 },
+                    }}
+                  />
+                ))}
+              </Animated.View>
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.liveNodesLayer, { transform: [{ rotate: orbitRotB }] }]}
+              >
+                {liveMapNodes.filter((_, i) => i % 3 === 1).map((n) => (
+                  <View
+                    key={`${n.id}-b`}
+                    style={{
+                      position: 'absolute',
+                      left: `${n.x}%`,
+                      top: `${n.y}%`,
+                      width: n.size * 0.9,
+                      height: n.size * 0.9,
+                      borderRadius: n.size / 2,
+                      opacity: n.opacity * 0.78,
+                      backgroundColor: '#F8FCFF',
+                    }}
+                  />
+                ))}
+              </Animated.View>
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.liveNodesLayer, { transform: [{ rotate: orbitRotC }] }]}
+              >
+                {liveMapNodes.filter((_, i) => i % 3 === 2).map((n) => (
+                  <View
+                    key={`${n.id}-c`}
+                    style={{
+                      position: 'absolute',
+                      left: `${n.x}%`,
+                      top: `${n.y}%`,
+                      width: n.size * 0.8,
+                      height: n.size * 0.8,
+                      borderRadius: n.size / 2,
+                      opacity: n.opacity * 0.62,
+                      backgroundColor: '#EAF6FF',
                     }}
                   />
                 ))}
@@ -668,43 +705,46 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    transform: [{ scaleY: 0.62 }, { rotate: '-10deg' }],
   },
-  galaxyCoreCloudA: {
+  accretionRingOuter: {
     position: 'absolute',
-    left: '38%',
-    top: '31%',
-    width: '24%',
+    left: '31%',
+    top: '30%',
+    width: '38%',
     height: '38%',
     borderRadius: 999,
-    backgroundColor: 'rgba(255,221,133,0.74)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,236,155,0.45)',
+    backgroundColor: 'rgba(255,226,110,0.12)',
   },
-  galaxyCoreCloudB: {
+  accretionRingInner: {
     position: 'absolute',
-    left: '41%',
-    top: '34%',
-    width: '18%',
-    height: '31%',
+    left: '38%',
+    top: '37%',
+    width: '24%',
+    height: '24%',
     borderRadius: 999,
-    backgroundColor: 'rgba(255,238,179,0.85)',
+    borderWidth: 1.4,
+    borderColor: 'rgba(255,244,190,0.6)',
+    backgroundColor: 'rgba(255,226,110,0.1)',
   },
-  galaxyCoreCloudC: {
+  blackHoleShadow: {
     position: 'absolute',
-    left: '44%',
-    top: '38%',
-    width: '12%',
-    height: '23%',
+    left: '42.3%',
+    top: '41.3%',
+    width: '14.2%',
+    height: '14.2%',
     borderRadius: 999,
-    backgroundColor: 'rgba(255,245,210,0.9)',
+    backgroundColor: 'rgba(10,10,14,0.86)',
   },
-  galaxyCoreHot: {
+  blackHoleCore: {
     position: 'absolute',
-    left: '47.2%',
-    top: '42.5%',
-    width: '5.8%',
-    height: '11.5%',
+    left: '45%',
+    top: '44%',
+    width: '8.8%',
+    height: '8.8%',
     borderRadius: 999,
-    backgroundColor: '#FFFDF8',
+    backgroundColor: '#020207',
   },
   liveNodesLayer: {
     width: '100%',
