@@ -1067,6 +1067,25 @@ export default function GameScreen({
 
       if (g.flagshipEscape.active) {
         g.phaseLabel = g.flagshipEscape.countdownMs > 0 ? 'FLAGSHIP CORE CRITICAL' : 'ESCAPE THE BLAST';
+        const horizonRadius = Math.max(56, g.flagshipEscape.blastRadius * 0.72);
+        const horizonInfluenceRadius = horizonRadius * 1.55;
+        const hdx = g.flagshipEscape.centerX - g.player.x;
+        const hdy = g.flagshipEscape.centerY - g.player.y;
+        const hDistSq = hdx * hdx + hdy * hdy;
+        if (hDistSq > 9) {
+          const hDist = Math.sqrt(hDistSq);
+          if (hDist <= horizonInfluenceRadius) {
+            const hnx = hdx / hDist;
+            const hny = hdy / hDist;
+            const t = 1 - (hDist / horizonInfluenceRadius);
+            const horizonPull = (130 + t * t * 360) * dtSec;
+            // Inward suction + mild swirl to make the event horizon feel active.
+            g.player.vx += hnx * horizonPull;
+            g.player.vy += hny * horizonPull;
+            g.player.vx += -hny * horizonPull * 0.18;
+            g.player.vy += hnx * horizonPull * 0.18;
+          }
+        }
         if (nowMs < (g.flagshipEscape.pullUntil || 0)) {
           const sdx = g.flagshipEscape.centerX - g.player.x;
           const sdy = g.flagshipEscape.centerY - g.player.y;
