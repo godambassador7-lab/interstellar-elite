@@ -902,6 +902,7 @@ export default function GalaxyMapScreen({
               const y  = g.y * MAP_SCALE_Y * zoom;
               const sz = (g.unlocked ? 22 : 18) * zoom;
               const isActiveGalaxy = g.id === activeGalaxyId;
+              const isHighlightedNode = isActiveGalaxy || g.galaxyComplete || g.completedSystems > 0;
               const beaconScaleOuter = activeBeaconAnim.interpolate({
                 inputRange: [0, 1],
                 outputRange: [0.9, 1.55],
@@ -921,20 +922,22 @@ export default function GalaxyMapScreen({
 
               return (
                 <View key={g.id}>
-                  <View
-                    pointerEvents="none"
-                    style={{
-                      position: 'absolute',
-                      left: x - sz * 0.95,
-                      top: y - sz * 0.95,
-                      width: sz * 1.9,
-                      height: sz * 1.9,
-                      borderRadius: sz * 0.95,
-                      borderWidth: Math.max(1.1, 1.4 * zoom),
-                      borderColor: `${g.accent}66`,
-                      backgroundColor: `${g.accent}14`,
-                    }}
-                  />
+                  {isHighlightedNode && (
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: 'absolute',
+                        left: x - sz * 0.95,
+                        top: y - sz * 0.95,
+                        width: sz * 1.9,
+                        height: sz * 1.9,
+                        borderRadius: sz * 0.95,
+                        borderWidth: Math.max(1.1, 1.4 * zoom),
+                        borderColor: `${g.accent}66`,
+                        backgroundColor: `${g.accent}14`,
+                      }}
+                    />
+                  )}
                   {isActiveGalaxy && g.unlocked && (
                     <>
                       <Animated.View
@@ -983,9 +986,11 @@ export default function GalaxyMapScreen({
                       width: sz,
                       height: sz,
                       borderRadius: sz / 2,
-                      borderWidth: 1.7,
-                      borderColor: g.accent,
-                      backgroundColor: g.galaxyComplete ? `${g.accent}58` : `${g.accent}2D`,
+                      borderWidth: isHighlightedNode ? 1.7 : (g.unlocked ? 1.35 : 1),
+                      borderColor: isHighlightedNode ? g.accent : (g.unlocked ? 'rgba(145,160,185,0.55)' : 'rgba(145,160,185,0.3)'),
+                      backgroundColor: isHighlightedNode
+                        ? (g.galaxyComplete ? `${g.accent}58` : `${g.accent}2D`)
+                        : 'rgba(14,18,28,0.85)',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -995,8 +1000,8 @@ export default function GalaxyMapScreen({
                         width: sz * 0.4,
                         height: sz * 0.4,
                         borderRadius: (sz * 0.4) / 2,
-                        backgroundColor: g.accent,
-                        opacity: g.galaxyComplete ? 1 : 0.88,
+                        backgroundColor: isHighlightedNode ? g.accent : 'rgba(145,160,185,0.4)',
+                        opacity: isHighlightedNode ? (g.galaxyComplete ? 1 : 0.88) : 0.62,
                       }}
                     />
                   </TouchableOpacity>
