@@ -96,6 +96,7 @@ export default function ConquestScreen({
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
   const driftAnim = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
@@ -128,8 +129,17 @@ export default function ConquestScreen({
     loop.start();
     return () => loop.stop();
   }, [driftAnim, galaxy?.id]);
+  useEffect(() => {
+    spinAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(spinAnim, { toValue: 1, duration: 60000, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [spinAnim, galaxy?.id]);
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
+  const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const galaxyStars = useMemo(() => {
     let seed = 0;
     const key = String(galaxy?.id || 'galaxy-cloud');
@@ -265,7 +275,7 @@ export default function ConquestScreen({
                 { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] },
               ]}
             >
-              <Animated.View pointerEvents="none" style={styles.ringStarsLayer}>
+              <Animated.View pointerEvents="none" style={[styles.ringStarsLayer, { transform: [{ rotate: spinRotate }] }]}>
                 {galaxyStars.map((s) => (
                   <View
                     key={s.id}
@@ -292,6 +302,18 @@ export default function ConquestScreen({
               <View style={styles.orbEventHorizonGlow} />
               <View style={styles.orbCoreBlack} />
             </Animated.View>
+            <View pointerEvents="none" style={styles.systemNodeBelt}>
+              {systemTargets.map((t, idx) => {
+                const left = `${(idx / Math.max(1, systemTargets.length - 1)) * 100}%`;
+                const nodeColor = t.conquered ? '#63FF9E' : (REWARD_TYPE_COLORS[t.partType] || '#FFE26D');
+                return (
+                  <View key={`node-${t.systemNumber}`} style={[styles.systemNodeWrap, { left }]}>
+                    <View style={[styles.systemNodeOuter, { borderColor: `${nodeColor}AA`, backgroundColor: `${nodeColor}22` }]} />
+                    <View style={[styles.systemNodeCore, { backgroundColor: nodeColor }]} />
+                  </View>
+                );
+              })}
+            </View>
           </View>
         </View>
 
@@ -307,8 +329,8 @@ export default function ConquestScreen({
                 style={[
                   styles.targetCard,
                   {
-                    borderColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}AA`,
-                    backgroundColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}22`,
+                    borderColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}CC`,
+                    backgroundColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}2A`,
                   },
                 ]}
                 activeOpacity={0.82}
@@ -662,6 +684,33 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
+  },
+  systemNodeBelt: {
+    position: 'absolute',
+    left: 22,
+    right: 22,
+    top: '51%',
+    height: 22,
+  },
+  systemNodeWrap: {
+    position: 'absolute',
+    top: 3,
+    width: 0,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  systemNodeOuter: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  systemNodeCore: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
   },
   orbHaloOuter: {
     position: 'absolute',
