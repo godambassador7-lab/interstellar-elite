@@ -146,6 +146,7 @@ export default function GalaxyMapScreen({
   const [isPinching, setIsPinching] = useState(false);
   const [viewport, setViewport] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const activeBeaconAnim = useRef(new Animated.Value(0)).current;
+  const galaxySpinAnim = useRef(new Animated.Value(0)).current;
   const outerScrollRef = useRef(null);
   const innerScrollRef = useRef(null);
   const scrollXRef = useRef(0);
@@ -202,6 +203,17 @@ export default function GalaxyMapScreen({
     loop.start();
     return () => loop.stop();
   }, [activeBeaconAnim]);
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(galaxySpinAnim, {
+        toValue: 1,
+        duration: 140000,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [galaxySpinAnim]);
 
   const scaledWidth = Math.round(MAP_WIDTH * zoom);
   const scaledHeight = Math.round(MAP_HEIGHT * zoom);
@@ -639,6 +651,50 @@ export default function GalaxyMapScreen({
               onResponderRelease={endPinch}
               onResponderTerminate={endPinch}
             >
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: -scaledWidth * 0.18,
+                top: -scaledHeight * 0.22,
+                width: scaledWidth * 1.36,
+                height: scaledHeight * 1.44,
+                opacity: 0.38,
+                transform: [{
+                  rotate: galaxySpinAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '360deg'],
+                  }),
+                }],
+              }}
+            >
+              <View
+                style={{
+                  position: 'absolute',
+                  left: '8%',
+                  top: '6%',
+                  width: '84%',
+                  height: '88%',
+                  borderRadius: 9999,
+                  backgroundColor: 'rgba(38,128,255,0.12)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(127,217,255,0.25)',
+                }}
+              />
+              <View
+                style={{
+                  position: 'absolute',
+                  left: '22%',
+                  top: '20%',
+                  width: '56%',
+                  height: '60%',
+                  borderRadius: 9999,
+                  backgroundColor: 'rgba(114,228,255,0.12)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(141,247,255,0.25)',
+                }}
+              />
+            </Animated.View>
             <Image
               source={UNIVERSE_MAP_IMAGE}
               style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
@@ -865,6 +921,20 @@ export default function GalaxyMapScreen({
 
               return (
                 <View key={g.id}>
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      left: x - sz * 0.95,
+                      top: y - sz * 0.95,
+                      width: sz * 1.9,
+                      height: sz * 1.9,
+                      borderRadius: sz * 0.95,
+                      borderWidth: Math.max(1.1, 1.4 * zoom),
+                      borderColor: `${g.accent}66`,
+                      backgroundColor: `${g.accent}14`,
+                    }}
+                  />
                   {isActiveGalaxy && g.unlocked && (
                     <>
                       <Animated.View
@@ -913,11 +983,9 @@ export default function GalaxyMapScreen({
                       width: sz,
                       height: sz,
                       borderRadius: sz / 2,
-                      borderWidth: g.unlocked ? 1.5 : 1,
-                      borderColor: g.unlocked ? g.accent : 'rgba(145,160,185,0.3)',
-                      backgroundColor: g.unlocked
-                        ? (g.galaxyComplete ? `${g.accent}55` : `${g.accent}22`)
-                        : 'rgba(14,18,28,0.85)',
+                      borderWidth: 1.7,
+                      borderColor: g.accent,
+                      backgroundColor: g.galaxyComplete ? `${g.accent}58` : `${g.accent}2D`,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -927,8 +995,8 @@ export default function GalaxyMapScreen({
                         width: sz * 0.4,
                         height: sz * 0.4,
                         borderRadius: (sz * 0.4) / 2,
-                        backgroundColor: g.unlocked ? g.accent : 'rgba(145,160,185,0.35)',
-                        opacity: g.galaxyComplete ? 1 : 0.75,
+                        backgroundColor: g.accent,
+                        opacity: g.galaxyComplete ? 1 : 0.88,
                       }}
                     />
                   </TouchableOpacity>
