@@ -781,6 +781,8 @@ export default function GameScreen({
         countdownMs: 3000,
         blastRadius: 24,
         blastGrowth: 460,
+        pullUntil: 0,
+        pullStrength: 560,
         centerX: BATTLE_WORLD.width * 0.5,
         centerY: BATTLE_WORLD.height * 0.5,
       },
@@ -1065,6 +1067,20 @@ export default function GameScreen({
 
       if (g.flagshipEscape.active) {
         g.phaseLabel = g.flagshipEscape.countdownMs > 0 ? 'FLAGSHIP CORE CRITICAL' : 'ESCAPE THE BLAST';
+        if (nowMs < (g.flagshipEscape.pullUntil || 0)) {
+          const sdx = g.flagshipEscape.centerX - g.player.x;
+          const sdy = g.flagshipEscape.centerY - g.player.y;
+          const sdistSq = sdx * sdx + sdy * sdy;
+          if (sdistSq > 9) {
+            const sdist = Math.sqrt(sdistSq);
+            const snx = sdx / sdist;
+            const sny = sdy / sdist;
+            const pullScale = Math.max(0.45, 1 - (sdist / Math.max(1, Math.min(g.world.width, g.world.height) * 0.5)));
+            const suction = (g.flagshipEscape.pullStrength || 560) * pullScale;
+            g.player.vx += snx * suction * dtSec;
+            g.player.vy += sny * suction * dtSec;
+          }
+        }
         const playerScreenX = g.player.x - g.cameraX;
         const playerScreenY = g.player.y - g.cameraY;
         const escapeEdgeMargin = 16;
@@ -1132,6 +1148,7 @@ export default function GameScreen({
           g.flagshipEscape.active = true;
           g.flagshipEscape.countdownMs = 3000;
           g.flagshipEscape.blastRadius = 24;
+          g.flagshipEscape.pullUntil = Date.now() + 2000;
           g.flagshipEscape.centerX = g.player.x;
           g.flagshipEscape.centerY = g.player.y;
           g.world.width = Math.round(g.world.width * 1.24);
