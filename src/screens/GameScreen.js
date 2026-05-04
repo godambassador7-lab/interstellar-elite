@@ -528,6 +528,8 @@ function ExplosionFireEdge({ x, y, radius, time = 0, color = 'rgba(255,120,52,0.
 
 function applyGravityFromWells(entity, wells, dtSec, weight = 1) {
   if (!entity || !wells?.length) return;
+  if (typeof entity.vx !== 'number') entity.vx = 0;
+  if (typeof entity.vy !== 'number') entity.vy = 0;
   for (const w of wells) {
     const dx = w.x - entity.x;
     const dy = w.y - entity.y;
@@ -535,10 +537,21 @@ function applyGravityFromWells(entity, wells, dtSec, weight = 1) {
     const radiusSq = w.radius * w.radius;
     if (distSq > radiusSq || distSq < 4) continue;
     const dist = Math.sqrt(distSq);
+    const nx = dx / dist;
+    const ny = dy / dist;
     const normalized = 1 - dist / w.radius;
-    const pull = w.strength * normalized * weight;
-    entity.vx += (dx / dist) * pull * dtSec;
-    entity.vy += (dy / dist) * pull * dtSec;
+
+    // Always apply a gentle inward pull, even near the edge of the well.
+    const basePull = w.strength * (0.16 + 0.84 * normalized * normalized) * weight;
+
+    // Fast outward movement should be able to overcome the well.
+    const radialTowardSpeed = entity.vx * nx + entity.vy * ny;
+    const outwardSpeed = Math.max(0, -radialTowardSpeed);
+    const escapeFactor = Math.max(0.2, 1 - (outwardSpeed / 420));
+
+    const pull = Math.min(260, basePull * escapeFactor);
+    entity.vx += nx * pull * dtSec;
+    entity.vy += ny * pull * dtSec;
   }
 }
 
