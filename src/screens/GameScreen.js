@@ -1052,7 +1052,20 @@ export default function GameScreen({
 
       if (g.flagshipEscape.active) {
         g.phaseLabel = g.flagshipEscape.countdownMs > 0 ? 'FLAGSHIP CORE CRITICAL' : 'ESCAPE THE BLAST';
-        if (g.flagshipEscape.countdownMs > 0) {
+        const playerScreenX = g.player.x - g.cameraX;
+        const playerScreenY = g.player.y - g.cameraY;
+        const escapeEdgeMargin = 16;
+        const reachedEscapeEdge =
+          playerScreenX <= escapeEdgeMargin ||
+          playerScreenX >= SCREEN.width - escapeEdgeMargin ||
+          playerScreenY <= escapeEdgeMargin ||
+          playerScreenY >= SCREEN.height - escapeEdgeMargin;
+        if (reachedEscapeEdge) {
+          g.victory = true;
+          isRunning.current = false;
+          g.score += 500;
+          pushHighlight(g, 'ESCAPE VECTOR LOCKED', { mode: 'edge-evade' });
+        } else if (g.flagshipEscape.countdownMs > 0) {
           g.flagshipEscape.countdownMs = Math.max(0, g.flagshipEscape.countdownMs - dt);
         } else {
           g.flagshipEscape.blastRadius += g.flagshipEscape.blastGrowth * dtSec;
