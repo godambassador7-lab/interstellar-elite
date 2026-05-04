@@ -597,8 +597,8 @@ export function DamageNumbers({ numbers }) {
       {numbers.map((n) => (
         (() => {
           const isCritical = !!n.critical;
-          const color = isCritical ? '#FF7A2E' : '#FFFFFF';
-          const shadow = isCritical ? '#FF5C1F' : '#7FD9FF';
+          const color = isCritical ? '#FFE26D' : '#FFFFFF';
+          const shadow = isCritical ? '#FFC13A' : '#7FD9FF';
           return (
         <Text
           key={n.id}
@@ -608,7 +608,7 @@ export function DamageNumbers({ numbers }) {
             top: n.y,
             color,
             fontFamily: 'Courier New',
-            fontSize: isCritical ? 14 : 12,
+            fontSize: isCritical ? 28 : 24,
             fontWeight: 'bold',
             textShadowColor: shadow,
             textShadowRadius: 6,
