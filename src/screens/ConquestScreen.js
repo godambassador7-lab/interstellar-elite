@@ -97,6 +97,7 @@ export default function ConquestScreen({
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
   const driftAnim = useRef(new Animated.Value(0)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
+  const counterSpinAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
@@ -137,9 +138,18 @@ export default function ConquestScreen({
     loop.start();
     return () => loop.stop();
   }, [spinAnim, galaxy?.id]);
+  useEffect(() => {
+    counterSpinAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(counterSpinAnim, { toValue: 1, duration: 90000, useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [counterSpinAnim, galaxy?.id]);
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
   const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const counterSpinRotate = counterSpinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-360deg'] });
   const galaxyStars = useMemo(() => {
     let seed = 0;
     const key = String(galaxy?.id || 'galaxy-cloud');
@@ -149,13 +159,17 @@ export default function ConquestScreen({
       return seed / 0xFFFFFFFF;
     };
     const palette = ['#FFFFFF', '#EAF4FF', '#CFE8FF', '#89C7FF', '#FFB58E', '#FFD96C', '#FF8E8E'];
-    const count = 860;
+    const count = 900;
     const stars = [];
     for (let i = 0; i < count; i++) {
-      const a = rand() * Math.PI * 2;
-      const rNorm = Math.pow(rand(), 0.58);
-      const rx = 48 * rNorm;
-      const ry = 28 * rNorm;
+      const armCount = 4;
+      const arm = i % armCount;
+      const twist = rand() * 0.9 + 0.2;
+      const rNorm = Math.pow(rand(), 0.62);
+      const armAngle = (arm / armCount) * (Math.PI * 2);
+      const a = armAngle + rNorm * 5.4 + (rand() - 0.5) * twist;
+      const rx = 46 * rNorm;
+      const ry = 31 * rNorm;
       stars.push({
         id: `gs-${i}`,
         x: 50 + Math.cos(a) * rx + (rand() - 0.5) * 3,
@@ -199,6 +213,17 @@ export default function ConquestScreen({
     systems.sort((a, b) => a.systemNumber - b.systemNumber);
     return systems;
   }, [gTerritories, galaxy?.id, galaxy?.systems]);
+  const systemNodeOrbits = useMemo(() => {
+    const total = Math.max(1, systemTargets.length);
+    return systemTargets.map((t, idx) => {
+      const baseAngle = (idx / total) * (Math.PI * 2);
+      const ring = idx % 3;
+      const radius = 23 + ring * 8 + ((idx % 2) ? 2 : -2);
+      const x = 50 + Math.cos(baseAngle) * radius;
+      const y = 50 + Math.sin(baseAngle) * (radius * 0.64);
+      return { ...t, x, y };
+    });
+  }, [systemTargets]);
 
   return (
     <View style={styles.overlay}>
@@ -302,18 +327,17 @@ export default function ConquestScreen({
               <View style={styles.orbEventHorizonGlow} />
               <View style={styles.orbCoreBlack} />
             </Animated.View>
-            <View pointerEvents="none" style={styles.systemNodeBelt}>
-              {systemTargets.map((t, idx) => {
-                const left = `${(idx / Math.max(1, systemTargets.length - 1)) * 100}%`;
+            <Animated.View pointerEvents="none" style={[styles.systemNodeCloud, { transform: [{ rotate: counterSpinRotate }] }]}>
+              {systemNodeOrbits.map((t) => {
                 const nodeColor = t.conquered ? '#63FF9E' : (REWARD_TYPE_COLORS[t.partType] || '#FFE26D');
                 return (
-                  <View key={`node-${t.systemNumber}`} style={[styles.systemNodeWrap, { left }]}>
+                  <View key={`node-${t.systemNumber}`} style={[styles.systemNodeWrap, { left: `${t.x}%`, top: `${t.y}%` }]}>
                     <View style={[styles.systemNodeOuter, { borderColor: `${nodeColor}AA`, backgroundColor: `${nodeColor}22` }]} />
                     <View style={[styles.systemNodeCore, { backgroundColor: nodeColor }]} />
                   </View>
                 );
               })}
-            </View>
+            </Animated.View>
           </View>
         </View>
 
@@ -685,16 +709,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  systemNodeBelt: {
+  systemNodeCloud: {
     position: 'absolute',
-    left: 22,
-    right: 22,
-    top: '51%',
-    height: 22,
+    left: 18,
+    right: 18,
+    top: 10,
+    bottom: 10,
   },
   systemNodeWrap: {
     position: 'absolute',
-    top: 3,
+    marginLeft: -6,
+    marginTop: -6,
     width: 0,
     height: 16,
     alignItems: 'center',
