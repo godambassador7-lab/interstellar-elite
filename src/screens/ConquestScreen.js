@@ -9,8 +9,10 @@ import {
   ScrollView,
   Image,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { QUADRANT_DEFS } from '../utils/constants';
+import SpinningGalaxyScreen from '../../spinning-galaxy-system/SpinningGalaxyScreen';
 const SPACE_STATION_SPRITE = require('../../space station.png');
 
 // Threat level 1-5 mapped from raw 0-10 scale
@@ -75,8 +77,11 @@ export default function ConquestScreen({
   onDefendStation,
   onLaunchSystem,
 }) {
+  const { height: screenHeight } = useWindowDimensions();
   const qDef   = QUADRANT_DEFS.find((q) => q.id === galaxy.quadrant);
   const qColor = qDef?.accent || '#67F3FF';
+  const liveMapHeight = Math.max(250, Math.min(Math.round(screenHeight * 0.48), 520));
+  const systemsListHeight = Math.max(170, Math.min(Math.round(screenHeight * 0.28), 320));
 
   // All territory entries for this specific galaxy, sorted by system number
   const gTerritories = useMemo(
@@ -96,8 +101,6 @@ export default function ConquestScreen({
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
   const driftAnim = useRef(new Animated.Value(0)).current;
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  const counterSpinAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
@@ -130,57 +133,8 @@ export default function ConquestScreen({
     loop.start();
     return () => loop.stop();
   }, [driftAnim, galaxy?.id]);
-  useEffect(() => {
-    spinAnim.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 60000, useNativeDriver: true })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [spinAnim, galaxy?.id]);
-  useEffect(() => {
-    counterSpinAnim.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(counterSpinAnim, { toValue: 1, duration: 90000, useNativeDriver: true })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [counterSpinAnim, galaxy?.id]);
   const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
   const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
-  const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const counterSpinRotate = counterSpinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-360deg'] });
-  const galaxyStars = useMemo(() => {
-    let seed = 0;
-    const key = String(galaxy?.id || 'galaxy-cloud');
-    for (let i = 0; i < key.length; i++) seed = ((seed * 39) + key.charCodeAt(i)) >>> 0;
-    const rand = () => {
-      seed = (1664525 * seed + 1013904223) >>> 0;
-      return seed / 0xFFFFFFFF;
-    };
-    const palette = ['#FFFFFF', '#EAF4FF', '#CFE8FF', '#89C7FF', '#FFB58E', '#FFD96C', '#FF8E8E'];
-    const count = 900;
-    const stars = [];
-    for (let i = 0; i < count; i++) {
-      const armCount = 4;
-      const arm = i % armCount;
-      const twist = rand() * 0.9 + 0.2;
-      const rNorm = Math.pow(rand(), 0.62);
-      const armAngle = (arm / armCount) * (Math.PI * 2);
-      const a = armAngle + rNorm * 5.4 + (rand() - 0.5) * twist;
-      const rx = 46 * rNorm;
-      const ry = 31 * rNorm;
-      stars.push({
-        id: `gs-${i}`,
-        x: 50 + Math.cos(a) * rx + (rand() - 0.5) * 3,
-        y: 50 + Math.sin(a) * ry + (rand() - 0.5) * 2.2,
-        size: 0.65 + rand() * 2.35,
-        opacity: 0.24 + rand() * 0.76,
-        color: palette[Math.floor(rand() * palette.length)],
-      });
-    }
-    return stars;
-  }, [galaxy?.id]);
   const systemTargets = useMemo(() => {
     const held = new Set(gTerritories.map((t) => Number(t.systemNumber)));
     const bySystem = new Map(gTerritories.map((t) => [Number(t.systemNumber), t]));
@@ -213,23 +167,9 @@ export default function ConquestScreen({
     systems.sort((a, b) => a.systemNumber - b.systemNumber);
     return systems;
   }, [gTerritories, galaxy?.id, galaxy?.systems]);
-  const systemNodeOrbits = useMemo(() => {
-    const total = Math.max(1, systemTargets.length);
-    return systemTargets.map((t, idx) => {
-      const baseAngle = (idx / total) * (Math.PI * 2);
-      const ring = idx % 3;
-      const radius = 23 + ring * 8 + ((idx % 2) ? 2 : -2);
-      const x = 50 + Math.cos(baseAngle) * radius;
-      const y = 50 + Math.sin(baseAngle) * (radius * 0.64);
-      return { ...t, x, y };
-    });
-  }, [systemTargets]);
 
   return (
     <View style={styles.overlay}>
-      {/* Tappable backdrop to dismiss */}
-      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-
       <View style={[styles.panel, { borderColor: qColor + '55' }]}>
         <Animated.View
           pointerEvents="none"
@@ -292,7 +232,7 @@ export default function ConquestScreen({
 
         <View style={styles.liveMapWrap}>
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
-          <View style={[styles.liveMapFrame, { borderColor: qColor + '5c' }]}>
+          <View style={[styles.liveMapFrame, { borderColor: qColor + '5c', height: liveMapHeight }]}>
             <Animated.View
               pointerEvents="none"
               style={[
@@ -300,43 +240,16 @@ export default function ConquestScreen({
                 { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] },
               ]}
             >
-              <Animated.View pointerEvents="none" style={[styles.ringStarsLayer, { transform: [{ rotate: spinRotate }] }]}>
-                {galaxyStars.map((s) => (
-                  <View
-                    key={s.id}
-                    style={{
-                      position: 'absolute',
-                      left: `${s.x}%`,
-                      top: `${s.y}%`,
-                      width: s.size,
-                      height: s.size,
-                      borderRadius: s.size / 2,
-                      opacity: s.opacity,
-                      backgroundColor: s.color,
-                    }}
-                  />
-                ))}
-              </Animated.View>
-              <View style={styles.orbHaloOuter} />
-              <View style={styles.orbHaloWarm} />
-              <View style={styles.orbHaloMid} />
-              <View style={styles.orbAccretionOuter} />
-              <View style={styles.orbAccretionDisk} />
-              <View style={styles.orbAccretionInner} />
-              <View style={styles.orbShadowOuter} />
-              <View style={styles.orbEventHorizonGlow} />
-              <View style={styles.orbCoreBlack} />
-            </Animated.View>
-            <Animated.View pointerEvents="none" style={[styles.systemNodeCloud, { transform: [{ rotate: counterSpinRotate }] }]}>
-              {systemNodeOrbits.map((t) => {
-                const nodeColor = t.conquered ? '#63FF9E' : (REWARD_TYPE_COLORS[t.partType] || '#FFE26D');
-                return (
-                  <View key={`node-${t.systemNumber}`} style={[styles.systemNodeWrap, { left: `${t.x}%`, top: `${t.y}%` }]}>
-                    <View style={[styles.systemNodeOuter, { borderColor: `${nodeColor}AA`, backgroundColor: `${nodeColor}22` }]} />
-                    <View style={[styles.systemNodeCore, { backgroundColor: nodeColor }]} />
-                  </View>
-                );
-              })}
+              <SpinningGalaxyScreen
+                galaxyId={galaxy?.id || 'demo'}
+                systemCount={Math.max(1, systemTargets.length)}
+                height={liveMapHeight}
+                systems={systemTargets.map((t) => ({
+                  systemNumber: t.systemNumber,
+                  conquered: t.conquered,
+                  partType: t.partType,
+                }))}
+              />
             </Animated.View>
           </View>
         </View>
@@ -428,7 +341,7 @@ export default function ConquestScreen({
           </View>
         ) : (
           <ScrollView
-            style={styles.systemsList}
+            style={[styles.systemsList, { maxHeight: systemsListHeight }]}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 4 }}
           >
@@ -561,27 +474,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
+    backgroundColor: 'rgba(2,5,14,0.96)',
     zIndex: 600,
   },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(2,5,14,0.78)',
-  },
   panel: {
-    backgroundColor: 'rgba(5,8,18,0.98)',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    flex: 1,
+    backgroundColor: 'rgba(5,8,18,1)',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     borderWidth: 1,
-    borderBottomWidth: 0,
+    borderBottomWidth: 1,
     paddingHorizontal: 14,
-    paddingTop: 16,
-    paddingBottom: 22,
-    maxHeight: '90%',
+    paddingTop: 18,
+    paddingBottom: 16,
     overflow: 'hidden',
   },
   driftLayer: {
@@ -689,7 +595,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   liveMapFrame: {
-    height: 168,
     borderRadius: 6,
     borderWidth: 1,
     backgroundColor: '#02060D',
@@ -703,102 +608,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  ringStarsLayer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-  },
-  systemNodeCloud: {
-    position: 'absolute',
-    left: 18,
-    right: 18,
-    top: 10,
-    bottom: 10,
-  },
-  systemNodeWrap: {
-    position: 'absolute',
-    marginLeft: -6,
-    marginTop: -6,
-    width: 0,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  systemNodeOuter: {
-    position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  systemNodeCore: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-  },
-  orbHaloOuter: {
-    position: 'absolute',
-    width: 164,
-    height: 164,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,198,110,0.12)',
-  },
-  orbHaloWarm: {
-    position: 'absolute',
-    width: 144,
-    height: 144,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,148,76,0.12)',
-  },
-  orbHaloMid: {
-    position: 'absolute',
-    width: 126,
-    height: 126,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,170,74,0.18)',
-  },
-  orbAccretionOuter: {
-    position: 'absolute',
-    width: 176,
-    height: 66,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,220,140,0.24)',
-  },
-  orbAccretionDisk: {
-    position: 'absolute',
-    width: 150,
-    height: 58,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,188,112,0.46)',
-  },
-  orbAccretionInner: {
-    position: 'absolute',
-    width: 122,
-    height: 42,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,146,74,0.34)',
-  },
-  orbShadowOuter: {
-    position: 'absolute',
-    width: 86,
-    height: 86,
-    borderRadius: 999,
-    backgroundColor: 'rgba(12,14,24,0.9)',
-  },
-  orbEventHorizonGlow: {
-    position: 'absolute',
-    width: 70,
-    height: 70,
-    borderRadius: 999,
-    backgroundColor: 'rgba(8,10,18,0.95)',
-  },
-  orbCoreBlack: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 999,
-    backgroundColor: '#020205',
   },
   targetsWrap: {
     marginBottom: 10,
@@ -968,7 +777,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   systemsList: {
-    maxHeight: 200,
     marginBottom: 10,
   },
   colHeadRow: {
