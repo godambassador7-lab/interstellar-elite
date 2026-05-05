@@ -1088,7 +1088,6 @@ export default function GalaxyMapScreen({
       {!mapImageReady && (
         <View style={styles.mapLoadingOverlay}>
           <Text style={styles.mapLoadingTitle}>LOADING UNIVERSE MAP...</Text>
-          <Text style={styles.mapLoadingPct}>{Math.max(0, Math.min(100, Math.round(mapLoadPct)))}%</Text>
         </View>
       )}
 
@@ -1439,14 +1438,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     letterSpacing: 1.4,
-  },
-  mapLoadingPct: {
-    marginTop: 8,
-    color: '#BEEFFF',
-    fontFamily: 'Courier New',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 1.2,
   },
   outerScroll: {
     flex: 1,
