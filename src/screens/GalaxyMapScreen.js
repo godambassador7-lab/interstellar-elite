@@ -146,6 +146,7 @@ export default function GalaxyMapScreen({
   const [isPinching, setIsPinching] = useState(false);
   const [mapImageReady, setMapImageReady] = useState(false);
   const [mapLoadPct, setMapLoadPct] = useState(5);
+  const mapImageReadyRef = useRef(false);
   const [viewport, setViewport] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const activeBeaconAnim = useRef(new Animated.Value(0)).current;
   const galaxySpinAnim = useRef(new Animated.Value(0)).current;
@@ -553,6 +554,10 @@ export default function GalaxyMapScreen({
     return () => clearInterval(id);
   }, [mapImageReady]);
 
+  useEffect(() => {
+    mapImageReadyRef.current = mapImageReady;
+  }, [mapImageReady]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -710,11 +715,12 @@ export default function GalaxyMapScreen({
               style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
               resizeMode="cover"
               onLoadStart={() => {
-                setMapImageReady(false);
+                if (mapImageReadyRef.current) return;
                 setMapLoadPct(8);
               }}
               onLoad={() => setMapLoadPct(100)}
               onLoadEnd={() => {
+                if (mapImageReadyRef.current) return;
                 setMapLoadPct(100);
                 setMapImageReady(true);
               }}
