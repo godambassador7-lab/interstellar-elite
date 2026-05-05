@@ -194,16 +194,16 @@ export function buildOrbitalGalaxyModel(
 export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): ProjectedFrame {
   const spiralTwist = 0.11;
   const armSpacing = (Math.PI * 2) / model.armCount;
-  const depthCompression = 0.84;
-  const tiltFactor = 0.1;
-  const inclination = 0.45;
+  const depthCompression = 0.92;
+  const tiltFactor = 0.2;
+  const inclination = 1.02; // steeper inclination for side-angle disc look
 
   const project = (p: OrbitalPoint, laneOffset = 0): ProjectedPoint => {
     const angle = p.angle + timeMs * p.orbitalSpeed;
     const spiralAngle = angle + p.radius * spiralTwist + (p.armIndex + laneOffset) * armSpacing + p.jitter;
     const xRaw = Math.cos(spiralAngle) * p.radius;
     const zRaw = Math.sin(spiralAngle) * p.radius;
-    const yRaw = p.verticalOffset + Math.sin(spiralAngle * 0.9) * (1.4 + (p.radius / model.maxRadius) * 1.45);
+    const yRaw = p.verticalOffset * 0.45 + Math.sin(spiralAngle * 0.6) * (0.7 + (p.radius / model.maxRadius) * 0.6);
 
     // Rotate around x-axis to get tilted disk projection with preserved arm curvature.
     const cosI = Math.cos(inclination);

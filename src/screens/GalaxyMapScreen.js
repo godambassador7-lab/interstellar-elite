@@ -147,6 +147,7 @@ export default function GalaxyMapScreen({
   const [mapImageReady, setMapImageReady] = useState(false);
   const [mapLoadPct, setMapLoadPct] = useState(5);
   const mapImageReadyRef = useRef(false);
+  const mapLoadFinalizeTimerRef = useRef(null);
   const [viewport, setViewport] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const activeBeaconAnim = useRef(new Animated.Value(0)).current;
   const galaxySpinAnim = useRef(new Animated.Value(0)).current;
@@ -549,7 +550,7 @@ export default function GalaxyMapScreen({
   useEffect(() => {
     if (mapImageReady) return;
     const id = setInterval(() => {
-      setMapLoadPct((prev) => Math.min(95, prev + (prev < 40 ? 7 : prev < 75 ? 4 : 2)));
+      setMapLoadPct((prev) => Math.min(99, prev + (prev < 40 ? 7 : prev < 75 ? 4 : 2)));
     }, 140);
     return () => clearInterval(id);
   }, [mapImageReady]);
@@ -557,6 +558,13 @@ export default function GalaxyMapScreen({
   useEffect(() => {
     mapImageReadyRef.current = mapImageReady;
   }, [mapImageReady]);
+
+  useEffect(() => () => {
+    if (mapLoadFinalizeTimerRef.current) {
+      clearTimeout(mapLoadFinalizeTimerRef.current);
+      mapLoadFinalizeTimerRef.current = null;
+    }
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -718,11 +726,16 @@ export default function GalaxyMapScreen({
                 if (mapImageReadyRef.current) return;
                 setMapLoadPct(8);
               }}
-              onLoad={() => setMapLoadPct(100)}
+              onLoad={() => setMapLoadPct((prev) => Math.max(prev, 92))}
               onLoadEnd={() => {
                 if (mapImageReadyRef.current) return;
-                setMapLoadPct(100);
-                setMapImageReady(true);
+                setMapLoadPct(99);
+                if (mapLoadFinalizeTimerRef.current) clearTimeout(mapLoadFinalizeTimerRef.current);
+                mapLoadFinalizeTimerRef.current = setTimeout(() => {
+                  setMapLoadPct(100);
+                  setMapImageReady(true);
+                  mapLoadFinalizeTimerRef.current = null;
+                }, 180);
               }}
             />
             <DoubleChevronArrow
