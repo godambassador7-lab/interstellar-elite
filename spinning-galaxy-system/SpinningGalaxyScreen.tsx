@@ -19,14 +19,20 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
 
   const [timeMs, setTimeMs] = useState(0);
   const rafRef = useRef(0);
-  const startRef = useRef(0);
+  const lastTickRef = useRef(0);
+  const simTimeRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
     const tick = (t) => {
       if (!mounted) return;
-      if (!startRef.current) startRef.current = t;
-      setTimeMs(t - startRef.current);
+      if (!lastTickRef.current) lastTickRef.current = t;
+      const rawDelta = t - lastTickRef.current;
+      lastTickRef.current = t;
+      const delta = Math.max(0, Math.min(24, rawDelta));
+      // Sim time runs slower than wall time and clamps frame jumps for smoother motion.
+      simTimeRef.current += delta * 0.72;
+      setTimeMs(simTimeRef.current);
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -34,7 +40,8 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
       mounted = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = 0;
-      startRef.current = 0;
+      lastTickRef.current = 0;
+      simTimeRef.current = 0;
     };
   }, [galaxyId]);
 

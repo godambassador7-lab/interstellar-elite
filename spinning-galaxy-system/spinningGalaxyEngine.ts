@@ -91,7 +91,7 @@ export function buildOrbitalGalaxyModel(
       radius,
       angle,
       armIndex,
-      orbitalSpeed: 0.00025 + (1 - radius / maxRadius) * 0.00062,
+      orbitalSpeed: 0.00012 + (1 - radius / maxRadius) * 0.00028,
       verticalOffset: gauss(rand) * (4.6 * (1 - radius / (maxRadius * 1.1))),
       jitter: (rand() - 0.5) * 0.42,
     });
@@ -107,7 +107,7 @@ export function buildOrbitalGalaxyModel(
       radius,
       angle,
       armIndex,
-      orbitalSpeed: 0.0002 + (1 - radius / maxRadius) * 0.00038,
+      orbitalSpeed: 0.00009 + (1 - radius / maxRadius) * 0.00018,
       verticalOffset: gauss(rand) * 7.4,
       jitter: (rand() - 0.5) * 0.66,
     });
@@ -123,7 +123,7 @@ export function buildOrbitalGalaxyModel(
       radius,
       angle,
       armIndex,
-      orbitalSpeed: 0.00018 + (1 - radius / maxRadius) * 0.00028,
+      orbitalSpeed: 0.00008 + (1 - radius / maxRadius) * 0.00013,
       verticalOffset: gauss(rand) * 3.8,
       jitter: (rand() - 0.5) * 0.34,
     });
@@ -139,7 +139,7 @@ export function buildOrbitalGalaxyModel(
       radius,
       angle,
       armIndex,
-      orbitalSpeed: 0.0001 + (1 - Math.min(1, radius / (maxRadius * 1.3))) * 0.00015,
+      orbitalSpeed: 0.00005 + (1 - Math.min(1, radius / (maxRadius * 1.3))) * 0.00008,
       verticalOffset: gauss(rand) * 8.2,
       jitter: (rand() - 0.5) * 0.8,
     });
@@ -161,7 +161,7 @@ export function buildOrbitalGalaxyModel(
       radius,
       angle,
       armIndex,
-      orbitalSpeed: 0.0005 + (1 - radius / maxRadius) * 0.00066,
+      orbitalSpeed: 0.0002 + (1 - radius / maxRadius) * 0.00028,
       verticalOffset: gauss(rand) * (2.2 + (1 - radius / maxRadius) * 1.2),
       jitter: (rand() - 0.5) * 0.24,
       conquered: m?.conquered,
