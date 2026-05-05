@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { View, Animated } from 'react-native';
 import { buildOrbitalGalaxyModel, projectOrbitalFrame } from './spinningGalaxyEngine';
 
 const NODE_COLORS = {
@@ -21,6 +21,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
   const rafRef = useRef(0);
   const lastTickRef = useRef(0);
   const simTimeRef = useRef(0);
+  const corePulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let mounted = true;
@@ -45,7 +46,30 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
     };
   }, [galaxyId]);
 
+  useEffect(() => {
+    corePulseAnim.setValue(0);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(corePulseAnim, { toValue: 1, duration: 2400, useNativeDriver: true }),
+        Animated.timing(corePulseAnim, { toValue: 0, duration: 2400, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [corePulseAnim, galaxyId]);
+
   const frame = useMemo(() => projectOrbitalFrame(model, timeMs), [model, timeMs]);
+  const pulseScale = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.04] });
+  const pulseGlow = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.75, 1] });
+  const ringRotate = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '22deg'] });
+
+  const coreBoost = (x, y, strength = 1) => {
+    const dx = x - 50;
+    const dy = y - 50;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const t = Math.max(0, Math.min(1, 1 - dist / 22));
+    return 1 + t * 0.7 * strength;
+  };
 
   return (
     <View style={{ width: '100%', height, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(103,243,255,0.32)', backgroundColor: '#02060D', overflow: 'hidden' }}>
@@ -96,6 +120,9 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
 
       <View style={{ position: 'absolute', inset: 0 }}>
         {frame.arms.map((p) => (
+          (() => {
+            const boost = coreBoost(p.x, p.y, 0.9);
+            return (
           <View
             key={p.id}
             style={{
@@ -106,14 +133,19 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
               height: 1.6 * p.scale,
               borderRadius: 99,
               backgroundColor: p.z > 0 ? '#F2F7FF' : '#BFD8FF',
-              opacity: p.opacity * (0.34 + (1 - Math.abs(p.y - 50) / 60) * 0.36),
+              opacity: Math.min(1, p.opacity * (0.34 + (1 - Math.abs(p.y - 50) / 60) * 0.36) * boost),
             }}
           />
+            );
+          })()
         ))}
       </View>
 
       <View style={{ position: 'absolute', inset: 0 }}>
         {frame.lanes.map((p) => (
+          (() => {
+            const boost = coreBoost(p.x, p.y, 0.45);
+            return (
           <View
             key={p.id}
             style={{
@@ -124,14 +156,19 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
               height: 2.8 * p.scale,
               borderRadius: 999,
               backgroundColor: 'rgba(10,16,28,0.95)',
-              opacity: p.opacity * 0.14,
+              opacity: Math.max(0.04, p.opacity * 0.14 * (1 - (boost - 1) * 0.45)),
             }}
           />
+            );
+          })()
         ))}
       </View>
 
       <View style={{ position: 'absolute', inset: 0 }}>
         {frame.dust.map((p) => (
+          (() => {
+            const boost = coreBoost(p.x, p.y, 1);
+            return (
           <View
             key={p.id}
             style={{
@@ -142,9 +179,11 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
               height: 4 * p.scale,
               borderRadius: 999,
               backgroundColor: p.z > 0 ? '#DCEBFF' : '#9AB7DF',
-              opacity: p.opacity * 0.1,
+              opacity: Math.min(1, p.opacity * 0.1 * boost),
             }}
           />
+            );
+          })()
         ))}
       </View>
 
@@ -166,15 +205,103 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
         ))}
       </View>
 
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -78, marginTop: -33, width: 156, height: 66, borderRadius: 999, backgroundColor: 'rgba(255,175,84,0.16)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -58, marginTop: -26, width: 116, height: 52, borderRadius: 999, backgroundColor: 'rgba(255,220,164,0.24)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -42, marginTop: -19, width: 84, height: 38, borderRadius: 999, backgroundColor: 'rgba(255,247,222,0.34)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -28, marginTop: -13, width: 56, height: 26, borderRadius: 999, backgroundColor: 'rgba(255,255,248,0.45)' }} />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          marginLeft: -102,
+          marginTop: -102,
+          width: 204,
+          height: 204,
+          borderRadius: 999,
+          backgroundColor: 'rgba(120,160,255,0.12)',
+          opacity: pulseGlow,
+          transform: [{ scale: pulseScale }],
+        }}
+      />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          marginLeft: -78,
+          marginTop: -78,
+          width: 156,
+          height: 156,
+          borderRadius: 999,
+          backgroundColor: 'rgba(255,138,56,0.22)',
+          opacity: pulseGlow,
+          transform: [{ scale: pulseScale }],
+        }}
+      />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          marginLeft: -58,
+          marginTop: -58,
+          width: 116,
+          height: 116,
+          borderRadius: 999,
+          backgroundColor: 'rgba(255,198,104,0.35)',
+          opacity: pulseGlow,
+          transform: [{ scale: pulseScale }],
+        }}
+      />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          marginLeft: -40,
+          marginTop: -40,
+          width: 80,
+          height: 80,
+          borderRadius: 999,
+          backgroundColor: 'rgba(255,238,180,0.62)',
+          opacity: pulseGlow,
+          transform: [{ scale: pulseScale }],
+        }}
+      />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          marginLeft: -22,
+          marginTop: -22,
+          width: 44,
+          height: 44,
+          borderRadius: 999,
+          backgroundColor: 'rgba(255,255,255,0.95)',
+          opacity: pulseGlow,
+          transform: [{ scale: pulseScale }],
+        }}
+      />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          marginLeft: -54,
+          marginTop: -21,
+          width: 108,
+          height: 42,
+          borderRadius: 999,
+          borderWidth: 1.2,
+          borderColor: 'rgba(255,232,182,0.5)',
+          opacity: 0.5,
+          transform: [{ rotate: ringRotate }],
+        }}
+      />
 
       <View style={{ position: 'absolute', inset: 0 }}>
         {frame.systems.map((s) => {
           const color = s.conquered ? NODE_COLORS.conquered : (NODE_COLORS[s.partType] || NODE_COLORS.default);
-          const dot = 4.2 + s.scale * 4.4;
+          const boost = coreBoost(s.x, s.y, 0.8);
+          const dot = (4.2 + s.scale * 4.4) * Math.min(1.18, boost);
           const glow = dot * 2.0;
           return (
             <View key={s.id} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, marginLeft: -dot / 2, marginTop: -dot / 2 }}>
@@ -187,7 +314,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
                   height: glow,
                   borderRadius: 999,
                   backgroundColor: color,
-                  opacity: s.opacity * 0.21,
+                  opacity: Math.min(1, s.opacity * 0.21 * boost),
                 }}
               />
               <View
@@ -198,7 +325,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
                   borderWidth: 0.9,
                   borderColor: `${color}D9`,
                   backgroundColor: color,
-                  opacity: s.opacity,
+                  opacity: Math.min(1, s.opacity * boost),
                 }}
               />
             </View>
