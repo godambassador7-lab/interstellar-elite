@@ -28,8 +28,31 @@ import {
   simulateNemesisTurn,
 } from './src/systems/NemesisSystem';
 
+const CORE_ASSETS = [
+  require('./main menu title.png'),
+  require('./battle background.png'),
+  require('./universe map.png'),
+  require('./user ship1.png'),
+];
+
+const WARM_ASSETS = [
+  require('./Enemy Fighter Pack/Destroyers/destroyer 3.png'),
+  require('./Enemy Fighter Pack/Destroyers/destroyer1.png'),
+  require('./Enemy Fighter Pack/Destroyers/destroyer2.png'),
+  require('./Enemy Fighter Pack/Flag ship/flag ship 1.png'),
+  require('./Enemy Fighter Pack/Flag ship/flagship 2.png'),
+  require('./Enemy Fighter Pack/Flag ship/flagship 3.png'),
+  require('./Enemy Fighter Pack/Interceptors/Interceptor 1.png'),
+  require('./Enemy Fighter Pack/Interceptors/Interceptor 2.png'),
+  require('./Enemy Fighter Pack/Interceptors/Interceptor 3.png'),
+  require('./Enemy Fighter Pack/Small fighers/small fighter 1.png'),
+  require('./Enemy Fighter Pack/Small fighers/small fighter 2.png'),
+  require('./Enemy Fighter Pack/Small fighers/small fighter 3.png'),
+];
+
 export default function App() {
   const [coreAssetsReady, setCoreAssetsReady] = useState(false);
+  const [assetLoadPct, setAssetLoadPct] = useState(0);
   const [screen, setScreen] = useState('menu'); // menu | map | game | defense_prep | defense
   const [selectedGalaxy, setSelectedGalaxy] = useState(GALAXIES[0]);
   const [runProfile, setRunProfile] = useState('combat');
@@ -66,17 +89,31 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     const loadCoreAssets = async () => {
+      const assets = [...CORE_ASSETS, ...WARM_ASSETS];
+      const total = assets.length;
+      let loaded = 0;
       try {
-        await Asset.loadAsync([
-          require('./main menu title.png'),
-          require('./battle background.png'),
-          require('./universe map.png'),
-          require('./user ship1.png'),
-        ]);
+        for (const mod of assets) {
+          try {
+            // Load one by one so we can surface a real percentage.
+            await Asset.fromModule(mod).downloadAsync();
+          } catch (_) {
+            // Non-fatal per asset.
+          } finally {
+            loaded += 1;
+            if (!cancelled) {
+              const pct = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
+              setAssetLoadPct(pct);
+            }
+          }
+        }
       } catch (_) {
         // Non-fatal: app still runs with on-demand asset loading.
       } finally {
-        if (!cancelled) setCoreAssetsReady(true);
+        if (!cancelled) {
+          setAssetLoadPct(100);
+          setCoreAssetsReady(true);
+        }
       }
     };
 
@@ -85,25 +122,6 @@ export default function App() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    // Warm heavy combat sprites in the background to reduce first-battle hitches.
-    if (!coreAssetsReady) return;
-    Asset.loadAsync([
-      require('./Enemy Fighter Pack/Destroyers/destroyer 3.png'),
-      require('./Enemy Fighter Pack/Destroyers/destroyer1.png'),
-      require('./Enemy Fighter Pack/Destroyers/destroyer2.png'),
-      require('./Enemy Fighter Pack/Flag ship/flag ship 1.png'),
-      require('./Enemy Fighter Pack/Flag ship/flagship 2.png'),
-      require('./Enemy Fighter Pack/Flag ship/flagship 3.png'),
-      require('./Enemy Fighter Pack/Interceptors/Interceptor 1.png'),
-      require('./Enemy Fighter Pack/Interceptors/Interceptor 2.png'),
-      require('./Enemy Fighter Pack/Interceptors/Interceptor 3.png'),
-      require('./Enemy Fighter Pack/Small fighers/small fighter 1.png'),
-      require('./Enemy Fighter Pack/Small fighers/small fighter 2.png'),
-      require('./Enemy Fighter Pack/Small fighers/small fighter 3.png'),
-    ]).catch(() => {});
-  }, [coreAssetsReady]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return undefined;
@@ -429,6 +447,7 @@ export default function App() {
       {!coreAssetsReady && (
         <View style={styles.loadingOverlay}>
           <Text style={styles.loadingText}>LOADING ASSETS...</Text>
+          <Text style={styles.loadingPctText}>{assetLoadPct}%</Text>
         </View>
       )}
 
@@ -522,5 +541,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     letterSpacing: 2,
+  },
+  loadingPctText: {
+    marginTop: 10,
+    color: '#BEEFFF',
+    fontFamily: 'Courier New',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1.2,
   },
 });

@@ -103,7 +103,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
         style={{
           position: 'absolute',
           inset: 0,
-          transform: [{ perspective: 900 }, { rotateX: '38deg' }, { rotateZ: galaxyRotate }, { scale: 1.015 }],
+          transform: [{ perspective: 900 }, { rotateX: '14deg' }, { rotateZ: galaxyRotate }, { scale: 1.015 }],
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >

@@ -194,9 +194,9 @@ export function buildOrbitalGalaxyModel(
 export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): ProjectedFrame {
   const spiralTwist = 0.02;
   const armSpacing = (Math.PI * 2) / model.armCount;
-  const depthCompression = 0.82;
-  const tiltFactor = 0.1;
-  const inclination = 0.52; // reduce collapse so 6 arms stay visible
+  const depthCompression = 0.76;
+  const tiltFactor = 0.08;
+  const inclination = 0.34; // keep 6 arms curved and separated
 
   const project = (p: OrbitalPoint, laneOffset = 0): ProjectedPoint => {
     const angle = p.angle + timeMs * p.orbitalSpeed;

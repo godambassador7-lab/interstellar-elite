@@ -144,6 +144,8 @@ export default function GalaxyMapScreen({
   const [showStore, setShowStore] = useState(false);
   const [conquestGalaxy, setConquestGalaxy] = useState(null);
   const [isPinching, setIsPinching] = useState(false);
+  const [mapImageReady, setMapImageReady] = useState(false);
+  const [mapLoadPct, setMapLoadPct] = useState(5);
   const [viewport, setViewport] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const activeBeaconAnim = useRef(new Animated.Value(0)).current;
   const galaxySpinAnim = useRef(new Animated.Value(0)).current;
@@ -543,6 +545,14 @@ export default function GalaxyMapScreen({
     onAutoOpenGalaxyHandled?.();
   }, [autoOpenGalaxyId, galaxies, centerOnCurrentGalaxy, onAutoOpenGalaxyHandled]);
 
+  useEffect(() => {
+    if (mapImageReady) return;
+    const id = setInterval(() => {
+      setMapLoadPct((prev) => Math.min(95, prev + (prev < 40 ? 7 : prev < 75 ? 4 : 2)));
+    }, 140);
+    return () => clearInterval(id);
+  }, [mapImageReady]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -699,6 +709,15 @@ export default function GalaxyMapScreen({
               source={UNIVERSE_MAP_IMAGE}
               style={[styles.mapImage, { left: 0, top: 0, width: BASE_MAP_WIDTH * zoom, height: BASE_MAP_HEIGHT * zoom }]}
               resizeMode="cover"
+              onLoadStart={() => {
+                setMapImageReady(false);
+                setMapLoadPct(8);
+              }}
+              onLoad={() => setMapLoadPct(100)}
+              onLoadEnd={() => {
+                setMapLoadPct(100);
+                setMapImageReady(true);
+              }}
             />
             <DoubleChevronArrow
               left={expansionArrow.mapX * MAP_SCALE_X * zoom - 58}
@@ -1031,6 +1050,13 @@ export default function GalaxyMapScreen({
         </ScrollView>
       </View>
 
+      {!mapImageReady && (
+        <View style={styles.mapLoadingOverlay}>
+          <Text style={styles.mapLoadingTitle}>LOADING UNIVERSE MAP...</Text>
+          <Text style={styles.mapLoadingPct}>{Math.max(0, Math.min(100, Math.round(mapLoadPct)))}%</Text>
+        </View>
+      )}
+
       <View style={styles.eventPanel}>
         <Text style={styles.eventTitle}>NEMESIS FEED</Text>
         <ScrollView style={styles.eventScroll}>
@@ -1357,6 +1383,35 @@ const styles = StyleSheet.create({
   },
   mapViewport: {
     flex: 1,
+  },
+  mapLoadingOverlay: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    top: 120,
+    bottom: 160,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(103,243,255,0.32)',
+    backgroundColor: 'rgba(3,8,16,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 250,
+  },
+  mapLoadingTitle: {
+    color: '#67F3FF',
+    fontFamily: 'Courier New',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 1.4,
+  },
+  mapLoadingPct: {
+    marginTop: 8,
+    color: '#BEEFFF',
+    fontFamily: 'Courier New',
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 1.2,
   },
   outerScroll: {
     flex: 1,
