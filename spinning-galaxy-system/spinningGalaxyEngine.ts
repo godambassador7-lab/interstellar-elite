@@ -31,6 +31,7 @@ export interface ProjectedPoint {
   x: number;
   y: number;
   z: number;
+  armIndex: number;
   scale: number;
   opacity: number;
   blur: number;
@@ -77,15 +78,20 @@ export function buildOrbitalGalaxyModel(
   systemMeta: Array<{ systemNumber: number; conquered?: boolean; partType?: PartType }> = []
 ): GalaxyModel {
   const rand = seeded(seedKey || 'galaxy');
-  const armCount = 4;
+  const armCount = 6;
   const maxRadius = 46;
   const armSpacing = (Math.PI * 2) / armCount;
+  const spiralTightness = 0.2;
+  const minRadius = 2.2;
 
   const arms: OrbitalPoint[] = [];
   for (let i = 0; i < 2200; i++) {
     const armIndex = i % armCount;
-    const radius = Math.pow(rand(), 0.62) * maxRadius;
-    const angle = rand() * Math.PI * 2;
+    const radius = minRadius + Math.pow(rand(), 0.65) * (maxRadius - minRadius);
+    const baseArmAngle = armIndex * armSpacing;
+    const twist = radius * spiralTightness;
+    const randomArmSpread = (rand() - 0.5) * 0.5;
+    const angle = baseArmAngle + twist + randomArmSpread;
     arms.push({
       id: `a-${i}`,
       radius,
@@ -100,8 +106,11 @@ export function buildOrbitalGalaxyModel(
   const dust: OrbitalPoint[] = [];
   for (let i = 0; i < 900; i++) {
     const armIndex = i % armCount;
-    const radius = Math.pow(rand(), 0.72) * maxRadius;
-    const angle = rand() * Math.PI * 2;
+    const radius = minRadius + Math.pow(rand(), 0.72) * (maxRadius - minRadius);
+    const baseArmAngle = armIndex * armSpacing;
+    const twist = radius * (spiralTightness * 0.92);
+    const randomArmSpread = (rand() - 0.5) * 0.78;
+    const angle = baseArmAngle + twist + randomArmSpread;
     dust.push({
       id: `d-${i}`,
       radius,
@@ -116,8 +125,12 @@ export function buildOrbitalGalaxyModel(
   const lanes: OrbitalPoint[] = [];
   for (let i = 0; i < 1200; i++) {
     const armIndex = i % armCount;
-    const radius = Math.pow(rand(), 0.7) * maxRadius;
-    const angle = rand() * Math.PI * 2;
+    const radius = minRadius + Math.pow(rand(), 0.7) * (maxRadius - minRadius);
+    const baseArmAngle = armIndex * armSpacing;
+    // Dark lanes sit between bright arms.
+    const twist = radius * (spiralTightness * 0.98);
+    const randomArmSpread = (rand() - 0.5) * 0.5;
+    const angle = baseArmAngle + (armSpacing * 0.5) + twist + randomArmSpread;
     lanes.push({
       id: `l-${i}`,
       radius,
@@ -133,7 +146,10 @@ export function buildOrbitalGalaxyModel(
   for (let i = 0; i < 480; i++) {
     const armIndex = i % armCount;
     const radius = (0.55 + Math.pow(rand(), 0.55) * 0.75) * maxRadius;
-    const angle = rand() * Math.PI * 2;
+    const baseArmAngle = armIndex * armSpacing;
+    const twist = radius * (spiralTightness * 0.75);
+    const randomArmSpread = (rand() - 0.5) * 1.2;
+    const angle = baseArmAngle + twist + randomArmSpread;
     halo.push({
       id: `h-${i}`,
       radius,
@@ -151,9 +167,12 @@ export function buildOrbitalGalaxyModel(
   for (let i = 0; i < total; i++) {
     const n = i + 1;
     const t = (i + 0.5) / total;
-    const radius = (0.16 + Math.pow(t, 0.82) * 0.84) * maxRadius;
+    const radius = minRadius + (0.16 + Math.pow(t, 0.82) * 0.84) * (maxRadius - minRadius);
     const armIndex = i % armCount;
-    const angle = (i / total) * Math.PI * 2 + (rand() - 0.5) * 0.2;
+    const baseArmAngle = armIndex * armSpacing;
+    const twist = radius * (spiralTightness * 1.1);
+    const randomArmSpread = (rand() - 0.5) * 0.26;
+    const angle = baseArmAngle + twist + randomArmSpread + Math.floor(i / armCount) * 0.14;
     const m = meta.get(n);
     systems.push({
       id: `s-${n}`,
@@ -173,11 +192,11 @@ export function buildOrbitalGalaxyModel(
 }
 
 export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): ProjectedFrame {
-  const spiralTwist = 0.22;
+  const spiralTwist = 0.02;
   const armSpacing = (Math.PI * 2) / model.armCount;
-  const depthCompression = 0.95;
-  const tiltFactor = 0.2;
-  const inclination = 1.08; // steeper tilt with visible arc curvature
+  const depthCompression = 0.82;
+  const tiltFactor = 0.1;
+  const inclination = 0.52; // reduce collapse so 6 arms stay visible
 
   const project = (p: OrbitalPoint, laneOffset = 0): ProjectedPoint => {
     const angle = p.angle + timeMs * p.orbitalSpeed;
@@ -207,6 +226,7 @@ export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): Project
       x: 50 + x3,
       y: 50 + y3,
       z: zNorm,
+      armIndex: p.armIndex,
       scale,
       opacity,
       blur,

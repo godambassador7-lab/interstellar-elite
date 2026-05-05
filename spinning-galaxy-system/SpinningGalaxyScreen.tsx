@@ -10,6 +10,7 @@ const NODE_COLORS = {
   BIO: '#FFD26B',
   default: '#FFE26D',
 };
+const ARM_TINTS = ['#F2F7FF', '#DCEBFF', '#CFE5FF', '#E8F2FF', '#D6E9FF', '#EAF4FF'];
 
 export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 24, height = 320, systems = [] }) {
   const model = useMemo(
@@ -102,7 +103,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
         style={{
           position: 'absolute',
           inset: 0,
-          transform: [{ perspective: 900 }, { rotateX: '62deg' }, { rotateZ: galaxyRotate }, { scale: 1.015 }],
+          transform: [{ perspective: 900 }, { rotateX: '38deg' }, { rotateZ: galaxyRotate }, { scale: 1.015 }],
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
@@ -119,7 +120,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
                   width: 1.55 * p.scale,
                   height: 1.55 * p.scale,
                   borderRadius: 99,
-                  backgroundColor: p.z > 0 ? '#F2F7FF' : '#BFD8FF',
+                  backgroundColor: p.z > 0 ? ARM_TINTS[p.armIndex % ARM_TINTS.length] : '#BFD8FF',
                   opacity: Math.min(1, p.opacity * (0.32 + (1 - Math.abs(p.y - 50) / 60) * 0.34) * boost),
                 }}
               />
