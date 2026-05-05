@@ -148,6 +148,8 @@ export default function GalaxyMapScreen({
   const [mapLoadPct, setMapLoadPct] = useState(5);
   const mapImageReadyRef = useRef(false);
   const mapLoadFinalizeTimerRef = useRef(null);
+  const mapLoadStartedRef = useRef(false);
+  const mapLoadFinishedRef = useRef(false);
   const [viewport, setViewport] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const activeBeaconAnim = useRef(new Animated.Value(0)).current;
   const galaxySpinAnim = useRef(new Animated.Value(0)).current;
@@ -559,6 +561,12 @@ export default function GalaxyMapScreen({
     mapImageReadyRef.current = mapImageReady;
   }, [mapImageReady]);
 
+  useEffect(() => {
+    if (mapImageReady) {
+      mapLoadFinishedRef.current = true;
+    }
+  }, [mapImageReady]);
+
   useEffect(() => () => {
     if (mapLoadFinalizeTimerRef.current) {
       clearTimeout(mapLoadFinalizeTimerRef.current);
@@ -724,14 +732,22 @@ export default function GalaxyMapScreen({
               resizeMode="cover"
               onLoadStart={() => {
                 if (mapImageReadyRef.current) return;
-                setMapLoadPct(8);
+                if (!mapLoadStartedRef.current) {
+                  mapLoadStartedRef.current = true;
+                  setMapLoadPct(8);
+                }
               }}
-              onLoad={() => setMapLoadPct((prev) => Math.max(prev, 92))}
+              onLoad={() => {
+                if (mapLoadFinishedRef.current) return;
+                setMapLoadPct((prev) => Math.max(prev, 92));
+              }}
               onLoadEnd={() => {
                 if (mapImageReadyRef.current) return;
+                if (mapLoadFinishedRef.current) return;
                 setMapLoadPct(99);
                 if (mapLoadFinalizeTimerRef.current) clearTimeout(mapLoadFinalizeTimerRef.current);
                 mapLoadFinalizeTimerRef.current = setTimeout(() => {
+                  mapLoadFinishedRef.current = true;
                   setMapLoadPct(100);
                   setMapImageReady(true);
                   mapLoadFinalizeTimerRef.current = null;
