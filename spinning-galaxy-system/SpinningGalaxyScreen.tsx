@@ -66,8 +66,8 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
         );
       })}
 
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -190, marginTop: -52, width: 380, height: 104, borderRadius: 999, backgroundColor: 'rgba(255,210,145,0.06)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -150, marginTop: -40, width: 300, height: 80, borderRadius: 999, backgroundColor: 'rgba(255,189,122,0.1)' }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -250, marginTop: -95, width: 500, height: 190, borderRadius: 999, backgroundColor: 'rgba(102,136,188,0.09)' }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -220, marginTop: -74, width: 440, height: 148, borderRadius: 999, backgroundColor: 'rgba(145,176,225,0.07)' }} />
 
       {[28, 38, 50].map((r, i) => (
         <View
@@ -95,11 +95,29 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
               position: 'absolute',
               left: `${p.x}%`,
               top: `${p.y}%`,
-              width: 1.4 * p.scale,
-              height: 1.4 * p.scale,
+              width: 1.6 * p.scale,
+              height: 1.6 * p.scale,
               borderRadius: 99,
-              backgroundColor: '#DCEBFF',
-              opacity: p.opacity * 0.45,
+              backgroundColor: p.z > 0 ? '#F2F7FF' : '#BFD8FF',
+              opacity: p.opacity * (0.34 + (1 - Math.abs(p.y - 50) / 60) * 0.36),
+            }}
+          />
+        ))}
+      </View>
+
+      <View style={{ position: 'absolute', inset: 0 }}>
+        {frame.lanes.map((p) => (
+          <View
+            key={p.id}
+            style={{
+              position: 'absolute',
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              width: 9 * p.scale,
+              height: 2.8 * p.scale,
+              borderRadius: 999,
+              backgroundColor: 'rgba(10,16,28,0.95)',
+              opacity: p.opacity * 0.14,
             }}
           />
         ))}
@@ -114,18 +132,37 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
               left: `${p.x}%`,
               top: `${p.y}%`,
               width: 14 * p.scale,
-              height: 4.2 * p.scale,
+              height: 4 * p.scale,
               borderRadius: 999,
-              backgroundColor: '#9DB4D4',
-              opacity: p.opacity * 0.12,
+              backgroundColor: p.z > 0 ? '#DCEBFF' : '#9AB7DF',
+              opacity: p.opacity * 0.1,
             }}
           />
         ))}
       </View>
 
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -100, marginTop: -30, width: 200, height: 60, borderRadius: 999, backgroundColor: 'rgba(255,178,88,0.22)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -70, marginTop: -22, width: 140, height: 44, borderRadius: 999, backgroundColor: 'rgba(255,220,164,0.3)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -45, marginTop: -14, width: 90, height: 28, borderRadius: 999, backgroundColor: 'rgba(255,255,236,0.34)' }} />
+      <View style={{ position: 'absolute', inset: 0 }}>
+        {frame.halo.map((p) => (
+          <View
+            key={p.id}
+            style={{
+              position: 'absolute',
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              width: 5.5 * p.scale,
+              height: 2.2 * p.scale,
+              borderRadius: 999,
+              backgroundColor: '#BED2F2',
+              opacity: p.opacity * 0.06,
+            }}
+          />
+        ))}
+      </View>
+
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -78, marginTop: -33, width: 156, height: 66, borderRadius: 999, backgroundColor: 'rgba(255,175,84,0.16)' }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -58, marginTop: -26, width: 116, height: 52, borderRadius: 999, backgroundColor: 'rgba(255,220,164,0.24)' }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -42, marginTop: -19, width: 84, height: 38, borderRadius: 999, backgroundColor: 'rgba(255,247,222,0.34)' }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -28, marginTop: -13, width: 56, height: 26, borderRadius: 999, backgroundColor: 'rgba(255,255,248,0.45)' }} />
 
       <View style={{ position: 'absolute', inset: 0 }}>
         {frame.systems.map((s) => {
@@ -143,7 +180,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
                   height: glow,
                   borderRadius: 999,
                   backgroundColor: color,
-                  opacity: s.opacity * 0.25,
+                  opacity: s.opacity * 0.21,
                 }}
               />
               <View
