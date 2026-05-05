@@ -102,7 +102,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
         style={{
           position: 'absolute',
           inset: 0,
-          transform: [{ perspective: 900 }, { rotateX: '74deg' }, { rotateZ: galaxyRotate }, { scale: 1.015 }],
+          transform: [{ perspective: 900 }, { rotateX: '62deg' }, { rotateZ: galaxyRotate }, { scale: 1.015 }],
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
@@ -221,14 +221,18 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
         </View>
       </Animated.View>
 
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -122, marginTop: -122, width: 244, height: 244, borderRadius: 999, backgroundColor: 'rgba(80,120,200,0.08)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -106, marginTop: -106, width: 212, height: 212, borderRadius: 999, backgroundColor: 'rgba(120,160,255,0.11)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -90, marginTop: -90, width: 180, height: 180, borderRadius: 999, backgroundColor: 'rgba(255,156,60,0.16)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -74, marginTop: -74, width: 148, height: 148, borderRadius: 999, backgroundColor: 'rgba(255,198,95,0.22)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -60, marginTop: -60, width: 120, height: 120, borderRadius: 999, backgroundColor: 'rgba(255,226,145,0.3)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -48, marginTop: -48, width: 96, height: 96, borderRadius: 999, backgroundColor: 'rgba(255,244,200,0.42)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -36, marginTop: -36, width: 72, height: 72, borderRadius: 999, backgroundColor: 'rgba(255,252,235,0.62)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -24, marginTop: -24, width: 48, height: 48, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.95)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -132, marginTop: -132, width: 264, height: 264, borderRadius: 999, backgroundColor: 'rgba(78,118,198,0.055)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -118, marginTop: -118, width: 236, height: 236, borderRadius: 999, backgroundColor: 'rgba(108,148,225,0.075)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -104, marginTop: -104, width: 208, height: 208, borderRadius: 999, backgroundColor: 'rgba(138,176,242,0.085)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -90, marginTop: -90, width: 180, height: 180, borderRadius: 999, backgroundColor: 'rgba(255,170,82,0.11)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -78, marginTop: -78, width: 156, height: 156, borderRadius: 999, backgroundColor: 'rgba(255,188,96,0.14)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -66, marginTop: -66, width: 132, height: 132, borderRadius: 999, backgroundColor: 'rgba(255,206,118,0.18)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -56, marginTop: -56, width: 112, height: 112, borderRadius: 999, backgroundColor: 'rgba(255,224,152,0.24)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -46, marginTop: -46, width: 92, height: 92, borderRadius: 999, backgroundColor: 'rgba(255,238,190,0.31)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -36, marginTop: -36, width: 72, height: 72, borderRadius: 999, backgroundColor: 'rgba(255,247,218,0.45)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -27, marginTop: -27, width: 54, height: 54, borderRadius: 999, backgroundColor: 'rgba(255,252,238,0.62)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -18, marginTop: -18, width: 36, height: 36, borderRadius: 999, backgroundColor: 'rgba(255,255,250,0.84)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -10, marginTop: -10, width: 20, height: 20, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.98)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
       <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -58, marginTop: -22, width: 116, height: 44, borderRadius: 999, borderWidth: 1.1, borderColor: 'rgba(255,232,182,0.44)', opacity: 0.45, transform: [{ rotate: ringRotate }] }} />
 
       <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(103,243,255,0.12)' }} />
