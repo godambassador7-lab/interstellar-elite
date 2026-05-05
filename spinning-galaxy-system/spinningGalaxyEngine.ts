@@ -1,33 +1,52 @@
-export interface GalaxyNode {
-  id: number;
-  x: number;
-  y: number;
-  ring: number;
-  angle: number;
+export type PartType = 'MECH' | 'PLASMA' | 'VOID' | 'BIO';
+
+export interface OrbitalPoint {
+  id: string;
   radius: number;
+  angle: number;
+  armIndex: number;
+  orbitalSpeed: number;
+  verticalOffset: number;
+  jitter: number;
 }
 
-export interface GalaxyProjectedPoint {
-  id: string | number;
-  x: number; // percent
-  y: number; // percent
-  z: number; // -1 far .. +1 near
-  scale: number;
-  opacity: number;
-}
-
-export interface GalaxySystemPoint extends GalaxyProjectedPoint {
+export interface OrbitalSystem extends OrbitalPoint {
   systemNumber: number;
+  conquered?: boolean;
+  partType?: PartType;
 }
 
 export interface GalaxyModel {
-  starsFar: GalaxyProjectedPoint[];
-  starsNear: GalaxyProjectedPoint[];
-  dust: GalaxyProjectedPoint[];
-  systems: GalaxySystemPoint[];
+  arms: OrbitalPoint[];
+  dust: OrbitalPoint[];
+  systems: OrbitalSystem[];
+  maxRadius: number;
+  armCount: number;
 }
 
-function seededRng(seedText: string) {
+export interface ProjectedPoint {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  scale: number;
+  opacity: number;
+  blur: number;
+}
+
+export interface ProjectedSystem extends ProjectedPoint {
+  systemNumber: number;
+  conquered?: boolean;
+  partType?: PartType;
+}
+
+export interface ProjectedFrame {
+  arms: ProjectedPoint[];
+  dust: ProjectedPoint[];
+  systems: ProjectedSystem[];
+}
+
+function seeded(seedText: string) {
   let seed = 0;
   for (let i = 0; i < seedText.length; i++) seed = ((seed * 33) + seedText.charCodeAt(i)) >>> 0;
   return () => {
@@ -36,50 +55,7 @@ function seededRng(seedText: string) {
   };
 }
 
-export function buildGalaxyNodes(total: number, seedKey: string): GalaxyNode[] {
-  const count = Math.max(1, total);
-  const rand = seededRng(seedKey || 'galaxy');
-  const nodes: GalaxyNode[] = [];
-  for (let i = 0; i < count; i++) {
-    const ring = i % 3;
-    const radius = 24 + ring * 8 + ((i % 2) ? 2 : -2);
-    const angle = (i / count) * Math.PI * 2 + (rand() - 0.5) * 0.2;
-    nodes.push({
-      id: i + 1,
-      ring,
-      angle,
-      radius,
-      x: 50 + Math.cos(angle) * radius,
-      y: 50 + Math.sin(angle) * (radius * 0.64),
-    });
-  }
-  return nodes;
-}
-
-export function buildGalaxyStars(seedKey: string, count = 900) {
-  const rand = seededRng(seedKey || 'galaxy-stars');
-  const palette = ['#FFFFFF', '#EAF4FF', '#CFE8FF', '#89C7FF', '#FFB58E', '#FFD96C', '#FF8E8E'];
-  return Array.from({ length: Math.max(1, count) }, (_, i) => {
-    const armCount = 4;
-    const arm = i % armCount;
-    const twist = rand() * 0.9 + 0.2;
-    const rNorm = Math.pow(rand(), 0.62);
-    const armAngle = (arm / armCount) * (Math.PI * 2);
-    const a = armAngle + rNorm * 5.4 + (rand() - 0.5) * twist;
-    const rx = 46 * rNorm;
-    const ry = 31 * rNorm;
-    return {
-      id: `gs-${i}`,
-      x: 50 + Math.cos(a) * rx + (rand() - 0.5) * 3,
-      y: 50 + Math.sin(a) * ry + (rand() - 0.5) * 2.2,
-      size: 0.65 + rand() * 2.35,
-      opacity: 0.24 + rand() * 0.76,
-      color: palette[Math.floor(rand() * palette.length)],
-    };
-  });
-}
-
-function gaussian(rand: () => number): number {
+function gauss(rand: () => number) {
   let u = 0;
   let v = 0;
   while (u === 0) u = rand();
@@ -87,87 +63,122 @@ function gaussian(rand: () => number): number {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-function clamp01(v: number): number {
-  return Math.max(0, Math.min(1, v));
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v));
 }
 
-function buildProjectedPoint(
-  id: string | number,
-  x3: number,
-  y3: number,
-  z3: number,
-): GalaxyProjectedPoint {
-  // z3 expected roughly in [-1,1]
-  const t = clamp01((z3 + 1) * 0.5);
-  const perspectiveScale = 1 + (t - 0.5) * 0.45;
-  const px = 50 + x3 * perspectiveScale;
-  const py = 50 + y3 + z3 * 5.4;
-  const scale = 0.58 + t * 0.82;
-  const opacity = 0.16 + t * 0.78;
-  return { id, x: px, y: py, z: z3, scale, opacity };
-}
-
-export function buildSideViewGalaxyModel(
+export function buildOrbitalGalaxyModel(
   seedKey: string,
   systemCount: number,
+  systemMeta: Array<{ systemNumber: number; conquered?: boolean; partType?: PartType }> = []
 ): GalaxyModel {
-  let seed = 0;
-  for (let i = 0; i < seedKey.length; i++) seed = ((seed * 41) + seedKey.charCodeAt(i)) >>> 0;
-  const rand = () => {
-    seed = (1664525 * seed + 1013904223) >>> 0;
-    return seed / 0xffffffff;
-  };
+  const rand = seeded(seedKey || 'galaxy');
+  const armCount = 4;
+  const maxRadius = 46;
+  const armSpacing = (Math.PI * 2) / armCount;
 
-  const galaxyRadius = 45;
-  const spiralTightness = 0.11;
-  const depthCompression = 0.82;
-  const diskThickness = 4.7;
-
-  const starsRaw: GalaxyProjectedPoint[] = [];
-  const dustRaw: GalaxyProjectedPoint[] = [];
-
-  for (let i = 0; i < 640; i++) {
+  const arms: OrbitalPoint[] = [];
+  for (let i = 0; i < 900; i++) {
+    const armIndex = i % armCount;
+    const radius = Math.pow(rand(), 0.62) * maxRadius;
     const angle = rand() * Math.PI * 2;
-    const radius = Math.sqrt(rand()) * galaxyRadius;
-    const spiralOffset = angle + radius * spiralTightness;
-    const x = Math.cos(spiralOffset) * radius;
-    const z = Math.sin(spiralOffset) * radius * depthCompression / galaxyRadius;
-    const y = gaussian(rand) * diskThickness * (1 - (radius / galaxyRadius) * 0.4);
-    starsRaw.push(buildProjectedPoint(`sf-${i}`, x, y, z));
-  }
-
-  for (let i = 0; i < 260; i++) {
-    const angle = rand() * Math.PI * 2;
-    const radius = Math.sqrt(rand()) * galaxyRadius * (0.9 + rand() * 0.15);
-    const spiralOffset = angle + radius * (spiralTightness * 0.9);
-    const x = Math.cos(spiralOffset) * radius;
-    const z = Math.sin(spiralOffset) * radius * (depthCompression * 0.75) / galaxyRadius;
-    const y = gaussian(rand) * (diskThickness * 1.45);
-    dustRaw.push(buildProjectedPoint(`d-${i}`, x, y, z));
-  }
-
-  const systemsRaw: GalaxySystemPoint[] = [];
-  const totalSystems = Math.max(1, systemCount);
-  for (let i = 0; i < totalSystems; i++) {
-    const baseAngle = (i / totalSystems) * Math.PI * 2 + (rand() - 0.5) * 0.35;
-    const radius = Math.sqrt((i + 1) / totalSystems) * (galaxyRadius * 0.92);
-    const spiralOffset = baseAngle + radius * (spiralTightness * 1.16);
-    const x = Math.cos(spiralOffset) * radius;
-    const z = Math.sin(spiralOffset) * radius * (depthCompression * 0.92) / galaxyRadius;
-    const y = gaussian(rand) * (diskThickness * 0.72) * (1 - (radius / galaxyRadius) * 0.35);
-    const p = buildProjectedPoint(`sys-${i}`, x, y, z);
-    systemsRaw.push({
-      ...p,
-      systemNumber: i + 1,
-      scale: 0.7 + ((z + 1) * 0.5) * 0.9,
-      opacity: 0.35 + ((z + 1) * 0.5) * 0.65,
+    arms.push({
+      id: `a-${i}`,
+      radius,
+      angle,
+      armIndex,
+      orbitalSpeed: 0.00025 + (1 - radius / maxRadius) * 0.00062,
+      verticalOffset: gauss(rand) * (4.6 * (1 - radius / (maxRadius * 1.1))),
+      jitter: (rand() - 0.5) * 0.42,
     });
   }
 
-  const starsFar = starsRaw.filter((s) => s.z < 0).sort((a, b) => a.z - b.z);
-  const starsNear = starsRaw.filter((s) => s.z >= 0).sort((a, b) => a.z - b.z);
-  const dust = dustRaw.sort((a, b) => a.z - b.z);
-  const systems = systemsRaw.sort((a, b) => a.z - b.z);
+  const dust: OrbitalPoint[] = [];
+  for (let i = 0; i < 360; i++) {
+    const armIndex = i % armCount;
+    const radius = Math.pow(rand(), 0.72) * maxRadius;
+    const angle = rand() * Math.PI * 2;
+    dust.push({
+      id: `d-${i}`,
+      radius,
+      angle,
+      armIndex,
+      orbitalSpeed: 0.0002 + (1 - radius / maxRadius) * 0.00038,
+      verticalOffset: gauss(rand) * 7.4,
+      jitter: (rand() - 0.5) * 0.66,
+    });
+  }
 
-  return { starsFar, starsNear, dust, systems };
+  const meta = new Map(systemMeta.map((s) => [Number(s.systemNumber), s]));
+  const systems: OrbitalSystem[] = [];
+  const total = Math.max(1, systemCount);
+  for (let i = 0; i < total; i++) {
+    const n = i + 1;
+    const t = (i + 0.5) / total;
+    const radius = (0.16 + Math.pow(t, 0.82) * 0.84) * maxRadius;
+    const armIndex = i % armCount;
+    const angle = (i / total) * Math.PI * 2 + (rand() - 0.5) * 0.2;
+    const m = meta.get(n);
+    systems.push({
+      id: `s-${n}`,
+      systemNumber: n,
+      radius,
+      angle,
+      armIndex,
+      orbitalSpeed: 0.0005 + (1 - radius / maxRadius) * 0.00066,
+      verticalOffset: gauss(rand) * (2.2 + (1 - radius / maxRadius) * 1.2),
+      jitter: (rand() - 0.5) * 0.24,
+      conquered: m?.conquered,
+      partType: m?.partType,
+    });
+  }
+
+  return { arms, dust, systems, maxRadius, armCount };
+}
+
+export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): ProjectedFrame {
+  const spiralTwist = 0.16;
+  const armSpacing = (Math.PI * 2) / model.armCount;
+  const depthCompression = 0.78;
+  const tiltFactor = 0.24;
+
+  const project = (p: OrbitalPoint): ProjectedPoint => {
+    const angle = p.angle + timeMs * p.orbitalSpeed;
+    const spiralAngle = angle + p.radius * spiralTwist + p.armIndex * armSpacing + p.jitter;
+    const x3 = Math.cos(spiralAngle) * p.radius;
+    const z3 = Math.sin(spiralAngle) * p.radius * depthCompression;
+    const y3 = p.verticalOffset + z3 * tiltFactor;
+
+    const zNorm = clamp(z3 / model.maxRadius, -1, 1);
+    const t = (zNorm + 1) * 0.5;
+    const scale = 0.55 + t * 0.8;
+    const opacity = 0.35 + t * 0.65;
+    const blur = 2 - t * 2;
+
+    return {
+      id: p.id,
+      x: 50 + x3,
+      y: 50 + y3,
+      z: zNorm,
+      scale,
+      opacity,
+      blur,
+    };
+  };
+
+  const arms = model.arms.map(project).sort((a, b) => a.z - b.z);
+  const dust = model.dust.map(project).sort((a, b) => a.z - b.z);
+  const systems = model.systems
+    .map((s) => {
+      const p = project(s);
+      return {
+        ...p,
+        systemNumber: s.systemNumber,
+        conquered: s.conquered,
+        partType: s.partType,
+      } as ProjectedSystem;
+    })
+    .sort((a, b) => a.z - b.z);
+
+  return { arms, dust, systems };
 }
