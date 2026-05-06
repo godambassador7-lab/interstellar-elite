@@ -118,7 +118,8 @@ export default function SpinningGalaxyScreen({
         style={{
           position: 'absolute',
           inset: 0,
-          transform: [{ perspective: 900 }, { rotateX: '24deg' }, { rotateY: '-6deg' }, { rotateZ: galaxyRotate }, { scale: 1.01 }],
+          // Rotate in disk space first, then tilt the whole disk toward camera.
+          transform: [{ perspective: 900 }, { rotateZ: galaxyRotate }, { rotateX: '24deg' }, { rotateY: '-6deg' }, { scale: 1.01 }],
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
