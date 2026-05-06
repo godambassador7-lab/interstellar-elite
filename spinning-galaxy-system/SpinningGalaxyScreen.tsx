@@ -14,7 +14,19 @@ const NODE_COLORS = {
 const ARM_TINTS = ['#f4f7ff', '#d9deff', '#9fb4ff', '#8ec2ff', '#b887ff', '#ffd08d'];
 const DUST_TINTS = ['#89a7ff', '#7fd2ff', '#b29bff', '#ffc38a', '#9be5ff', '#9aa7ff'];
 
-export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 24, height = 320, systems = [] }) {
+export default function SpinningGalaxyScreen({
+  galaxyId = 'demo',
+  systemCount = 24,
+  height = 320,
+  systems = [],
+  highlightedSystemNumber = null,
+}: {
+  galaxyId?: string;
+  systemCount?: number;
+  height?: number;
+  systems?: Array<{ systemNumber: number; conquered?: boolean; partType?: 'MECH' | 'PLASMA' | 'VOID' | 'BIO' }>;
+  highlightedSystemNumber?: number | null;
+}) {
   const model = useMemo(
     () => buildOrbitalGalaxyModel(String(galaxyId), systemCount, systems),
     [galaxyId, systemCount, systems]
@@ -190,11 +202,29 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
         <View style={{ position: 'absolute', inset: 0 }}>
           {frame.systems.map((s) => {
             const color = s.conquered ? NODE_COLORS.conquered : (NODE_COLORS[s.partType] || NODE_COLORS.default);
+            const isHighlighted = highlightedSystemNumber === s.systemNumber;
             const boost = coreBoost(s.x, s.y, 0.8);
-            const dot = (4.1 + s.scale * 4.2) * Math.min(1.16, boost);
-            const glow = dot * 1.95;
+            const dot = (4.1 + s.scale * 4.2) * Math.min(1.16, boost) * (isHighlighted ? 1.24 : 1);
+            const glow = dot * (isHighlighted ? 3.2 : 1.95);
+            const beaconRing = dot * 4.7;
             return (
               <View key={s.id} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, marginLeft: -dot / 2, marginTop: -dot / 2 }}>
+                {isHighlighted ? (
+                  <Animated.View
+                    style={{
+                      position: 'absolute',
+                      left: -(beaconRing - dot) / 2,
+                      top: -(beaconRing - dot) / 2,
+                      width: beaconRing,
+                      height: beaconRing,
+                      borderRadius: 999,
+                      borderWidth: 1.3,
+                      borderColor: `${color}DD`,
+                      opacity: pulseGlow,
+                      transform: [{ scale: pulseScale }],
+                    }}
+                  />
+                ) : null}
                 <View
                   style={{
                     position: 'absolute',
@@ -204,7 +234,7 @@ export default function SpinningGalaxyScreen({ galaxyId = 'demo', systemCount = 
                     height: glow,
                     borderRadius: 999,
                     backgroundColor: color,
-                    opacity: Math.min(1, s.opacity * 0.2 * boost),
+                    opacity: Math.min(1, s.opacity * (isHighlighted ? 0.5 : 0.2) * boost),
                   }}
                 />
                 <View

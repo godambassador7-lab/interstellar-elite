@@ -1,11 +1,12 @@
 // src/screens/ConquestScreen.js
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   Image,
   Animated,
@@ -77,6 +78,7 @@ export default function ConquestScreen({
   onDefendStation,
   onLaunchSystem,
 }) {
+  const [hoveredSystemNumber, setHoveredSystemNumber] = useState(null);
   const { height: screenHeight } = useWindowDimensions();
   const qDef   = QUADRANT_DEFS.find((q) => q.id === galaxy.quadrant);
   const qColor = qDef?.accent || '#67F3FF';
@@ -244,6 +246,7 @@ export default function ConquestScreen({
                 galaxyId={galaxy?.id || 'demo'}
                 systemCount={Math.max(1, systemTargets.length)}
                 height={liveMapHeight}
+                highlightedSystemNumber={hoveredSystemNumber}
                 systems={systemTargets.map((t) => ({
                   systemNumber: t.systemNumber,
                   conquered: t.conquered,
@@ -261,7 +264,7 @@ export default function ConquestScreen({
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.targetsList}>
             {systemTargets.map((t) => (
-              <TouchableOpacity
+              <Pressable
                 key={`target-${t.systemNumber}`}
                 style={[
                   styles.targetCard,
@@ -270,7 +273,8 @@ export default function ConquestScreen({
                     backgroundColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}2A`,
                   },
                 ]}
-                activeOpacity={0.82}
+                onHoverIn={() => setHoveredSystemNumber(t.systemNumber)}
+                onHoverOut={() => setHoveredSystemNumber(null)}
                 onPress={() => {
                   if (onLaunchSystem) onLaunchSystem(t.systemNumber);
                 }}
@@ -288,7 +292,7 @@ export default function ConquestScreen({
                 {typeof t.threat === 'number' && (
                   <Text style={styles.targetReward}>THREAT {t.threat.toFixed(1)}</Text>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </ScrollView>
         </View>
