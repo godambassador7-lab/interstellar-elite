@@ -192,7 +192,7 @@ export function buildOrbitalGalaxyModel(
 }
 
 export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): ProjectedFrame {
-  const spiralTwist = 0.16;
+  const spiralTwist = 0.12;
   const armSpacing = (Math.PI * 2) / model.armCount;
   const depthCompression = 0.9;
   const tiltFactor = 0.16;
@@ -200,11 +200,12 @@ export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): Project
 
   const project = (p: OrbitalPoint, laneOffset = 0): ProjectedPoint => {
     const angle = p.angle + timeMs * p.orbitalSpeed;
-    const spiralAngle = angle + p.radius * spiralTwist + (p.armIndex + laneOffset) * armSpacing + p.jitter;
+    const armSpreadBoost = 1.18;
+    const spiralAngle = angle + p.radius * spiralTwist + (p.armIndex + laneOffset) * armSpacing * armSpreadBoost + p.jitter;
     const xRaw = Math.cos(spiralAngle) * p.radius;
     const zRaw = Math.sin(spiralAngle) * p.radius;
     const armPhase = (p.armIndex / Math.max(1, model.armCount)) * (Math.PI * 2);
-    const armLift = Math.sin(armPhase) * (1.9 + (p.radius / model.maxRadius) * 1.2);
+    const armLift = Math.sin(armPhase) * (3.2 + (p.radius / model.maxRadius) * 2.2);
     const yRaw = p.verticalOffset * 0.72
       + Math.sin(spiralAngle * 0.72) * (1.05 + (p.radius / model.maxRadius) * 0.85)
       + armLift;
