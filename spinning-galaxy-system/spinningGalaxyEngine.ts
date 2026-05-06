@@ -85,7 +85,7 @@ export function buildOrbitalGalaxyModel(
   const minRadius = 2.2;
 
   const arms: OrbitalPoint[] = [];
-  for (let i = 0; i < 2800; i++) {
+  for (let i = 0; i < 4200; i++) {
     const armIndex = i % armCount;
     const radius = minRadius + Math.pow(rand(), 0.65) * (maxRadius - minRadius);
     const baseArmAngle = armIndex * armSpacing;
@@ -104,7 +104,7 @@ export function buildOrbitalGalaxyModel(
   }
 
   const dust: OrbitalPoint[] = [];
-  for (let i = 0; i < 1400; i++) {
+  for (let i = 0; i < 2200; i++) {
     const armIndex = i % armCount;
     const radius = minRadius + Math.pow(rand(), 0.72) * (maxRadius - minRadius);
     const baseArmAngle = armIndex * armSpacing;
@@ -123,7 +123,7 @@ export function buildOrbitalGalaxyModel(
   }
 
   const lanes: OrbitalPoint[] = [];
-  for (let i = 0; i < 1600; i++) {
+  for (let i = 0; i < 2400; i++) {
     const armIndex = i % armCount;
     const radius = minRadius + Math.pow(rand(), 0.7) * (maxRadius - minRadius);
     const baseArmAngle = armIndex * armSpacing;
@@ -143,7 +143,7 @@ export function buildOrbitalGalaxyModel(
   }
 
   const halo: OrbitalPoint[] = [];
-  for (let i = 0; i < 860; i++) {
+  for (let i = 0; i < 1400; i++) {
     const armIndex = i % armCount;
     const radius = (0.55 + Math.pow(rand(), 0.55) * 0.75) * maxRadius;
     const baseArmAngle = armIndex * armSpacing;
