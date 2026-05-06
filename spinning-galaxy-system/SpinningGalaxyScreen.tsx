@@ -114,12 +114,18 @@ export default function SpinningGalaxyScreen({
       <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -250, marginTop: -176, width: 500, height: 352, borderRadius: 999, backgroundColor: 'rgba(74,94,212,0.038)' }} />
       <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -210, marginTop: -146, width: 420, height: 292, borderRadius: 999, backgroundColor: 'rgba(98,84,188,0.032)' }} />
 
+      <View
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: [{ perspective: 900 }, { rotateX: '24deg' }, { rotateY: '-6deg' }, { scale: 1.01 }],
+        }}
+      >
       <Animated.View
         style={{
           position: 'absolute',
           inset: 0,
-          // Rotate in disk space first, then tilt the whole disk toward camera.
-          transform: [{ perspective: 900 }, { rotateZ: galaxyRotate }, { rotateX: '24deg' }, { rotateY: '-6deg' }, { scale: 1.01 }],
+          transform: [{ rotateZ: galaxyRotate }],
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
@@ -259,6 +265,7 @@ export default function SpinningGalaxyScreen({
           })}
         </View>
       </Animated.View>
+      </View>
 
       <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -120, marginTop: -120, width: 240, height: 240, borderRadius: 999, backgroundColor: 'rgba(56,76,188,0.042)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
       <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -98, marginTop: -98, width: 196, height: 196, borderRadius: 999, backgroundColor: 'rgba(102,92,206,0.055)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
