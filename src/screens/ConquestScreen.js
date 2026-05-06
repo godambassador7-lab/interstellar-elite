@@ -11,6 +11,7 @@ import {
   Image,
   Animated,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { QUADRANT_DEFS } from '../utils/constants';
 import SpinningGalaxyScreen from '../../spinning-galaxy-system/SpinningGalaxyScreen';
@@ -263,22 +264,37 @@ export default function ConquestScreen({
             <Text style={styles.targetsCount}>{systemTargets.length} SYSTEMS</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.targetsList}>
-            {systemTargets.map((t) => (
-              <Pressable
-                key={`target-${t.systemNumber}`}
-                style={[
-                  styles.targetCard,
-                  {
-                    borderColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}CC`,
-                    backgroundColor: `${(REWARD_TYPE_COLORS[t.partType] || '#FFE26D')}2A`,
-                  },
-                ]}
-                onHoverIn={() => setHoveredSystemNumber(t.systemNumber)}
-                onHoverOut={() => setHoveredSystemNumber(null)}
-                onPress={() => {
-                  if (onLaunchSystem) onLaunchSystem(t.systemNumber);
-                }}
-              >
+            {systemTargets.map((t) => {
+              const baseColor = REWARD_TYPE_COLORS[t.partType] || '#FFE26D';
+              const isHovered = hoveredSystemNumber === t.systemNumber;
+              return (
+                <Pressable
+                  key={`target-${t.systemNumber}`}
+                  style={({ pressed }) => [
+                    styles.targetCard,
+                    {
+                      borderColor: `${baseColor}${isHovered ? 'FF' : 'CC'}`,
+                      backgroundColor: `${baseColor}${isHovered ? '3E' : '2A'}`,
+                    },
+                    isHovered && styles.targetCardHover,
+                    pressed && styles.targetCardPressed,
+                    Platform.OS === 'web'
+                      ? {
+                          transitionProperty: 'transform, box-shadow, border-color, background-color',
+                          transitionDuration: '180ms',
+                          transitionTimingFunction: 'ease-out',
+                          boxShadow: isHovered
+                            ? `0 0 0 1px ${baseColor}AA, 0 0 18px ${baseColor}66, 0 0 28px ${baseColor}33`
+                            : '0 0 0 0 rgba(0,0,0,0)',
+                        }
+                      : null,
+                  ]}
+                  onHoverIn={() => setHoveredSystemNumber(t.systemNumber)}
+                  onHoverOut={() => setHoveredSystemNumber(null)}
+                  onPress={() => {
+                    if (onLaunchSystem) onLaunchSystem(t.systemNumber);
+                  }}
+                >
                 <Text style={styles.targetSystem}>SYS-{String(t.systemNumber).padStart(3, '0')}</Text>
                 <Text style={styles.targetDifficulty}>DIFF {t.difficulty}/10</Text>
                 <Text style={[styles.targetReward, { color: t.conquered ? '#63FF9E' : '#FFE26D' }]}>
@@ -292,8 +308,9 @@ export default function ConquestScreen({
                 {typeof t.threat === 'number' && (
                   <Text style={styles.targetReward}>THREAT {t.threat.toFixed(1)}</Text>
                 )}
-              </Pressable>
-            ))}
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
 
@@ -646,6 +663,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(52,42,8,0.35)',
     paddingHorizontal: 8,
     paddingVertical: 7,
+  },
+  targetCardHover: {
+    transform: [{ translateY: -2 }, { scale: 1.015 }],
+  },
+  targetCardPressed: {
+    transform: [{ translateY: 0 }, { scale: 0.995 }],
   },
   targetSystem: {
     fontFamily: 'Courier New',
