@@ -139,7 +139,7 @@ export default function SpinningGalaxyScreen({
         style={{
           position: 'absolute',
           inset: 0,
-          transform: [{ perspective: 900 }, { rotateX: '24deg' }, { rotateY: '-6deg' }, { scale: 1.01 }],
+          transform: [{ scale: 1.01 }],
         }}
       >
       <Animated.View
@@ -168,10 +168,7 @@ export default function SpinningGalaxyScreen({
           />
         </Animated.View>
 
-        <View style={{ position: 'absolute', left: '8%', top: '8%', width: '84%', height: '84%', borderRadius: 999, backgroundColor: 'rgba(4,7,22,0.22)' }} />
-
-        <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -250, marginTop: -176, width: 500, height: 352, borderRadius: 999, backgroundColor: 'rgba(74,94,212,0.032)' }} />
-        <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -210, marginTop: -146, width: 420, height: 292, borderRadius: 999, backgroundColor: 'rgba(98,84,188,0.028)' }} />
+        <View style={{ position: 'absolute', left: '8%', top: '8%', width: '84%', height: '84%', borderRadius: 999, backgroundColor: 'rgba(4,7,22,0.18)' }} />
 
         <View style={{ position: 'absolute', inset: 0 }}>
           {frame.halo.map((p) => (
