@@ -13,6 +13,8 @@ const NODE_COLORS = {
 
 const ARM_TINTS = ['#f4f7ff', '#d9deff', '#9fb4ff', '#8ec2ff', '#b887ff', '#ffd08d'];
 const DUST_TINTS = ['#89a7ff', '#7fd2ff', '#b29bff', '#ffc38a', '#9be5ff', '#9aa7ff'];
+const ARM_DEBUG_TINTS = ['#ff8f8f', '#ffd88f', '#ecff8f', '#8fffd3', '#8fc7ff', '#d58fff'];
+const SHOW_ARM_DEBUG = false;
 
 export default function SpinningGalaxyScreen({
   galaxyId = 'demo',
@@ -109,15 +111,14 @@ export default function SpinningGalaxyScreen({
         );
       })}
 
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -300, marginTop: -160, width: 600, height: 320, borderRadius: 999, backgroundColor: 'rgba(84,106,212,0.10)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -252, marginTop: -120, width: 504, height: 240, borderRadius: 999, backgroundColor: 'rgba(118,86,214,0.10)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -214, marginTop: -92, width: 428, height: 184, borderRadius: 999, backgroundColor: 'rgba(82,143,255,0.08)' }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -250, marginTop: -176, width: 500, height: 352, borderRadius: 999, backgroundColor: 'rgba(92,118,225,0.05)' }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -210, marginTop: -146, width: 420, height: 292, borderRadius: 999, backgroundColor: 'rgba(112,96,214,0.045)' }} />
 
       <Animated.View
         style={{
           position: 'absolute',
           inset: 0,
-          transform: [{ perspective: 900 }, { rotateX: '68deg' }, { rotateY: '-10deg' }, { rotateZ: galaxyRotate }, { scale: 1.02 }],
+          transform: [{ perspective: 900 }, { rotateX: '24deg' }, { rotateY: '-6deg' }, { rotateZ: galaxyRotate }, { scale: 1.01 }],
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
@@ -134,7 +135,9 @@ export default function SpinningGalaxyScreen({
                   width: 1.65 * p.scale,
                   height: 1.65 * p.scale,
                   borderRadius: 99,
-                  backgroundColor: p.z > 0 ? ARM_TINTS[p.armIndex % ARM_TINTS.length] : '#7f95ea',
+                  backgroundColor: SHOW_ARM_DEBUG
+                    ? ARM_DEBUG_TINTS[p.armIndex % ARM_DEBUG_TINTS.length]
+                    : (p.z > 0 ? ARM_TINTS[p.armIndex % ARM_TINTS.length] : '#7f95ea'),
                   opacity: Math.min(1, p.opacity * (0.38 + (1 - Math.abs(p.y - 50) / 60) * 0.40) * boost),
                 }}
               />
@@ -173,8 +176,10 @@ export default function SpinningGalaxyScreen({
                   width: 15.2 * p.scale,
                   height: 4.4 * p.scale,
                   borderRadius: 999,
-                  backgroundColor: p.z > 0 ? DUST_TINTS[(p.armIndex + 1) % DUST_TINTS.length] : '#7f8fda',
-                  opacity: Math.min(1, p.opacity * 0.105 * boost),
+                  backgroundColor: SHOW_ARM_DEBUG
+                    ? ARM_DEBUG_TINTS[p.armIndex % ARM_DEBUG_TINTS.length]
+                    : (p.z > 0 ? DUST_TINTS[(p.armIndex + 1) % DUST_TINTS.length] : '#7f8fda'),
+                  opacity: Math.min(1, p.opacity * 0.095 * boost),
                 }}
               />
             );
@@ -254,20 +259,15 @@ export default function SpinningGalaxyScreen({
         </View>
       </Animated.View>
 
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -162, marginTop: -162, width: 324, height: 324, borderRadius: 999, backgroundColor: 'rgba(82,106,220,0.04)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -148, marginTop: -148, width: 296, height: 296, borderRadius: 999, backgroundColor: 'rgba(98,118,226,0.05)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -132, marginTop: -132, width: 264, height: 264, borderRadius: 999, backgroundColor: 'rgba(118,106,234,0.06)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -116, marginTop: -116, width: 232, height: 232, borderRadius: 999, backgroundColor: 'rgba(146,112,228,0.07)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -102, marginTop: -102, width: 204, height: 204, borderRadius: 999, backgroundColor: 'rgba(255,168,82,0.085)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -88, marginTop: -88, width: 176, height: 176, borderRadius: 999, backgroundColor: 'rgba(255,184,94,0.105)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -76, marginTop: -76, width: 152, height: 152, borderRadius: 999, backgroundColor: 'rgba(255,202,118,0.13)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -64, marginTop: -64, width: 128, height: 128, borderRadius: 999, backgroundColor: 'rgba(255,220,150,0.18)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -53, marginTop: -53, width: 106, height: 106, borderRadius: 999, backgroundColor: 'rgba(255,234,184,0.26)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -43, marginTop: -43, width: 86, height: 86, borderRadius: 999, backgroundColor: 'rgba(255,244,210,0.36)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -34, marginTop: -34, width: 68, height: 68, borderRadius: 999, backgroundColor: 'rgba(255,250,230,0.50)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -26, marginTop: -26, width: 52, height: 52, borderRadius: 999, backgroundColor: 'rgba(255,253,242,0.66)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -18, marginTop: -18, width: 36, height: 36, borderRadius: 999, backgroundColor: 'rgba(255,255,252,0.86)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -58, marginTop: -22, width: 116, height: 44, borderRadius: 999, borderWidth: 1.1, borderColor: 'rgba(255,232,182,0.44)', opacity: 0.45, transform: [{ rotate: ringRotate }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -110, marginTop: -110, width: 220, height: 220, borderRadius: 999, backgroundColor: 'rgba(90,120,228,0.05)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -92, marginTop: -92, width: 184, height: 184, borderRadius: 999, backgroundColor: 'rgba(122,106,224,0.06)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -76, marginTop: -76, width: 152, height: 152, borderRadius: 999, backgroundColor: 'rgba(255,174,88,0.10)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -62, marginTop: -62, width: 124, height: 124, borderRadius: 999, backgroundColor: 'rgba(255,204,130,0.14)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -49, marginTop: -49, width: 98, height: 98, borderRadius: 999, backgroundColor: 'rgba(255,236,188,0.22)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -37, marginTop: -37, width: 74, height: 74, borderRadius: 999, backgroundColor: 'rgba(255,248,224,0.34)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -27, marginTop: -27, width: 54, height: 54, borderRadius: 999, backgroundColor: 'rgba(255,253,244,0.56)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -18, marginTop: -18, width: 36, height: 36, borderRadius: 999, backgroundColor: 'rgba(255,255,252,0.84)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
+      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -48, marginTop: -18, width: 96, height: 36, borderRadius: 999, borderWidth: 1.1, borderColor: 'rgba(255,232,182,0.34)', opacity: 0.36, transform: [{ rotate: ringRotate }] }} />
 
       <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(103,243,255,0.12)' }} />
     </View>
