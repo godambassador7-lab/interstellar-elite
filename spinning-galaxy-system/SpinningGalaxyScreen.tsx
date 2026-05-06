@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { View, Animated, Easing, Platform } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Animated, Easing, Platform, Image } from 'react-native';
 import { buildOrbitalGalaxyModel, projectOrbitalFrame } from './spinningGalaxyEngine';
 
 const NODE_COLORS = {
@@ -11,10 +11,7 @@ const NODE_COLORS = {
   default: '#FFE26D',
 };
 
-const ARM_TINTS = ['#fff2d1', '#ffd692', '#dce4ff', '#9eb8ff', '#6d8eff', '#4f69df'];
-const DUST_TINTS = ['#1a1a3e', '#22274f', '#25306a', '#2f3d8a', '#3b4da7', '#5068c5'];
-const ARM_DEBUG_TINTS = ['#ff8f8f', '#ffd88f', '#ecff8f', '#8fffd3', '#8fc7ff', '#d58fff'];
-const SHOW_ARM_DEBUG = false;
+const GALAXY_TEXTURE = require('../inline_image_preview.jpg');
 
 export default function SpinningGalaxyScreen({
   galaxyId = 'demo',
@@ -34,10 +31,11 @@ export default function SpinningGalaxyScreen({
     [galaxyId, systemCount, systems]
   );
 
-  const frame = useMemo(() => projectOrbitalFrame(model, 0), [model]);
+  const [frame, setFrame] = useState(() => projectOrbitalFrame(model, 0));
 
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const corePulseAnim = useRef(new Animated.Value(0)).current;
+  const frameRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     rotateAnim.setValue(0);
@@ -50,7 +48,7 @@ export default function SpinningGalaxyScreen({
     const loop = Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
-        duration: prefersReducedMotion ? 1200000 : 640000,
+        duration: prefersReducedMotion ? 1200000 : 180000,
         easing: Easing.linear,
         useNativeDriver: true,
         isInteraction: false,
@@ -59,6 +57,30 @@ export default function SpinningGalaxyScreen({
     loop.start();
     return () => loop.stop();
   }, [rotateAnim, galaxyId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const start = Date.now();
+    const prefersReducedMotion =
+      Platform.OS === 'web' &&
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const speed = prefersReducedMotion ? 0.18 : 1;
+
+    const tick = () => {
+      if (!mounted) return;
+      const elapsedMs = (Date.now() - start) * speed;
+      setFrame(projectOrbitalFrame(model, elapsedMs));
+      frameRafRef.current = requestAnimationFrame(tick);
+    };
+
+    frameRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      mounted = false;
+      if (frameRafRef.current !== null) cancelAnimationFrame(frameRafRef.current);
+    };
+  }, [model, galaxyId]);
 
   useEffect(() => {
     corePulseAnim.setValue(0);
@@ -76,6 +98,8 @@ export default function SpinningGalaxyScreen({
   const pulseScale = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.99, 1.02] });
   const pulseGlow = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
   const ringRotate = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '9deg'] });
+  const textureFloatY = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [-1.2, 1.2] });
+  const textureScale = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.025] });
 
   const coreBoost = (x, y, strength = 1) => {
     const dx = x - 50;
@@ -111,9 +135,6 @@ export default function SpinningGalaxyScreen({
         );
       })}
 
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -250, marginTop: -176, width: 500, height: 352, borderRadius: 999, backgroundColor: 'rgba(74,94,212,0.038)' }} />
-      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -210, marginTop: -146, width: 420, height: 292, borderRadius: 999, backgroundColor: 'rgba(98,84,188,0.032)' }} />
-
       <View
         style={{
           position: 'absolute',
@@ -129,69 +150,28 @@ export default function SpinningGalaxyScreen({
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {frame.arms.map((p) => {
-            const boost = coreBoost(p.x, p.y, 0.72);
-            return (
-              <View
-                key={p.id}
-                style={{
-                  position: 'absolute',
-                  left: `${p.x}%`,
-                  top: `${p.y}%`,
-                  width: 1.65 * p.scale,
-                  height: 1.65 * p.scale,
-                  borderRadius: 99,
-                  backgroundColor: SHOW_ARM_DEBUG
-                    ? ARM_DEBUG_TINTS[p.armIndex % ARM_DEBUG_TINTS.length]
-                    : ARM_TINTS[p.armIndex % ARM_TINTS.length],
-                  opacity: Math.min(1, p.opacity * (0.38 + (1 - Math.abs(p.y - 50) / 60) * 0.40) * boost),
-                }}
-              />
-            );
-          })}
-        </View>
+        <Animated.View
+          style={{
+            position: 'absolute',
+            left: '4%',
+            top: '4%',
+            width: '92%',
+            height: '92%',
+            opacity: 0.88,
+            transform: [{ translateY: textureFloatY }, { scale: textureScale }],
+          }}
+        >
+          <Image
+            source={GALAXY_TEXTURE}
+            resizeMode="cover"
+            style={{ width: '100%', height: '100%', borderRadius: 999 }}
+          />
+        </Animated.View>
 
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {frame.lanes.map((p) => (
-            <View
-              key={p.id}
-              style={{
-                position: 'absolute',
-                left: `${p.x}%`,
-                top: `${p.y}%`,
-                width: 10.2 * p.scale,
-                height: 3.1 * p.scale,
-                borderRadius: 999,
-                backgroundColor: 'rgba(9,13,24,0.95)',
-                opacity: Math.max(0.035, p.opacity * 0.135),
-              }}
-            />
-          ))}
-        </View>
+        <View style={{ position: 'absolute', left: '8%', top: '8%', width: '84%', height: '84%', borderRadius: 999, backgroundColor: 'rgba(4,7,22,0.22)' }} />
 
-        <View style={{ position: 'absolute', inset: 0 }}>
-          {frame.dust.map((p) => {
-            const boost = coreBoost(p.x, p.y, 1);
-            return (
-              <View
-                key={p.id}
-                style={{
-                  position: 'absolute',
-                  left: `${p.x}%`,
-                  top: `${p.y}%`,
-                  width: 15.2 * p.scale,
-                  height: 4.4 * p.scale,
-                  borderRadius: 999,
-                  backgroundColor: SHOW_ARM_DEBUG
-                    ? ARM_DEBUG_TINTS[p.armIndex % ARM_DEBUG_TINTS.length]
-                    : DUST_TINTS[(p.armIndex + 1) % DUST_TINTS.length],
-                  opacity: Math.min(1, p.opacity * 0.088 * boost),
-                }}
-              />
-            );
-          })}
-        </View>
+        <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -250, marginTop: -176, width: 500, height: 352, borderRadius: 999, backgroundColor: 'rgba(74,94,212,0.032)' }} />
+        <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -210, marginTop: -146, width: 420, height: 292, borderRadius: 999, backgroundColor: 'rgba(98,84,188,0.028)' }} />
 
         <View style={{ position: 'absolute', inset: 0 }}>
           {frame.halo.map((p) => (
@@ -204,8 +184,8 @@ export default function SpinningGalaxyScreen({
                 width: 6.1 * p.scale,
                 height: 2.3 * p.scale,
                 borderRadius: 999,
-                backgroundColor: '#7f96ff',
-                opacity: p.opacity * 0.058,
+                backgroundColor: '#d8e3ff',
+                opacity: p.opacity * 0.05,
               }}
             />
           ))}
