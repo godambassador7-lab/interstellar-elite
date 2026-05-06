@@ -78,11 +78,16 @@ export function buildOrbitalGalaxyModel(
   systemMeta: Array<{ systemNumber: number; conquered?: boolean; partType?: PartType }> = []
 ): GalaxyModel {
   const rand = seeded(seedKey || 'galaxy');
-  const armCount = 6;
-  const maxRadius = 47;
+  // Milky Way-like profile tuned from the provided Three.js model.
+  const armCount = 4;
+  const maxRadius = 48;
   const armSpacing = (Math.PI * 2) / armCount;
-  const spiralTightness = 0.235;
-  const minRadius = 2.2;
+  const spiralTightness = 0.9;
+  const minRadius = 1.8;
+  const randomness = 0.18;
+  const randomnessPower = 2.8;
+  const scatter = (radius: number, flatten = 1) =>
+    Math.pow(rand(), randomnessPower) * (rand() < 0.5 ? 1 : -1) * randomness * radius * flatten;
 
   const arms: OrbitalPoint[] = [];
   for (let i = 0; i < 4200; i++) {
@@ -90,8 +95,7 @@ export function buildOrbitalGalaxyModel(
     const radius = minRadius + Math.pow(rand(), 0.75) * (maxRadius - minRadius);
     const baseArmAngle = armIndex * armSpacing;
     const twist = radius * spiralTightness;
-    // Keep each particle close to its assigned arm to preserve 6-arm readability.
-    const randomArmSpread = (rand() - 0.5) * 0.34;
+    const randomArmSpread = scatter(radius, 0.06);
     const angle = baseArmAngle + twist + randomArmSpread;
     arms.push({
       id: `a-${i}`,
@@ -99,8 +103,8 @@ export function buildOrbitalGalaxyModel(
       angle,
       armIndex,
       orbitalSpeed: 0.00012 + (1 - radius / maxRadius) * 0.00028,
-      verticalOffset: gauss(rand) * (2.8 * (1 - radius / (maxRadius * 1.08))),
-      jitter: (rand() - 0.5) * 0.16,
+      verticalOffset: scatter(radius, 0.12),
+      jitter: scatter(radius, 0.04),
     });
   }
 
@@ -109,8 +113,8 @@ export function buildOrbitalGalaxyModel(
     const armIndex = i % armCount;
     const radius = minRadius + Math.pow(rand(), 0.75) * (maxRadius - minRadius);
     const baseArmAngle = armIndex * armSpacing;
-    const twist = radius * (spiralTightness * 0.92);
-    const randomArmSpread = (rand() - 0.5) * 0.52;
+    const twist = radius * (spiralTightness * 0.94);
+    const randomArmSpread = scatter(radius, 0.12);
     const angle = baseArmAngle + twist + randomArmSpread;
     dust.push({
       id: `d-${i}`,
@@ -118,8 +122,8 @@ export function buildOrbitalGalaxyModel(
       angle,
       armIndex,
       orbitalSpeed: 0.00009 + (1 - radius / maxRadius) * 0.00018,
-      verticalOffset: gauss(rand) * 3.2,
-      jitter: (rand() - 0.5) * 0.22,
+      verticalOffset: scatter(radius, 0.18),
+      jitter: scatter(radius, 0.06),
     });
   }
 
@@ -128,9 +132,8 @@ export function buildOrbitalGalaxyModel(
     const armIndex = i % armCount;
     const radius = minRadius + Math.pow(rand(), 0.74) * (maxRadius - minRadius);
     const baseArmAngle = armIndex * armSpacing;
-    // Dark lanes sit between bright arms.
-    const twist = radius * (spiralTightness * 1.02);
-    const randomArmSpread = (rand() - 0.5) * 0.34;
+    const twist = radius * (spiralTightness * 0.98);
+    const randomArmSpread = scatter(radius, 0.08);
     const angle = baseArmAngle + (armSpacing * 0.5) + twist + randomArmSpread;
     lanes.push({
       id: `l-${i}`,
@@ -138,8 +141,8 @@ export function buildOrbitalGalaxyModel(
       angle,
       armIndex,
       orbitalSpeed: 0.00008 + (1 - radius / maxRadius) * 0.00013,
-      verticalOffset: gauss(rand) * 2.2,
-      jitter: (rand() - 0.5) * 0.12,
+      verticalOffset: scatter(radius, 0.1),
+      jitter: scatter(radius, 0.05),
     });
   }
 
@@ -148,8 +151,8 @@ export function buildOrbitalGalaxyModel(
     const armIndex = i % armCount;
     const radius = (0.55 + Math.pow(rand(), 0.55) * 0.75) * maxRadius;
     const baseArmAngle = armIndex * armSpacing;
-    const twist = radius * (spiralTightness * 0.75);
-    const randomArmSpread = (rand() - 0.5) * 0.72;
+    const twist = radius * (spiralTightness * 0.82);
+    const randomArmSpread = scatter(radius, 0.2);
     const angle = baseArmAngle + twist + randomArmSpread;
     halo.push({
       id: `h-${i}`,
@@ -157,8 +160,8 @@ export function buildOrbitalGalaxyModel(
       angle,
       armIndex,
       orbitalSpeed: 0.00005 + (1 - Math.min(1, radius / (maxRadius * 1.3))) * 0.00008,
-      verticalOffset: gauss(rand) * 3.6,
-      jitter: (rand() - 0.5) * 0.28,
+      verticalOffset: scatter(radius, 0.2),
+      jitter: scatter(radius, 0.08),
     });
   }
 
@@ -171,8 +174,8 @@ export function buildOrbitalGalaxyModel(
     const radius = minRadius + (0.16 + Math.pow(t, 0.82) * 0.84) * (maxRadius - minRadius);
     const armIndex = i % armCount;
     const baseArmAngle = armIndex * armSpacing;
-    const twist = radius * (spiralTightness * 1.06);
-    const randomArmSpread = (rand() - 0.5) * 0.12;
+    const twist = radius * (spiralTightness * 1.05);
+    const randomArmSpread = scatter(radius, 0.025);
     const angle = baseArmAngle + twist + randomArmSpread + Math.floor(i / armCount) * 0.14;
     const m = meta.get(n);
     systems.push({
@@ -182,8 +185,8 @@ export function buildOrbitalGalaxyModel(
       angle,
       armIndex,
       orbitalSpeed: 0.0002 + (1 - radius / maxRadius) * 0.00028,
-      verticalOffset: gauss(rand) * (1.3 + (1 - radius / maxRadius) * 0.6),
-      jitter: (rand() - 0.5) * 0.08,
+      verticalOffset: scatter(radius, 0.05),
+      jitter: scatter(radius, 0.02),
       conquered: m?.conquered,
       partType: m?.partType,
     });
@@ -195,7 +198,7 @@ export function buildOrbitalGalaxyModel(
 export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): ProjectedFrame {
   const spiralTwist = 0.22;
   const armSpacing = (Math.PI * 2) / model.armCount;
-  const tilt = 0.58; // mild top-down tilt to keep 6 arms visible
+  const tilt = 0.58; // mild top-down tilt
   const scale = 1.0;
 
   const project = (p: OrbitalPoint, laneOffset = 0): ProjectedPoint => {
