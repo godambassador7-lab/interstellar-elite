@@ -138,14 +138,68 @@ export default function SpinningGalaxyScreen({
           transform: [{ scale: 1.01 }],
         }}
       >
-      <Animated.View
+      <View
         style={{
           position: 'absolute',
           inset: 0,
-          transform: [{ rotateZ: galaxyRotate }],
+          transform: [{ rotateZ: '0deg' }],
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
+        <View style={{ position: 'absolute', inset: 0 }}>
+          {frame.lanes.map((p) => (
+            <View
+              key={p.id}
+              style={{
+                position: 'absolute',
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                width: 8.6 * p.scale,
+                height: 3.1 * p.scale,
+                borderRadius: 999,
+                backgroundColor: 'rgba(8,12,24,0.9)',
+                opacity: Math.max(0.03, p.opacity * 0.11),
+              }}
+            />
+          ))}
+        </View>
+
+        <View style={{ position: 'absolute', inset: 0 }}>
+          {frame.dust.map((p) => (
+            <View
+              key={p.id}
+              style={{
+                position: 'absolute',
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                width: 10.2 * p.scale,
+                height: 3.4 * p.scale,
+                borderRadius: 999,
+                backgroundColor: '#5b70c4',
+                opacity: p.opacity * 0.07,
+              }}
+            />
+          ))}
+        </View>
+
+        <View style={{ position: 'absolute', inset: 0 }}>
+          {frame.arms.map((p) => (
+            <View
+              key={p.id}
+              style={{
+                position: 'absolute',
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                width: 1.8 * p.scale,
+                height: 1.8 * p.scale,
+                borderRadius: 99,
+                backgroundColor: '#dce6ff',
+                opacity: p.opacity * 0.22,
+              }}
+            />
+          ))}
+        </View>
+
         <View style={{ position: 'absolute', inset: 0 }}>
           {frame.halo.map((p) => (
             <View
@@ -217,7 +271,7 @@ export default function SpinningGalaxyScreen({
             );
           })}
         </View>
-      </Animated.View>
+      </View>
       </View>
 
       <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -78, marginTop: -78, width: 156, height: 156, borderRadius: 999, backgroundColor: 'rgba(255,168,80,0.105)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />

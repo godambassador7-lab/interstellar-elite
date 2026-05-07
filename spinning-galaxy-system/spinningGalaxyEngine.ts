@@ -198,7 +198,7 @@ export function buildOrbitalGalaxyModel(
 export function projectOrbitalFrame(model: GalaxyModel, timeMs: number): ProjectedFrame {
   const spiralTwist = 0.22;
   const armSpacing = (Math.PI * 2) / model.armCount;
-  const tilt = 0.58; // mild top-down tilt
+  const tilt = 1.0; // keep galaxy level
   const scale = 1.0;
 
   const project = (p: OrbitalPoint, laneOffset = 0): ProjectedPoint => {
