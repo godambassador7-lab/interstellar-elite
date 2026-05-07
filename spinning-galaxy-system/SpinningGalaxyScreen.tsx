@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Animated, Easing, Platform, Image } from 'react-native';
+import { View, Animated, Easing, Platform } from 'react-native';
 import { buildOrbitalGalaxyModel, projectOrbitalFrame } from './spinningGalaxyEngine';
 
 const NODE_COLORS = {
@@ -10,8 +10,6 @@ const NODE_COLORS = {
   BIO: '#FFD26B',
   default: '#FFE26D',
 };
-
-const GALAXY_TEXTURE = require('../ChatGPT Image Apr 25, 2026, 09_38_15 PM.png');
 
 export default function SpinningGalaxyScreen({
   galaxyId = 'demo',
@@ -98,7 +96,6 @@ export default function SpinningGalaxyScreen({
   const pulseScale = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.99, 1.02] });
   const pulseGlow = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
   const ringRotate = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '9deg'] });
-  const textureScale = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.025] });
 
   const coreBoost = (x, y, strength = 1) => {
     const dx = x - 50;
@@ -149,29 +146,6 @@ export default function SpinningGalaxyScreen({
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
-        <Animated.View
-          style={{
-            position: 'absolute',
-            left: '4%',
-            top: '4%',
-            width: '92%',
-            height: '92%',
-            opacity: 0.88,
-            transform: [{ scale: textureScale }],
-          }}
-        >
-          <Image
-            source={GALAXY_TEXTURE}
-            resizeMode="cover"
-            style={{
-              width: '100%',
-              height: '100%',
-              borderRadius: 999,
-              ...(Platform.OS === 'web' ? { mixBlendMode: 'screen' } : null),
-            }}
-          />
-        </Animated.View>
-
         <View style={{ position: 'absolute', inset: 0 }}>
           {frame.halo.map((p) => (
             <View
