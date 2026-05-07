@@ -11,7 +11,7 @@ const NODE_COLORS = {
   default: '#FFE26D',
 };
 
-const GALAXY_TEXTURE = require('../inline_image_preview.jpg');
+const GALAXY_TEXTURE = require('../ChatGPT Image Apr 25, 2026, 09_38_15 PM.png');
 
 export default function SpinningGalaxyScreen({
   galaxyId = 'demo',
@@ -163,7 +163,12 @@ export default function SpinningGalaxyScreen({
           <Image
             source={GALAXY_TEXTURE}
             resizeMode="cover"
-            style={{ width: '100%', height: '100%', borderRadius: 999 }}
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: 999,
+              ...(Platform.OS === 'web' ? { mixBlendMode: 'screen' } : null),
+            }}
           />
         </Animated.View>
 
