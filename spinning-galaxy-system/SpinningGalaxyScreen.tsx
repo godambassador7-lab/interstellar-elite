@@ -98,7 +98,6 @@ export default function SpinningGalaxyScreen({
   const pulseScale = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.99, 1.02] });
   const pulseGlow = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
   const ringRotate = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '9deg'] });
-  const textureFloatY = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [-1.2, 1.2] });
   const textureScale = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.025] });
 
   const coreBoost = (x, y, strength = 1) => {
@@ -158,7 +157,7 @@ export default function SpinningGalaxyScreen({
             width: '92%',
             height: '92%',
             opacity: 0.88,
-            transform: [{ translateY: textureFloatY }, { scale: textureScale }],
+            transform: [{ scale: textureScale }],
           }}
         >
           <Image
@@ -167,8 +166,6 @@ export default function SpinningGalaxyScreen({
             style={{ width: '100%', height: '100%', borderRadius: 999 }}
           />
         </Animated.View>
-
-        <View style={{ position: 'absolute', left: '8%', top: '8%', width: '84%', height: '84%', borderRadius: 999, backgroundColor: 'rgba(4,7,22,0.18)' }} />
 
         <View style={{ position: 'absolute', inset: 0 }}>
           {frame.halo.map((p) => (
@@ -244,8 +241,6 @@ export default function SpinningGalaxyScreen({
       </Animated.View>
       </View>
 
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -120, marginTop: -120, width: 240, height: 240, borderRadius: 999, backgroundColor: 'rgba(56,76,188,0.042)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -98, marginTop: -98, width: 196, height: 196, borderRadius: 999, backgroundColor: 'rgba(102,92,206,0.055)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
       <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -78, marginTop: -78, width: 156, height: 156, borderRadius: 999, backgroundColor: 'rgba(255,168,80,0.105)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
       <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -62, marginTop: -62, width: 124, height: 124, borderRadius: 999, backgroundColor: 'rgba(255,206,138,0.165)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
       <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -48, marginTop: -48, width: 96, height: 96, borderRadius: 999, backgroundColor: 'rgba(255,238,194,0.265)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
