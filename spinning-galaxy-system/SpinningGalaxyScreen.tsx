@@ -190,31 +190,29 @@ export default function SpinningGalaxyScreen({
                 position: 'absolute',
                 left: `${p.x}%`,
                 top: `${p.y}%`,
-                width: 1.2 + 2.6 * p.scale,
-                height: 1.2 + 2.6 * p.scale,
-                borderRadius: 99,
-                backgroundColor: '#ffffff',
-                opacity: p.opacity * 0.34,
+                width: 10.5 + 13.5 * p.scale,
+                height: 3.2 + 4.8 * p.scale,
+                borderRadius: 999,
+                backgroundColor: '#d8e2ff',
+                opacity: p.opacity * 0.095,
               }}
             />
           ))}
         </View>
 
         <View style={{ position: 'absolute', inset: 0 }}>
-          {frame.arms.filter((_, i) => i % 5 === 0).map((p) => (
+          {frame.arms.filter((_, i) => i % 4 === 0).map((p) => (
             <View
-              key={`star-hi-${p.id}`}
+              key={`smoke-hi-${p.id}`}
               style={{
                 position: 'absolute',
                 left: `${p.x}%`,
                 top: `${p.y}%`,
-                width: 2.4 + 3.8 * p.scale,
-                height: 2.4 + 3.8 * p.scale,
-                marginLeft: -0.7,
-                marginTop: -0.7,
-                borderRadius: 99,
-                backgroundColor: '#ffffff',
-                opacity: Math.min(1, p.opacity * 0.55),
+                width: 16.5 + 19 * p.scale,
+                height: 4.5 + 6.5 * p.scale,
+                borderRadius: 999,
+                backgroundColor: '#9fb4ff',
+                opacity: Math.min(1, p.opacity * 0.07),
               }}
             />
           ))}
