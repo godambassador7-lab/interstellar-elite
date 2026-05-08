@@ -57,6 +57,7 @@ export default function App() {
   const [selectedGalaxy, setSelectedGalaxy] = useState(GALAXIES[0]);
   const [runProfile, setRunProfile] = useState('combat');
   const [selectedSystemNumber, setSelectedSystemNumber] = useState(1);
+  const [selectedForceGiganautOnly, setSelectedForceGiganautOnly] = useState(false);
   const [selectedDefenseTerritory, setSelectedDefenseTerritory] = useState(null);
   const [autoOpenGalaxyId, setAutoOpenGalaxyId] = useState(null);
   const [selectedDefenseDoctrine, setSelectedDefenseDoctrine] = useState('fortress');
@@ -85,6 +86,7 @@ export default function App() {
   const [enemyMemory, setEnemyMemory] = useState(createInitialEnemyMemory());
   const [nemesisCommanders, setNemesisCommanders] = useState(createInitialCommanders());
   const [defenseEvents, setDefenseEvents] = useState([]);
+  const [flawlessSystemsStreak, setFlawlessSystemsStreak] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,9 +253,13 @@ export default function App() {
     const nextSystem = Number.isFinite(systemNumberOverride)
       ? Math.max(1, Math.min(galaxy.systems, Math.floor(systemNumberOverride)))
       : Math.min(galaxy.systems, completed + 1);
+    const isLastSystemInGalaxy = nextSystem >= galaxy.systems;
+    const rollGiganautFromFlawless = flawlessSystemsStreak >= 10 && Math.random() < 0.25;
+    const forceGiganautOnly = isLastSystemInGalaxy || rollGiganautFromFlawless;
 
     setSelectedGalaxy(galaxy);
     setSelectedSystemNumber(nextSystem);
+    setSelectedForceGiganautOnly(forceGiganautOnly);
     setAutoOpenGalaxyId(galaxy.id);
     setScreen('game');
   };
@@ -293,6 +299,8 @@ export default function App() {
     }
 
     const systemNumber = summary.systemNumber || 1;
+    const wasFlawless = !!summary.flawless;
+    setFlawlessSystemsStreak((prev) => (wasFlawless ? prev + 1 : 0));
 
     setCompletedSystemsByGalaxy((prev) => {
       const next = [...prev];
@@ -329,7 +337,7 @@ export default function App() {
         type: 'system_victory',
         galaxyId,
         systemNumber,
-        summary: `${galaxyId.toUpperCase()}-${systemNumber} captured. +${creditsEarned} credits`,
+        summary: `${galaxyId.toUpperCase()}-${systemNumber} captured. +${creditsEarned} credits${wasFlawless ? ' | FLAWLESS' : ''}${summary.giganautEncounter ? ' | GIGANAUT' : ''}`,
       },
       ...nemesis.events,
     ];
@@ -490,6 +498,7 @@ export default function App() {
             <GameScreen
               galaxy={selectedGalaxy}
               systemNumber={selectedSystemNumber}
+              forceGiganautOnly={selectedForceGiganautOnly}
               metaUpgrades={ownedMetaUpgrades}
               meteorUnlocked={meteorUnlocked}
               runProfile={runProfile}

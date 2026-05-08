@@ -64,6 +64,34 @@ const FLAGSHIP_REINFORCE_BY_QUADRANT = {
   watupi: { count: 40, intervalMs: 7000 },    // Quadrant III
   ultra316: { count: 50, intervalMs: 5000 },  // Quadrant IV
 };
+const GIGANAUT_PHASE_LABELS = {
+  1: 'ARRIVAL',
+  2: 'ENGAGEMENT',
+  3: 'DOMINANCE',
+  4: 'CORE EXPOSURE',
+  5: 'CATACLYSM',
+};
+const GIGANAUT_SWEEP_RATE_BY_PHASE = {
+  1: 540,
+  2: 380,
+  3: 250,
+  4: 220,
+  5: 180,
+};
+const GIGANAUT_REINFORCE_RATE_BY_PHASE = {
+  1: 12000,
+  2: 9000,
+  3: 6800,
+  4: 5200,
+  5: 4400,
+};
+const GIGANAUT_GRAVITY_WELL_RATE_BY_PHASE = {
+  1: 0,
+  2: 15000,
+  3: 11000,
+  4: 9000,
+  5: 7000,
+};
 
 // Absorb damage into shield first; any overflow hits HP; resets regen timer.
 function applyPlayerDamage(player, amount, source = 'unknown') {
@@ -323,6 +351,10 @@ export function runCombatFrame(state, deltaMs) {
   // ── Nemesis flagship special attacks ─────────────────────────────────────────
   for (const enemy of enemies) {
     if (enemy.dead || !enemy.isNemesis) continue;
+    if (enemy.isGiganaut) {
+      runGiganautBehavior(state, enemy, now);
+      continue;
+    }
     const dx = player.x - enemy.x;
     const dy = player.y - enemy.y;
     const distSq = dx * dx + dy * dy;
@@ -530,6 +562,7 @@ export function runCombatFrame(state, deltaMs) {
       state.lastPerfectDodgeAt = now;
     }
   } else {
+    state.playerTookDamageEver = true;
     state.nearMissTimer = 0;
   }
   if (playerDealtDamage) {
@@ -561,6 +594,117 @@ export function runCombatFrame(state, deltaMs) {
   if (state.photons.length > MAX_PHOTONS) state.photons = state.photons.slice(-MAX_PHOTONS);
   if (state.destroyerMissiles.length > MAX_DESTROYER_MISSILES) {
     state.destroyerMissiles = state.destroyerMissiles.slice(-MAX_DESTROYER_MISSILES);
+  }
+}
+
+function runGiganautBehavior(state, enemy, now) {
+  if (!enemy.giganaut) {
+    enemy.giganaut = {
+      phase: 1,
+      phaseLabel: GIGANAUT_PHASE_LABELS[1],
+      subsystems: {
+        coreReactor: 100,
+        commandBridge: 100,
+        shieldNodes: 100,
+        weaponArrays: 100,
+        hangarBays: 100,
+        engineCore: 100,
+      },
+    };
+  }
+  const gs = enemy.giganaut;
+  const hpPct = enemy.hp / Math.max(1, enemy.maxHp);
+  const nextPhase = hpPct > 0.8 ? 1 : hpPct > 0.6 ? 2 : hpPct > 0.35 ? 3 : hpPct > 0.12 ? 4 : 5;
+  if (nextPhase !== gs.phase) {
+    gs.phase = nextPhase;
+    gs.phaseLabel = GIGANAUT_PHASE_LABELS[nextPhase];
+    gs.phaseChangedAt = now;
+  }
+  state.phaseLabel = `GIGANAUT ${gs.phase}: ${gs.phaseLabel}`;
+
+  const dx = state.player.x - enemy.x;
+  const dy = state.player.y - enemy.y;
+  const d = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+  const nx = dx / d;
+  const ny = dy / d;
+
+  const enginePct = (gs.subsystems.engineCore || 0) / 100;
+  if (!enemy.giganautBaseSpeed) enemy.giganautBaseSpeed = enemy.speed;
+  const engineMult = 0.35 + Math.max(0, enginePct) * 0.65;
+  enemy.speed = Math.max(20, enemy.giganautBaseSpeed * engineMult);
+
+  if (!enemy.giganautNextSweepAt) enemy.giganautNextSweepAt = now + 900;
+  if (now >= enemy.giganautNextSweepAt) {
+    const spread = 0.58 - gs.phase * 0.08;
+    const burst = gs.phase >= 3 ? 3 : 2;
+    for (let i = 0; i < burst; i++) {
+      const s = -spread + (i * (spread * 2)) / Math.max(1, burst - 1);
+      const cos = Math.cos(s);
+      const sin = Math.sin(s);
+      const sx = nx * cos - ny * sin;
+      const sy = nx * sin + ny * cos;
+      state.photons.push({
+        id: uid(),
+        x: enemy.x + sx * enemy.size * 0.3,
+        y: enemy.y + sy * enemy.size * 0.3,
+        vx: sx * (340 + gs.phase * 26),
+        vy: sy * (340 + gs.phase * 26),
+        damage: 4.6 + gs.phase * 0.7,
+        size: gs.phase >= 4 ? 9 : 7,
+        life: 2200,
+        maxLife: 2200,
+        color: gs.phase >= 4 ? '#FF5E5E' : '#86DFFF',
+        glowColor: gs.phase >= 4 ? 'rgba(255,88,88,0.22)' : 'rgba(105,207,255,0.16)',
+      });
+    }
+    enemy.giganautNextSweepAt = now + (GIGANAUT_SWEEP_RATE_BY_PHASE[gs.phase] || 320);
+  }
+
+  const hangarPct = (gs.subsystems.hangarBays || 0) / 100;
+  const hangarMult = 0.35 + hangarPct * 0.65;
+  const reinforceRate = (GIGANAUT_REINFORCE_RATE_BY_PHASE[gs.phase] || 9000) / hangarMult;
+  if (!enemy.giganautNextReinforceAt) enemy.giganautNextReinforceAt = now + reinforceRate;
+  if (now >= enemy.giganautNextReinforceAt && gs.subsystems.engineCore > 0) {
+    const count = Math.max(1, Math.round((gs.phase >= 4 ? 2 : 1) * hangarMult));
+    spawnFlagshipReinforcements(state, enemy, count);
+    enemy.giganautNextReinforceAt = now + reinforceRate;
+  }
+
+  const wellRate = GIGANAUT_GRAVITY_WELL_RATE_BY_PHASE[gs.phase] || 0;
+  if (wellRate > 0) {
+    if (!enemy.giganautNextWellAt) enemy.giganautNextWellAt = now + 1800;
+    if (now >= enemy.giganautNextWellAt && (state.gravityWells || []).length < 3) {
+      if (!state.gravityWells) state.gravityWells = [];
+      state.gravityWells.push({
+        id: uid(),
+        x: state.player.x + (Math.random() - 0.5) * 140,
+        y: state.player.y + (Math.random() - 0.5) * 140,
+        radius: 72 + gs.phase * 9,
+        strength: 180 + gs.phase * 36,
+        lifeMs: 3600 + gs.phase * 600,
+      });
+      enemy.giganautNextWellAt = now + wellRate;
+    }
+  }
+
+  if (!enemy.giganautNextBarrageAt) enemy.giganautNextBarrageAt = now + 2600;
+  if (now >= enemy.giganautNextBarrageAt && gs.phase >= 3) {
+    if (!state.meteors) state.meteors = [];
+    const stormCount = gs.phase >= 5 ? 8 : 5;
+    const worldW = state?.world?.width || 1200;
+    const worldH = state?.world?.height || 800;
+    for (let i = 0; i < stormCount; i++) {
+      state.meteors.push({
+        id: uid(),
+        x: Math.random() * worldW,
+        y: -30 - Math.random() * 90,
+        vx: (Math.random() - 0.5) * 55,
+        vy: 180 + Math.random() * 150,
+        size: 7 + Math.random() * 6,
+        damage: 16 + gs.phase * 3,
+      });
+    }
+    enemy.giganautNextBarrageAt = now + (gs.phase >= 5 ? 2400 : 3800);
   }
 }
 
@@ -602,9 +746,30 @@ export function applyQuantumSlashSwipe(state, from, to) {
 }
 
 function applyDamage(state, enemy, dmg, particleList, source = 'default') {
-  const dealt = Math.max(0, Math.min(enemy.hp, dmg));
+  let applied = dmg;
+  if (enemy?.isGiganaut && enemy?.giganaut?.subsystems) {
+    const subs = enemy.giganaut.subsystems;
+    const shieldPct = Math.max(0, (subs.shieldNodes || 0) / 100);
+    const shieldAbsorb = shieldPct > 0 ? Math.min(applied * (0.7 + shieldPct * 0.2), applied) : 0;
+    if (shieldAbsorb > 0) {
+      subs.shieldNodes = Math.max(0, subs.shieldNodes - shieldAbsorb * 0.22);
+      applied -= shieldAbsorb;
+    }
+    const structuralHit = dmg * 0.07;
+    if (subs.commandBridge > 0) subs.commandBridge = Math.max(0, subs.commandBridge - structuralHit * 0.7);
+    if (subs.weaponArrays > 0) subs.weaponArrays = Math.max(0, subs.weaponArrays - structuralHit);
+    if (subs.hangarBays > 0) subs.hangarBays = Math.max(0, subs.hangarBays - structuralHit * 0.8);
+    if (subs.engineCore > 0) subs.engineCore = Math.max(0, subs.engineCore - structuralHit * 0.6);
+    if (subs.shieldNodes <= 0) {
+      subs.coreReactor = Math.max(0, subs.coreReactor - applied * 0.15);
+    }
+    if (subs.coreReactor <= 0) {
+      applied *= 1.85;
+    }
+  }
+  const dealt = Math.max(0, Math.min(enemy.hp, applied));
   const critical = dealt >= Math.max(26, enemy.maxHp * 0.35);
-  enemy.hp -= dmg;
+  enemy.hp -= applied;
   enemy.hitFlash = 10;
   if (dealt > 0) {
     state.totalDamageDealt = (state.totalDamageDealt || 0) + dealt;

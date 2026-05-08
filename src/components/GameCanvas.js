@@ -200,9 +200,11 @@ export function EnemyShip({ enemy }) {
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
   const sprite = spritePool[spriteSeed % spritePool.length];
   const FLAGSHIP_VISUAL_SCALE = 15.75;
+  const GIGANAUT_VISUAL_MULT = 3;
   const FLAGSHIP_BASE_SIZE = 24;
   const FLAGSHIP_VISUAL_BOX = FLAGSHIP_BASE_SIZE * FLAGSHIP_VISUAL_SCALE;
-  const scaleByClass = classKey === 'flagship' ? FLAGSHIP_VISUAL_SCALE : classKey === 'interceptor' ? 5.4 : 2.3;
+  const flagshipScale = isGiganaut ? FLAGSHIP_VISUAL_SCALE * GIGANAUT_VISUAL_MULT : FLAGSHIP_VISUAL_SCALE;
+  const scaleByClass = classKey === 'flagship' ? flagshipScale : classKey === 'interceptor' ? 5.4 : 2.3;
   const shipBox =
     classKey === 'flagship'
       ? size * scaleByClass
@@ -224,6 +226,9 @@ export function EnemyShip({ enemy }) {
   const sideNx = -velNy;
   const sideNy = velNx;
   const thrustAngle = (Math.atan2(velNy, velNx) * 180) / Math.PI + 90;
+  const isGiganaut = !!enemy.isGiganaut;
+  const gigaPulse = 0.7 + 0.3 * Math.abs(Math.sin((enemy.gameTime || 0) * 0.9));
+  const gigaShift = Math.sin((enemy.gameTime || 0) * 0.7) * shipBox * 0.014;
 
   return (
     <View style={{ position: 'absolute', left: x - shipBox / 2, top: y - shipBox / 2, width: shipBox, height: shipBox }}>
@@ -278,6 +283,51 @@ export function EnemyShip({ enemy }) {
         </>
       )}
       <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${shipAngle}deg` }] }}>
+        {isGiganaut && (
+          <>
+            <View
+              style={{
+                position: 'absolute',
+                left: shipBox * 0.06 + gigaShift,
+                top: shipBox * 0.2,
+                width: shipBox * 0.88,
+                height: shipBox * 0.56,
+                borderRadius: shipBox * 0.08,
+                borderWidth: 2,
+                borderColor: 'rgba(128,208,255,0.45)',
+                backgroundColor: 'rgba(21,44,76,0.42)',
+              }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                left: shipBox * 0.2 - gigaShift * 0.7,
+                top: shipBox * 0.1,
+                width: shipBox * 0.6,
+                height: shipBox * 0.68,
+                borderRadius: shipBox * 0.1,
+                borderWidth: 2,
+                borderColor: 'rgba(107,189,255,0.32)',
+                backgroundColor: 'rgba(15,30,58,0.3)',
+              }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                left: shipBox * 0.43,
+                top: shipBox * 0.06,
+                width: shipBox * 0.14,
+                height: shipBox * 0.14,
+                borderRadius: shipBox * 0.07,
+                backgroundColor: `rgba(131,229,255,${0.45 + gigaPulse * 0.45})`,
+                shadowColor: '#9BE8FF',
+                shadowOpacity: 1,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 0 },
+              }}
+            />
+          </>
+        )}
         {moving && classKey !== 'flagship' && (
           <>
             <View style={{

@@ -570,6 +570,7 @@ export default function GameScreen({
   systemNumber = 1,
   metaUpgrades = {},
   meteorUnlocked = false,
+  forceGiganautOnly = false,
   runProfile = 'combat',
   onSystemComplete,
   onMainMenu,
@@ -709,7 +710,7 @@ export default function GameScreen({
 
     const baseWaves = galaxy?.waves ?? 4;
     const extraWaves = Math.min(4, Math.floor((systemNumber - 1) / 12));
-    const maxWaves = baseWaves + extraWaves;
+    const maxWaves = forceGiganautOnly ? 1 : (baseWaves + extraWaves);
     const runUpgradeThresholds = getUpgradeThresholdsForRun({
       threat: combatGalaxy.threat ?? 1,
       systemNumber,
@@ -766,12 +767,14 @@ export default function GameScreen({
       meteors: [],
       nextMeteorAt: Date.now() + 6000,
       meteorStormUntil: 0,
-      inIntercept: Math.random() < 0.65,
+      inIntercept: forceGiganautOnly ? false : Math.random() < 0.65,
       interceptEndsAt: 0,
       interceptStartedAt: 0,
       nextInterceptHazardAt: 0,
       nextMutationAt: Date.now() + 32000,
       phaseLabel: 'SYSTEM BATTLE',
+      forceGiganautOnly,
+      giganautForcedSpawned: false,
       latestHighlight: null,
       perfectDodges: 0,
       chainReactionKills: 0,
@@ -794,7 +797,11 @@ export default function GameScreen({
         speedMult: 1.5,
       },
     };
-    if (G.current.inIntercept) {
+    if (forceGiganautOnly) {
+      G.current.waveSpawnRemaining = 1;
+      G.current.nextWaveSpawnAt = Date.now() + 300;
+      G.current.phaseLabel = 'GIGANAUT INCURSION';
+    } else if (G.current.inIntercept) {
       G.current.interceptStartedAt = Date.now();
       G.current.interceptEndsAt = G.current.interceptStartedAt + (20000 + Math.random() * 25000);
       G.current.nextInterceptHazardAt = Date.now() + 800;
@@ -1327,7 +1334,7 @@ export default function GameScreen({
       isRunning.current = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [gameKey, galaxy, systemNumber, metaUpgrades, applyShake]);
+  }, [gameKey, galaxy, systemNumber, metaUpgrades, applyShake, forceGiganautOnly]);
 
   const handleJoystick = useCallback((delta) => {
     joystick.current = delta;
@@ -1923,6 +1930,8 @@ export default function GameScreen({
                   score,
                   waves: maxWaves,
                   systemNumber,
+                  flawless: !G.current?.playerTookDamageEver,
+                  giganautEncounter: !!forceGiganautOnly,
                   abilityUsage: { ...abilityUsageRef.current },
                 })
               }

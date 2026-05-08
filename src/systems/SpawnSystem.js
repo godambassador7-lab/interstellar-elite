@@ -3,7 +3,7 @@
 import { ENEMY_TYPES, SCREEN } from '../utils/constants';
 import { uid } from '../utils/mathUtils';
 
-const FLAGSHIP_SIZE = 24;
+const GIGANAUT_SIZE = 42;
 
 function normalizeAngleDelta(delta) {
   let d = delta;
@@ -75,19 +75,12 @@ export function trySpawn(state) {
   }
   const enemies = [];
 
-  if (!state.nemesisSpawned && state.currentWave >= Math.max(2, Math.floor(state.maxWaves * 0.5)) && Math.random() < 0.08) {
+  if (state.forceGiganautOnly) {
+    if (state.giganautForcedSpawned) return null;
+    state.giganautForcedSpawned = true;
     state.nemesisSpawned = true;
-    const nemesis = createEnemy(ENEMY_TYPES.elite, basePos);
-    nemesis.isNemesis = true;
-    nemesis.size = FLAGSHIP_SIZE;
-    nemesis.name = 'RIVAL NEMESIS';
-    nemesis.hp *= 4.4;
-    nemesis.maxHp = nemesis.hp;
-    nemesis.speed *= 1.2;
-    nemesis.damage *= 1.35;
-    nemesis.score = Math.round(nemesis.score * 3.2);
-    state.waveSpawnRemaining = Math.max(0, state.waveSpawnRemaining - 1);
-    return [nemesis];
+    state.waveSpawnRemaining = 0;
+    return [createGiganautNemesis(basePos)];
   }
 
   for (let i = 0; i < count; i++) {
@@ -100,6 +93,33 @@ export function trySpawn(state) {
 
   state.waveSpawnRemaining -= count;
   return enemies;
+}
+
+function createGiganautNemesis(basePos) {
+  const nemesis = createEnemy(ENEMY_TYPES.elite, basePos);
+  nemesis.isNemesis = true;
+  nemesis.isGiganaut = true;
+  nemesis.size = GIGANAUT_SIZE;
+  nemesis.name = 'GIGANAUT-CLASS FLAGSHIP';
+  nemesis.hp *= 8.2;
+  nemesis.maxHp = nemesis.hp;
+  // Flagship baseline is elite speed * 1.2; Giganaut should be half of that => elite * 0.6.
+  nemesis.speed *= 0.6;
+  nemesis.damage *= 1.65;
+  nemesis.score = Math.round(nemesis.score * 7.5);
+  nemesis.giganaut = {
+    phase: 1,
+    phaseLabel: 'ARRIVAL',
+    subsystems: {
+      coreReactor: 100,
+      commandBridge: 100,
+      shieldNodes: 100,
+      weaponArrays: 100,
+      hangarBays: 100,
+      engineCore: 100,
+    },
+  };
+  return nemesis;
 }
 
 function createEnemy(def, pos) {
