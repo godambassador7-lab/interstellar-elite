@@ -199,6 +199,7 @@ export function EnemyShip({ enemy }) {
   const enemyId = String(enemy.id || '');
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
   const sprite = spritePool[spriteSeed % spritePool.length];
+  const isGiganaut = !!enemy.isGiganaut;
   const FLAGSHIP_VISUAL_SCALE = 15.75;
   const GIGANAUT_VISUAL_MULT = 3;
   const FLAGSHIP_BASE_SIZE = 24;
@@ -226,7 +227,6 @@ export function EnemyShip({ enemy }) {
   const sideNx = -velNy;
   const sideNy = velNx;
   const thrustAngle = (Math.atan2(velNy, velNx) * 180) / Math.PI + 90;
-  const isGiganaut = !!enemy.isGiganaut;
   const gigaPulse = 0.7 + 0.3 * Math.abs(Math.sin((enemy.gameTime || 0) * 0.9));
   const gigaShift = Math.sin((enemy.gameTime || 0) * 0.7) * shipBox * 0.014;
 
