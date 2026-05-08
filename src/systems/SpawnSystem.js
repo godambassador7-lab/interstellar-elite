@@ -122,6 +122,10 @@ function createGiganautNemesis(basePos) {
   return nemesis;
 }
 
+export function createGiganautNemesisAt(basePos) {
+  return createGiganautNemesis(basePos);
+}
+
 function createEnemy(def, pos) {
   const heavyRole = def.type === 'heavy'
     ? (Math.random() < 0.5 ? 'siege' : 'hunter')

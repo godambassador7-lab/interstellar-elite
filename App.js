@@ -58,6 +58,7 @@ export default function App() {
   const [runProfile, setRunProfile] = useState('combat');
   const [selectedSystemNumber, setSelectedSystemNumber] = useState(1);
   const [selectedForceGiganautOnly, setSelectedForceGiganautOnly] = useState(false);
+  const [selectedForceGiganautAfterWavesNoDetonation, setSelectedForceGiganautAfterWavesNoDetonation] = useState(false);
   const [selectedDefenseTerritory, setSelectedDefenseTerritory] = useState(null);
   const [autoOpenGalaxyId, setAutoOpenGalaxyId] = useState(null);
   const [selectedDefenseDoctrine, setSelectedDefenseDoctrine] = useState('fortress');
@@ -87,6 +88,7 @@ export default function App() {
   const [nemesisCommanders, setNemesisCommanders] = useState(createInitialCommanders());
   const [defenseEvents, setDefenseEvents] = useState([]);
   const [flawlessSystemsStreak, setFlawlessSystemsStreak] = useState(0);
+  const [giganautFirstPickTestPending, setGiganautFirstPickTestPending] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -256,10 +258,13 @@ export default function App() {
     const isLastSystemInGalaxy = nextSystem >= galaxy.systems;
     const rollGiganautFromFlawless = flawlessSystemsStreak >= 10 && Math.random() < 0.25;
     const forceGiganautOnly = isLastSystemInGalaxy || rollGiganautFromFlawless;
+    const forceGiganautAfterWavesNoDetonation = giganautFirstPickTestPending;
 
     setSelectedGalaxy(galaxy);
     setSelectedSystemNumber(nextSystem);
     setSelectedForceGiganautOnly(forceGiganautOnly);
+    setSelectedForceGiganautAfterWavesNoDetonation(forceGiganautAfterWavesNoDetonation);
+    if (giganautFirstPickTestPending) setGiganautFirstPickTestPending(false);
     setAutoOpenGalaxyId(galaxy.id);
     setScreen('game');
   };
@@ -499,6 +504,7 @@ export default function App() {
               galaxy={selectedGalaxy}
               systemNumber={selectedSystemNumber}
               forceGiganautOnly={selectedForceGiganautOnly}
+              forceGiganautAfterWavesNoDetonation={selectedForceGiganautAfterWavesNoDetonation}
               metaUpgrades={ownedMetaUpgrades}
               meteorUnlocked={meteorUnlocked}
               runProfile={runProfile}

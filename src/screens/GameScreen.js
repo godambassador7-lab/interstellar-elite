@@ -17,7 +17,7 @@ import {
   triggerPhaseSwap,
 } from '../systems/PlayerSystem';
 import { runCombatFrame, applyQuantumSlashSwipe } from '../systems/CombatSystem';
-import { trySpawn, updateEnemyMovement, getWaveEnemyCount } from '../systems/SpawnSystem';
+import { trySpawn, updateEnemyMovement, getWaveEnemyCount, createGiganautNemesisAt } from '../systems/SpawnSystem';
 import { pickUpgradeChoices, applyUpgrade } from '../systems/UpgradeSystem';
 import { pickShopOffers, randomShopInterval, applyShopOffer } from '../systems/ShopSystem';
 import { applyMetaUpgrades } from '../systems/MetaUpgradeSystem';
@@ -571,6 +571,7 @@ export default function GameScreen({
   metaUpgrades = {},
   meteorUnlocked = false,
   forceGiganautOnly = false,
+  forceGiganautAfterWavesNoDetonation = false,
   runProfile = 'combat',
   onSystemComplete,
   onMainMenu,
@@ -774,7 +775,9 @@ export default function GameScreen({
       nextMutationAt: Date.now() + 32000,
       phaseLabel: 'SYSTEM BATTLE',
       forceGiganautOnly,
+      forceGiganautAfterWavesNoDetonation,
       giganautForcedSpawned: false,
+      giganautPostWaveSpawned: false,
       latestHighlight: null,
       perfectDodges: 0,
       chainReactionKills: 0,
@@ -1170,19 +1173,36 @@ export default function GameScreen({
             rafRef.current = requestAnimationFrame(loop);
             return;
           }
+        } else if (g.forceGiganautAfterWavesNoDetonation && !g.giganautPostWaveSpawned) {
+          const spawnPos = {
+            x: g.player.x + SCREEN.width * 0.42,
+            y: g.player.y + (Math.random() - 0.5) * SCREEN.height * 0.28,
+          };
+          g.enemies.push(createGiganautNemesisAt(spawnPos));
+          g.giganautPostWaveSpawned = true;
+          g.phaseLabel = 'GIGANAUT ARRIVAL';
+          pushHighlight(g, 'GIGANAUT WARP-IN');
         } else if (!g.flagshipEscape.active) {
-          g.flagshipEscape.active = true;
-          g.flagshipEscape.countdownMs = 3000;
-          g.flagshipEscape.blastRadius = 24;
-          g.flagshipEscape.pullUntil = Date.now() + 2000;
-          g.flagshipEscape.centerX = g.player.x;
-          g.flagshipEscape.centerY = g.player.y;
-          g.world.width = Math.round(g.world.width * 1.24);
-          g.world.height = Math.round(g.world.height * 1.24);
-          g.player.x += 40;
-          g.player.y += 40;
-          g.phaseLabel = 'FLAGSHIP CORE CRITICAL';
-          pushHighlight(g, 'FLAGSHIP DESTROYED');
+          if (g.forceGiganautAfterWavesNoDetonation && g.giganautPostWaveSpawned) {
+            g.victory = true;
+            isRunning.current = false;
+            g.score += 700;
+            g.phaseLabel = 'SYSTEM SECURED';
+            pushHighlight(g, 'GIGANAUT DESTROYED');
+          } else {
+            g.flagshipEscape.active = true;
+            g.flagshipEscape.countdownMs = 3000;
+            g.flagshipEscape.blastRadius = 24;
+            g.flagshipEscape.pullUntil = Date.now() + 2000;
+            g.flagshipEscape.centerX = g.player.x;
+            g.flagshipEscape.centerY = g.player.y;
+            g.world.width = Math.round(g.world.width * 1.24);
+            g.world.height = Math.round(g.world.height * 1.24);
+            g.player.x += 40;
+            g.player.y += 40;
+            g.phaseLabel = 'FLAGSHIP CORE CRITICAL';
+            pushHighlight(g, 'FLAGSHIP DESTROYED');
+          }
         }
       }
 
@@ -1334,7 +1354,7 @@ export default function GameScreen({
       isRunning.current = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [gameKey, galaxy, systemNumber, metaUpgrades, applyShake, forceGiganautOnly]);
+  }, [gameKey, galaxy, systemNumber, metaUpgrades, applyShake, forceGiganautOnly, forceGiganautAfterWavesNoDetonation]);
 
   const handleJoystick = useCallback((delta) => {
     joystick.current = delta;
@@ -1932,6 +1952,7 @@ export default function GameScreen({
                   systemNumber,
                   flawless: !G.current?.playerTookDamageEver,
                   giganautEncounter: !!forceGiganautOnly,
+                  giganautPostWaveTest: !!forceGiganautAfterWavesNoDetonation,
                   abilityUsage: { ...abilityUsageRef.current },
                 })
               }
