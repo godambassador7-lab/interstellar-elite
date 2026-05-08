@@ -195,7 +195,7 @@ export function EnemyShip({ enemy }) {
   const { x, y, size, color, glow, type, hp, maxHp, hitFlash, facingAngle = 0 } = enemy;
   const chargeT = Math.max(0, Math.min(1, enemy.flagshipChargeT || 0));
   const charging = !!enemy.flagshipChargeActive;
-  const flashColor = hitFlash > 0 ? '#FFFFFF' : (charging ? '#66C8FF' : (enemy.isLastFlagship ? '#FF2A2A' : color));
+  const flashColor = hitFlash > 0 ? '#FFFFFF' : (charging ? '#66C8FF' : ((!isGiganaut && enemy.isLastFlagship) ? '#FF2A2A' : color));
   const hpPct = hp / maxHp;
   const isGiganaut = !!enemy.isGiganaut;
   const classKey = isGiganaut ? 'giganaut' : enemy.isNemesis ? 'flagship' : type === 'heavy' ? 'destroyer' : type === 'elite' ? 'interceptor' : 'fighter';
@@ -204,11 +204,11 @@ export function EnemyShip({ enemy }) {
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
   const sprite = spritePool[spriteSeed % spritePool.length];
   const FLAGSHIP_VISUAL_SCALE = 15.75;
-  const GIGANAUT_VISUAL_MULT = 2;
+  const GIGANAUT_VISUAL_MULT = 3;
   const FLAGSHIP_BASE_SIZE = 24;
   const FLAGSHIP_VISUAL_BOX = FLAGSHIP_BASE_SIZE * FLAGSHIP_VISUAL_SCALE;
   const flagshipScale = isGiganaut ? FLAGSHIP_VISUAL_SCALE * GIGANAUT_VISUAL_MULT : FLAGSHIP_VISUAL_SCALE;
-  const scaleByClass = classKey === 'flagship' ? flagshipScale : classKey === 'interceptor' ? 5.4 : 2.3;
+  const scaleByClass = (classKey === 'flagship' || classKey === 'giganaut') ? flagshipScale : classKey === 'interceptor' ? 5.4 : 2.3;
   const shipBox =
     classKey === 'flagship'
       ? size * scaleByClass
@@ -243,13 +243,13 @@ export function EnemyShip({ enemy }) {
         borderRadius: shipBox * 0.42,
         backgroundColor: flashColor,
         opacity: hitFlash > 0 ? 0.5 : (enemy.isLastFlagship ? 0.34 : 0.12),
-        shadowColor: enemy.isLastFlagship ? '#FF1C1C' : flashColor,
-        shadowOpacity: charging ? 0.95 : (enemy.isLastFlagship ? 0.95 : 0.4),
-        shadowRadius: charging ? (10 + chargeT * 16) : (enemy.isLastFlagship ? 20 : 7),
+        shadowColor: (!isGiganaut && enemy.isLastFlagship) ? '#FF1C1C' : flashColor,
+        shadowOpacity: charging ? 0.95 : ((!isGiganaut && enemy.isLastFlagship) ? 0.95 : 0.4),
+        shadowRadius: charging ? (10 + chargeT * 16) : ((!isGiganaut && enemy.isLastFlagship) ? 20 : 7),
         shadowOffset: { width: 0, height: 0 },
       }} />
 
-      {moving && (classKey === 'flagship' || isGiganaut) && (
+      {moving && classKey === 'flagship' && (
         <>
           <View
             style={{
@@ -286,6 +286,40 @@ export function EnemyShip({ enemy }) {
         </>
       )}
       <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${shipAngle}deg` }] }}>
+        {moving && isGiganaut && (
+          <>
+            <View
+              style={{
+                position: 'absolute',
+                left: shipBox * 0.82,
+                top: shipBox * 0.44,
+                width: shipBox * 0.06,
+                height: shipBox * 0.16 * pulse,
+                borderRadius: shipBox * 0.03,
+                backgroundColor: 'rgba(117,236,255,0.95)',
+                shadowColor: '#6EEFFF',
+                shadowOpacity: 0.95,
+                shadowRadius: 7,
+                shadowOffset: { width: 0, height: 0 },
+              }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                left: shipBox * 0.82,
+                top: shipBox * 0.52,
+                width: shipBox * 0.06,
+                height: shipBox * 0.16 * pulse,
+                borderRadius: shipBox * 0.03,
+                backgroundColor: 'rgba(79,188,255,0.95)',
+                shadowColor: '#49C6FF',
+                shadowOpacity: 0.95,
+                shadowRadius: 7,
+                shadowOffset: { width: 0, height: 0 },
+              }}
+            />
+          </>
+        )}
         {isGiganaut && (
           <>
             <View
@@ -371,7 +405,7 @@ export function EnemyShip({ enemy }) {
             width: shipBox,
             height: shipBox,
             opacity: hitFlash > 0 ? 0.65 : 1,
-            tintColor: hitFlash > 0 ? '#FFFFFF' : (charging ? '#8BD5FF' : (enemy.isLastFlagship ? '#FF7676' : undefined)),
+            tintColor: hitFlash > 0 ? '#FFFFFF' : (charging ? '#8BD5FF' : ((!isGiganaut && enemy.isLastFlagship) ? '#FF7676' : undefined)),
           }}
         />
         {charging && classKey === 'flagship' && (
