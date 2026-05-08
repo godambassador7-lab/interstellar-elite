@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Animated, Easing, Platform } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Platform, Image } from 'react-native';
 import { buildOrbitalGalaxyModel, projectOrbitalFrame } from './spinningGalaxyEngine';
 
 const NODE_COLORS = {
@@ -10,6 +10,7 @@ const NODE_COLORS = {
   BIO: '#FFD26B',
   default: '#FFE26D',
 };
+const GALAXY_STATIC_BG = require('../inline_image_preview.jpg');
 
 export default function SpinningGalaxyScreen({
   galaxyId = 'demo',
@@ -28,74 +29,7 @@ export default function SpinningGalaxyScreen({
     () => buildOrbitalGalaxyModel(String(galaxyId), systemCount, systems),
     [galaxyId, systemCount, systems]
   );
-
-  const [frame, setFrame] = useState(() => projectOrbitalFrame(model, 0));
-
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const corePulseAnim = useRef(new Animated.Value(0)).current;
-  const frameRafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    rotateAnim.setValue(0);
-    const prefersReducedMotion =
-      Platform.OS === 'web' &&
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const loop = Animated.loop(
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: prefersReducedMotion ? 1200000 : 180000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-        isInteraction: false,
-      })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [rotateAnim, galaxyId]);
-
-  useEffect(() => {
-    let mounted = true;
-    const start = Date.now();
-    const prefersReducedMotion =
-      Platform.OS === 'web' &&
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const speed = prefersReducedMotion ? 0.18 : 1;
-
-    const tick = () => {
-      if (!mounted) return;
-      const elapsedMs = (Date.now() - start) * speed;
-      setFrame(projectOrbitalFrame(model, elapsedMs));
-      frameRafRef.current = requestAnimationFrame(tick);
-    };
-
-    frameRafRef.current = requestAnimationFrame(tick);
-    return () => {
-      mounted = false;
-      if (frameRafRef.current !== null) cancelAnimationFrame(frameRafRef.current);
-    };
-  }, [model, galaxyId]);
-
-  useEffect(() => {
-    corePulseAnim.setValue(0);
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(corePulseAnim, { toValue: 1, duration: 5200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(corePulseAnim, { toValue: 0, duration: 5200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [corePulseAnim, galaxyId]);
-
-  const galaxyRotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const pulseScale = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.99, 1.02] });
-  const pulseGlow = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
-  const ringRotate = corePulseAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '9deg'] });
+  const frame = useMemo(() => projectOrbitalFrame(model, 0), [model]);
 
   const coreBoost = (x, y, strength = 1) => {
     const dx = x - 50;
@@ -146,6 +80,11 @@ export default function SpinningGalaxyScreen({
           ...(Platform.OS === 'web' ? { willChange: 'transform, opacity' } : null),
         }}
       >
+        <Image
+          source={GALAXY_STATIC_BG}
+          resizeMode="cover"
+          style={{ position: 'absolute', left: '4%', top: '4%', width: '92%', height: '92%', borderRadius: 999, opacity: 0.82 }}
+        />
         
 
         <View style={{ position: 'absolute', inset: 0 }}>
@@ -159,7 +98,7 @@ export default function SpinningGalaxyScreen({
             return (
               <View key={s.id} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, marginLeft: -dot / 2, marginTop: -dot / 2 }}>
                 {isHighlighted ? (
-                  <Animated.View
+                  <View
                     style={{
                       position: 'absolute',
                       left: -(beaconRing - dot) / 2,
@@ -169,8 +108,7 @@ export default function SpinningGalaxyScreen({
                       borderRadius: 999,
                       borderWidth: 1.3,
                       borderColor: `${color}DD`,
-                      opacity: pulseGlow,
-                      transform: [{ scale: pulseScale }],
+                      opacity: 0.85,
                     }}
                   />
                 ) : null}
@@ -204,13 +142,13 @@ export default function SpinningGalaxyScreen({
       </View>
       </View>
 
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -78, marginTop: -78, width: 156, height: 156, borderRadius: 999, backgroundColor: 'rgba(255,168,80,0.105)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -62, marginTop: -62, width: 124, height: 124, borderRadius: 999, backgroundColor: 'rgba(255,206,138,0.165)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -48, marginTop: -48, width: 96, height: 96, borderRadius: 999, backgroundColor: 'rgba(255,238,194,0.265)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -35, marginTop: -35, width: 70, height: 70, borderRadius: 999, backgroundColor: 'rgba(255,248,226,0.39)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -25, marginTop: -25, width: 50, height: 50, borderRadius: 999, backgroundColor: 'rgba(255,253,244,0.62)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -16, marginTop: -16, width: 32, height: 32, borderRadius: 999, backgroundColor: 'rgba(255,255,252,0.88)', opacity: pulseGlow, transform: [{ scale: pulseScale }] }} />
-      <Animated.View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -48, marginTop: -18, width: 96, height: 36, borderRadius: 999, borderWidth: 1.1, borderColor: 'rgba(255,232,182,0.34)', opacity: 0.36, transform: [{ rotate: ringRotate }] }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -78, marginTop: -78, width: 156, height: 156, borderRadius: 999, backgroundColor: 'rgba(255,168,80,0.105)', opacity: 0.92 }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -62, marginTop: -62, width: 124, height: 124, borderRadius: 999, backgroundColor: 'rgba(255,206,138,0.165)', opacity: 0.94 }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -48, marginTop: -48, width: 96, height: 96, borderRadius: 999, backgroundColor: 'rgba(255,238,194,0.265)', opacity: 0.96 }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -35, marginTop: -35, width: 70, height: 70, borderRadius: 999, backgroundColor: 'rgba(255,248,226,0.39)', opacity: 0.98 }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -25, marginTop: -25, width: 50, height: 50, borderRadius: 999, backgroundColor: 'rgba(255,253,244,0.62)', opacity: 1 }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -16, marginTop: -16, width: 32, height: 32, borderRadius: 999, backgroundColor: 'rgba(255,255,252,0.88)', opacity: 1 }} />
+      <View style={{ position: 'absolute', left: '50%', top: '50%', marginLeft: -48, marginTop: -18, width: 96, height: 36, borderRadius: 999, borderWidth: 1.1, borderColor: 'rgba(255,232,182,0.34)', opacity: 0.36 }} />
 
       <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(103,243,255,0.12)' }} />
     </View>

@@ -632,6 +632,9 @@ const styles = StyleSheet.create({
   },
   targetsWrap: {
     marginBottom: 10,
+    position: 'relative',
+    zIndex: 6,
+    overflow: 'visible',
   },
   targetsHeader: {
     flexDirection: 'row',
@@ -654,8 +657,11 @@ const styles = StyleSheet.create({
   targetsList: {
     gap: 8,
     paddingRight: 8,
+    paddingBottom: 6,
+    overflow: 'visible',
   },
   targetCard: {
+    position: 'relative',
     width: 138,
     borderRadius: 6,
     borderWidth: 1,
@@ -666,6 +672,8 @@ const styles = StyleSheet.create({
   },
   targetCardHover: {
     transform: [{ translateY: -2 }, { scale: 1.015 }],
+    zIndex: 30,
+    elevation: 12,
   },
   targetCardPressed: {
     transform: [{ translateY: 0 }, { scale: 0.995 }],
