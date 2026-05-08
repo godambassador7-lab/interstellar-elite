@@ -7,6 +7,9 @@ import { SCREEN, COLORS, PLAYER, ABILITIES } from '../utils/constants';
 
 const PLAYER_SHIP_SPRITE = require('../../user ship1.png');
 const ENEMY_SPRITES = {
+  giganaut: [
+    require('../../Enemy Fighter Pack/Giganaut.png'),
+  ],
   flagship: [
     require('../../Enemy Fighter Pack/Flag ship/flag ship 1.png'),
     require('../../Enemy Fighter Pack/Flag ship/flagship 2.png'),
@@ -194,14 +197,14 @@ export function EnemyShip({ enemy }) {
   const charging = !!enemy.flagshipChargeActive;
   const flashColor = hitFlash > 0 ? '#FFFFFF' : (charging ? '#66C8FF' : (enemy.isLastFlagship ? '#FF2A2A' : color));
   const hpPct = hp / maxHp;
-  const classKey = enemy.isNemesis ? 'flagship' : type === 'heavy' ? 'destroyer' : type === 'elite' ? 'interceptor' : 'fighter';
+  const isGiganaut = !!enemy.isGiganaut;
+  const classKey = isGiganaut ? 'giganaut' : enemy.isNemesis ? 'flagship' : type === 'heavy' ? 'destroyer' : type === 'elite' ? 'interceptor' : 'fighter';
   const spritePool = ENEMY_SPRITES[classKey];
   const enemyId = String(enemy.id || '');
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
   const sprite = spritePool[spriteSeed % spritePool.length];
-  const isGiganaut = !!enemy.isGiganaut;
   const FLAGSHIP_VISUAL_SCALE = 15.75;
-  const GIGANAUT_VISUAL_MULT = 3;
+  const GIGANAUT_VISUAL_MULT = 2;
   const FLAGSHIP_BASE_SIZE = 24;
   const FLAGSHIP_VISUAL_BOX = FLAGSHIP_BASE_SIZE * FLAGSHIP_VISUAL_SCALE;
   const flagshipScale = isGiganaut ? FLAGSHIP_VISUAL_SCALE * GIGANAUT_VISUAL_MULT : FLAGSHIP_VISUAL_SCALE;
@@ -212,14 +215,14 @@ export function EnemyShip({ enemy }) {
       : classKey === 'destroyer'
         ? FLAGSHIP_VISUAL_BOX * 0.5
         : size * scaleByClass;
-  const showHpBar = classKey === 'destroyer' || classKey === 'flagship';
+  const showHpBar = classKey === 'destroyer' || classKey === 'flagship' || isGiganaut;
   const enemySpeed = Math.hypot(enemy.vx || 0, enemy.vy || 0);
   const moving = enemySpeed > 8;
   const t = (enemy.gameTime || 0) * 22 + (enemy.id?.length || 0);
   const pulse = 0.75 + 0.25 * Math.sin(t);
   const warmFlame = classKey === 'destroyer' || classKey === 'fighter';
   const rearThrustersOnSide = false;
-  const shipAngle = classKey === 'flagship' ? facingAngle + 90 : facingAngle;
+  const shipAngle = (classKey === 'flagship' || isGiganaut) ? facingAngle + 90 : facingAngle;
   const velNx = enemySpeed > 0.001 ? (enemy.vx || 0) / enemySpeed : 0;
   const velNy = enemySpeed > 0.001 ? (enemy.vy || 0) / enemySpeed : -1;
   const rearNx = -velNx;
@@ -246,7 +249,7 @@ export function EnemyShip({ enemy }) {
         shadowOffset: { width: 0, height: 0 },
       }} />
 
-      {moving && classKey === 'flagship' && (
+      {moving && (classKey === 'flagship' || isGiganaut) && (
         <>
           <View
             style={{

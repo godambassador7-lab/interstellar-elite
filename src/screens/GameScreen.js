@@ -1,7 +1,7 @@
 // src/screens/GameScreen.js
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image, Platform, Share } from 'react-native';
+import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image, Platform, Share, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Video, ResizeMode } from 'expo-av';
 
@@ -576,6 +576,7 @@ export default function GameScreen({
   onSystemComplete,
   onMainMenu,
 }) {
+  const { width: viewportW, height: viewportH } = useWindowDimensions();
   const [uiState, setUiState] = useState(makeUiState);
   const [gameKey, setGameKey] = useState(0);
   const [battleBgCrop, setBattleBgCrop] = useState(() => pickBattleBgCrop());
@@ -1573,17 +1574,17 @@ export default function GameScreen({
     boosterMaxCooldown,
   } = uiState;
 
-  const bgWidth = SCREEN.width * battleBgCrop.scale;
-  const bgHeight = SCREEN.height * battleBgCrop.scale;
-  const maxBgShiftX = Math.max(0, bgWidth - SCREEN.width);
-  const maxBgShiftY = Math.max(0, bgHeight - SCREEN.height);
+  const bgWidth = viewportW * battleBgCrop.scale;
+  const bgHeight = viewportH * battleBgCrop.scale;
+  const maxBgShiftX = Math.max(0, bgWidth - viewportW);
+  const maxBgShiftY = Math.max(0, bgHeight - viewportH);
   const parallaxX =
     ((cameraX / Math.max(1, BATTLE_WORLD.width - SCREEN.width)) *
-      (SCREEN.width * (battleBgCrop.scale - 1))) *
+      (viewportW * (battleBgCrop.scale - 1))) *
     BG_PARALLAX;
   const parallaxY =
     ((cameraY / Math.max(1, BATTLE_WORLD.height - SCREEN.height)) *
-      (SCREEN.height * (battleBgCrop.scale - 1))) *
+      (viewportH * (battleBgCrop.scale - 1))) *
     BG_PARALLAX;
   const bgTranslateX = clamp(-maxBgShiftX, -battleBgCrop.offsetX - parallaxX, 0);
   const bgTranslateY = clamp(-maxBgShiftY, -battleBgCrop.offsetY - parallaxY, 0);
@@ -1635,11 +1636,11 @@ export default function GameScreen({
               style={[
                 styles.hyperspaceBackdrop,
                 {
-                  width: SCREEN.width * 1.08,
-                  height: SCREEN.height * 1.08,
+                  width: viewportW * 1.2,
+                  height: viewportH * 1.2,
                   transform: [
-                    { translateX: hyperspaceBgShift - SCREEN.width * 0.04 },
-                    { translateY: -SCREEN.height * 0.09 + hyperspaceBgDriftY },
+                    { translateX: hyperspaceBgShift - viewportW * 0.1 },
+                    { translateY: -viewportH * 0.1 + hyperspaceBgDriftY },
                   ],
                 },
               ]}
