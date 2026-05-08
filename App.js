@@ -6,7 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Asset } from 'expo-asset';
 
 import MenuScreen from './src/screens/MenuScreen';
-import GalaxyMapScreen from './src/screens/GalaxyMapScreen';
+import UniverseMapScreen from './src/screens/UniverseMapScreen';
 import GameScreen from './src/screens/GameScreen';
 import StationDefenseScreen from './src/screens/StationDefenseScreen';
 import DefensePrepScreen from './src/screens/DefensePrepScreen';
@@ -463,7 +463,7 @@ export default function App() {
           )}
 
           {screen === 'map' && (
-            <GalaxyMapScreen
+            <UniverseMapScreen
               unlockedGalaxyIndex={unlockedGalaxyIndex}
               completedSystemsByGalaxy={completedSystemsByGalaxy}
               warCredits={warCredits}

@@ -1,6 +1,6 @@
 // src/screens/ConquestScreen.js
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,12 @@ import {
   Pressable,
   ScrollView,
   Image,
-  Animated,
   useWindowDimensions,
   Platform,
 } from 'react-native';
 import { QUADRANT_DEFS } from '../utils/constants';
-import SpinningGalaxyScreen from '../../spinning-galaxy-system/SpinningGalaxyScreen';
 const SPACE_STATION_SPRITE = require('../../space station.png');
+const STATIC_GALAXY_MAP = require('../../galaxy static.png');
 
 // Threat level 1-5 mapped from raw 0-10 scale
 const THREAT_COLORS = ['#44FF88', '#52D8FF', '#FFC13A', '#FF7A2E', '#FF3D3D'];
@@ -103,41 +102,10 @@ export default function ConquestScreen({
   const totalBreaches  = gTerritories.reduce((s, t) => s + (t.losses || 0), 0);
   const underAttackCnt = gTerritories.filter((t) => t.underAttack).length;
   const fillPct        = galaxy.systems > 0 ? Math.min(1, completedSystems / galaxy.systems) : 0;
-  const driftAnim = useRef(new Animated.Value(0)).current;
 
   // Count systems at each threat tier (indices 0–4 = levels 1–5)
   const tierCounts = [0, 0, 0, 0, 0];
   gTerritories.forEach((t) => { tierCounts[getThreatLevel(t.threat)]++; });
-  const driftStars = useMemo(() => {
-    let seed = 0;
-    const key = String(galaxy?.id || 'galaxy');
-    for (let i = 0; i < key.length; i++) seed = ((seed * 31) + key.charCodeAt(i)) >>> 0;
-    const rand = () => {
-      seed = (1664525 * seed + 1013904223) >>> 0;
-      return seed / 0xFFFFFFFF;
-    };
-    return Array.from({ length: 80 }, (_, i) => ({
-      id: `drift-${i}`,
-      left: `${(rand() * 100).toFixed(3)}%`,
-      top: `${(rand() * 100).toFixed(3)}%`,
-      size: 0.8 + rand() * 2.4,
-      opacity: 0.12 + rand() * 0.42,
-    }));
-  }, [galaxy?.id]);
-
-  useEffect(() => {
-    driftAnim.setValue(0);
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(driftAnim, { toValue: 1, duration: 14000, useNativeDriver: true }),
-        Animated.timing(driftAnim, { toValue: 0, duration: 14000, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [driftAnim, galaxy?.id]);
-  const driftTranslateX = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] });
-  const driftTranslateY = driftAnim.interpolate({ inputRange: [0, 1], outputRange: [3, -3] });
   const systemTargets = useMemo(() => {
     const held = new Set(gTerritories.map((t) => Number(t.systemNumber)));
     const bySystem = new Map(gTerritories.map((t) => [Number(t.systemNumber), t]));
@@ -174,27 +142,6 @@ export default function ConquestScreen({
   return (
     <View style={styles.overlay}>
       <View style={[styles.panel, { borderColor: qColor + '55' }]}>
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.driftLayer, { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] }]}
-        >
-          {driftStars.map((s) => (
-            <View
-              key={s.id}
-              style={{
-                position: 'absolute',
-                left: s.left,
-                top: s.top,
-                width: s.size,
-                height: s.size,
-                borderRadius: s.size / 2,
-                opacity: s.opacity,
-                backgroundColor: '#CFE6FF',
-              }}
-            />
-          ))}
-        </Animated.View>
-
         {/* ── Header ──────────────────────────────────────── */}
         <View style={styles.header}>
           <View style={[styles.qBadge, { borderColor: qColor, backgroundColor: qColor + '18' }]}>
@@ -236,25 +183,7 @@ export default function ConquestScreen({
         <View style={styles.liveMapWrap}>
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c', height: liveMapHeight }]}>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.orbFloatLayer,
-                { transform: [{ translateX: driftTranslateX }, { translateY: driftTranslateY }] },
-              ]}
-            >
-              <SpinningGalaxyScreen
-                galaxyId={galaxy?.id || 'demo'}
-                systemCount={Math.max(1, systemTargets.length)}
-                height={liveMapHeight}
-                highlightedSystemNumber={hoveredSystemNumber}
-                systems={systemTargets.map((t) => ({
-                  systemNumber: t.systemNumber,
-                  conquered: t.conquered,
-                  partType: t.partType,
-                }))}
-              />
-            </Animated.View>
+            <Image source={STATIC_GALAXY_MAP} resizeMode="cover" style={styles.liveMapImage} />
           </View>
         </View>
 
@@ -511,13 +440,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     overflow: 'hidden',
   },
-  driftLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
 
   // ── Header ────────────────────────────────────────────────
   header: {
@@ -621,14 +543,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#02060D',
     overflow: 'hidden',
   },
-  orbFloatLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
+  liveMapImage: {
+    width: '100%',
+    height: '100%',
   },
   targetsWrap: {
     marginBottom: 10,
