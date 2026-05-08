@@ -193,11 +193,11 @@ export function PlayerShip({ x, y, hitFlash, attackFlash, attackDamageFlash = 0,
 // Enemy ship component
 export function EnemyShip({ enemy }) {
   const { x, y, size, color, glow, type, hp, maxHp, hitFlash, facingAngle = 0 } = enemy;
+  const isGiganaut = !!enemy.isGiganaut;
   const chargeT = Math.max(0, Math.min(1, enemy.flagshipChargeT || 0));
   const charging = !!enemy.flagshipChargeActive;
   const flashColor = hitFlash > 0 ? '#FFFFFF' : (charging ? '#66C8FF' : ((!isGiganaut && enemy.isLastFlagship) ? '#FF2A2A' : color));
   const hpPct = hp / maxHp;
-  const isGiganaut = !!enemy.isGiganaut;
   const classKey = isGiganaut ? 'giganaut' : enemy.isNemesis ? 'flagship' : type === 'heavy' ? 'destroyer' : type === 'elite' ? 'interceptor' : 'fighter';
   const spritePool = ENEMY_SPRITES[classKey];
   const enemyId = String(enemy.id || '');
