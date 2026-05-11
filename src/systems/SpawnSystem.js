@@ -3,7 +3,7 @@
 import { ENEMY_TYPES, SCREEN } from '../utils/constants';
 import { uid } from '../utils/mathUtils';
 
-const GIGANAUT_SIZE = 42;
+const GIGANAUT_SIZE = ENEMY_TYPES.elite.size * 2;
 
 function normalizeAngleDelta(delta) {
   let d = delta;

@@ -3,7 +3,7 @@
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { View, Animated, Text, Image } from 'react-native';
-import { SCREEN, COLORS, PLAYER, ABILITIES } from '../utils/constants';
+import { SCREEN, COLORS, PLAYER, ABILITIES, ENEMY_TYPES } from '../utils/constants';
 
 const PLAYER_SHIP_SPRITE = require('../../user ship1.png');
 const ENEMY_SPRITES = {
@@ -204,13 +204,15 @@ export function EnemyShip({ enemy }) {
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
   const sprite = spritePool[spriteSeed % spritePool.length];
   const FLAGSHIP_VISUAL_SCALE = 15.75;
-  const GIGANAUT_VISUAL_MULT = 3;
-  const FLAGSHIP_BASE_SIZE = 24;
+  const GIGANAUT_VISUAL_MULT = 2;
+  const FLAGSHIP_BASE_SIZE = ENEMY_TYPES.elite.size;
   const FLAGSHIP_VISUAL_BOX = FLAGSHIP_BASE_SIZE * FLAGSHIP_VISUAL_SCALE;
   const flagshipScale = isGiganaut ? FLAGSHIP_VISUAL_SCALE * GIGANAUT_VISUAL_MULT : FLAGSHIP_VISUAL_SCALE;
   const scaleByClass = (classKey === 'flagship' || classKey === 'giganaut') ? flagshipScale : classKey === 'interceptor' ? 5.4 : 2.3;
   const shipBox =
-    classKey === 'flagship'
+    classKey === 'giganaut'
+      ? FLAGSHIP_VISUAL_BOX * GIGANAUT_VISUAL_MULT
+      : classKey === 'flagship'
       ? size * scaleByClass
       : classKey === 'destroyer'
         ? FLAGSHIP_VISUAL_BOX * 0.5
