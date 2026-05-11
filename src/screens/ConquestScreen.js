@@ -138,6 +138,58 @@ export default function ConquestScreen({
     systems.sort((a, b) => a.systemNumber - b.systemNumber);
     return systems;
   }, [gTerritories, galaxy?.id, galaxy?.systems]);
+  const systemMapNodes = useMemo(() => {
+    const count = Math.max(0, Number(galaxy?.systems) || 0);
+    if (!count) return [];
+
+    let seed = 0;
+    const tag = `map:${String(galaxy?.id || 'g')}:${count}`;
+    for (let i = 0; i < tag.length; i++) seed = ((seed * 33) + tag.charCodeAt(i)) >>> 0;
+    const rand = () => {
+      seed = (1664525 * seed + 1013904223) >>> 0;
+      return seed / 0xFFFFFFFF;
+    };
+
+    const nodes = [];
+    const minDist = count > 120 ? 0.048 : count > 70 ? 0.058 : 0.07;
+    for (let i = 1; i <= count; i++) {
+      let x = 0.5;
+      let y = 0.5;
+      let placed = false;
+      for (let tries = 0; tries < 36; tries++) {
+        const ang = rand() * Math.PI * 2;
+        const radial = Math.sqrt(rand());
+        const rx = 0.42;
+        const ry = 0.38;
+        x = 0.5 + Math.cos(ang) * radial * rx;
+        y = 0.5 + Math.sin(ang) * radial * ry;
+        if (x < 0.06 || x > 0.94 || y < 0.08 || y > 0.92) continue;
+        let ok = true;
+        for (const n of nodes) {
+          const dx = n.nx - x;
+          const dy = n.ny - y;
+          if ((dx * dx + dy * dy) < (minDist * minDist)) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) {
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        x = 0.08 + rand() * 0.84;
+        y = 0.1 + rand() * 0.8;
+      }
+      nodes.push({ systemNumber: i, nx: x, ny: y });
+    }
+    return nodes;
+  }, [galaxy?.id, galaxy?.systems]);
+  const targetBySystemNumber = useMemo(
+    () => new Map(systemTargets.map((t) => [t.systemNumber, t])),
+    [systemTargets]
+  );
 
   return (
     <View style={styles.overlay}>
@@ -184,6 +236,40 @@ export default function ConquestScreen({
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c', height: liveMapHeight }]}>
             <Image source={STATIC_GALAXY_MAP} resizeMode="cover" style={styles.liveMapImage} />
+            <View style={styles.liveMapOverlay}>
+              {systemMapNodes.map((n) => {
+                const t = targetBySystemNumber.get(n.systemNumber);
+                if (!t) return null;
+                const tc = typeof t.threat === 'number'
+                  ? THREAT_COLORS[getThreatLevel(t.threat)]
+                  : 'rgba(205,225,255,0.72)';
+                const nodeColor = t.conquered ? '#58FF9A' : tc;
+                const nodeSize = t.underAttack ? 9 : (t.conquered ? 6.5 : 5.5);
+
+                return (
+                  <TouchableOpacity
+                    key={`map-node-${n.systemNumber}`}
+                    activeOpacity={0.85}
+                    onPress={() => onLaunchSystem?.(n.systemNumber)}
+                    style={[
+                      styles.liveMapNode,
+                      {
+                        left: `${n.nx * 100}%`,
+                        top: `${n.ny * 100}%`,
+                        width: nodeSize,
+                        height: nodeSize,
+                        borderRadius: nodeSize / 2,
+                        marginLeft: -nodeSize / 2,
+                        marginTop: -nodeSize / 2,
+                        backgroundColor: nodeColor,
+                        borderColor: t.underAttack ? '#FF3D3D' : '#DFF6FF',
+                        borderWidth: t.underAttack ? 1.2 : 0.8,
+                      },
+                    ]}
+                  />
+                );
+              })}
+            </View>
           </View>
         </View>
 
@@ -546,6 +632,20 @@ const styles = StyleSheet.create({
   liveMapImage: {
     width: '100%',
     height: '100%',
+  },
+  liveMapOverlay: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+  },
+  liveMapNode: {
+    position: 'absolute',
+    shadowColor: '#BDE9FF',
+    shadowOpacity: 0.75,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
   },
   targetsWrap: {
     marginBottom: 10,
