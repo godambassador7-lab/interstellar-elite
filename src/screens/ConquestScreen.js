@@ -1,6 +1,6 @@
 // src/screens/ConquestScreen.js
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Image,
   useWindowDimensions,
   Platform,
+  Animated,
 } from 'react-native';
 import { QUADRANT_DEFS } from '../utils/constants';
 const SPACE_STATION_SPRITE = require('../../space station.png');
@@ -79,6 +80,7 @@ export default function ConquestScreen({
   onLaunchSystem,
 }) {
   const [hoveredSystemNumber, setHoveredSystemNumber] = useState(null);
+  const galaxyPulseAnim = useRef(new Animated.Value(0)).current;
   const { height: screenHeight } = useWindowDimensions();
   const qDef   = QUADRANT_DEFS.find((q) => q.id === galaxy.quadrant);
   const qColor = qDef?.accent || '#67F3FF';
@@ -138,6 +140,17 @@ export default function ConquestScreen({
     systems.sort((a, b) => a.systemNumber - b.systemNumber);
     return systems;
   }, [gTerritories, galaxy?.id, galaxy?.systems]);
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(galaxyPulseAnim, { toValue: 1, duration: 2600, useNativeDriver: true }),
+        Animated.timing(galaxyPulseAnim, { toValue: 0, duration: 2600, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [galaxyPulseAnim]);
+
   const systemMapNodes = useMemo(() => {
     const count = Math.max(0, Number(galaxy?.systems) || 0);
     if (!count) return [];
@@ -152,18 +165,31 @@ export default function ConquestScreen({
 
     const nodes = [];
     const minDist = count > 120 ? 0.048 : count > 70 ? 0.058 : 0.07;
+    const inGalaxyShape = (x, y) => {
+      const dx = x - 0.5;
+      const dy = y - 0.5;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      if (r > 0.44 || r < 0.055) return false;
+      const theta = Math.atan2(dy, dx);
+      const armA = Math.sin((theta * 2.05) + r * 18.5);
+      const armB = Math.sin((theta * 2.05) - r * 17.8 + 1.4);
+      const armSignal = Math.max(armA, armB);
+      const coreBoost = 1 - Math.min(1, r / 0.44);
+      return armSignal > -0.42 + coreBoost * 0.35;
+    };
+
     for (let i = 1; i <= count; i++) {
       let x = 0.5;
       let y = 0.5;
       let placed = false;
-      for (let tries = 0; tries < 36; tries++) {
+      for (let tries = 0; tries < 64; tries++) {
         const ang = rand() * Math.PI * 2;
         const radial = Math.sqrt(rand());
         const rx = 0.42;
         const ry = 0.38;
         x = 0.5 + Math.cos(ang) * radial * rx;
         y = 0.5 + Math.sin(ang) * radial * ry;
-        if (x < 0.06 || x > 0.94 || y < 0.08 || y > 0.92) continue;
+        if (x < 0.06 || x > 0.94 || y < 0.08 || y > 0.92 || !inGalaxyShape(x, y)) continue;
         let ok = true;
         for (const n of nodes) {
           const dx = n.nx - x;
@@ -179,13 +205,31 @@ export default function ConquestScreen({
         }
       }
       if (!placed) {
-        x = 0.08 + rand() * 0.84;
-        y = 0.1 + rand() * 0.8;
+        const ang = rand() * Math.PI * 2;
+        const radial = 0.12 + rand() * 0.3;
+        x = 0.5 + Math.cos(ang) * radial;
+        y = 0.5 + Math.sin(ang) * radial * 0.88;
       }
       nodes.push({ systemNumber: i, nx: x, ny: y });
     }
     return nodes;
   }, [galaxy?.id, galaxy?.systems]);
+  const mapAmbientStars = useMemo(() => {
+    let seed = 0;
+    const tag = `ambient:${String(galaxy?.id || 'g')}`;
+    for (let i = 0; i < tag.length; i++) seed = ((seed * 29) + tag.charCodeAt(i)) >>> 0;
+    const rand = () => {
+      seed = (1103515245 * seed + 12345) >>> 0;
+      return seed / 0xFFFFFFFF;
+    };
+    return Array.from({ length: 34 }, (_, i) => ({
+      id: i,
+      x: 0.1 + rand() * 0.8,
+      y: 0.12 + rand() * 0.76,
+      size: 1.1 + rand() * 2.2,
+      alpha: 0.2 + rand() * 0.45,
+    }));
+  }, [galaxy?.id]);
   const targetBySystemNumber = useMemo(
     () => new Map(systemTargets.map((t) => [t.systemNumber, t])),
     [systemTargets]
@@ -237,20 +281,67 @@ export default function ConquestScreen({
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c', height: liveMapHeight }]}>
             <Image source={STATIC_GALAXY_MAP} resizeMode="cover" style={styles.liveMapImage} />
             <View style={styles.liveMapOverlay}>
+              {mapAmbientStars.map((s) => (
+                <Animated.View
+                  key={`map-star-${s.id}`}
+                  pointerEvents="none"
+                  style={[
+                    styles.liveMapAmbientStar,
+                    {
+                      left: `${s.x * 100}%`,
+                      top: `${s.y * 100}%`,
+                      width: s.size,
+                      height: s.size,
+                      borderRadius: s.size / 2,
+                      opacity: galaxyPulseAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [s.alpha * 0.7, s.alpha],
+                      }),
+                      transform: [{
+                        scale: galaxyPulseAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.94, 1.14],
+                        }),
+                      }],
+                    },
+                  ]}
+                />
+              ))}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.liveMapNebulaPulse,
+                  {
+                    opacity: galaxyPulseAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.08, 0.2],
+                    }),
+                    transform: [{
+                      scale: galaxyPulseAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.96, 1.08],
+                      }),
+                    }],
+                  },
+                ]}
+              />
               {systemMapNodes.map((n) => {
                 const t = targetBySystemNumber.get(n.systemNumber);
                 if (!t) return null;
+                const isHoveredNode = hoveredSystemNumber === n.systemNumber;
                 const tc = typeof t.threat === 'number'
                   ? THREAT_COLORS[getThreatLevel(t.threat)]
                   : 'rgba(205,225,255,0.72)';
                 const nodeColor = t.conquered ? '#58FF9A' : tc;
-                const nodeSize = t.underAttack ? 9 : (t.conquered ? 6.5 : 5.5);
+                const nodeSize = isHoveredNode ? 11 : (t.underAttack ? 9 : (t.conquered ? 6.5 : 5.5));
 
                 return (
                   <TouchableOpacity
                     key={`map-node-${n.systemNumber}`}
                     activeOpacity={0.85}
                     onPress={() => onLaunchSystem?.(n.systemNumber)}
+                    onPressIn={() => setHoveredSystemNumber(n.systemNumber)}
+                    onPressOut={() => setHoveredSystemNumber(null)}
                     style={[
                       styles.liveMapNode,
                       {
@@ -262,8 +353,10 @@ export default function ConquestScreen({
                         marginLeft: -nodeSize / 2,
                         marginTop: -nodeSize / 2,
                         backgroundColor: nodeColor,
-                        borderColor: t.underAttack ? '#FF3D3D' : '#DFF6FF',
-                        borderWidth: t.underAttack ? 1.2 : 0.8,
+                        borderColor: isHoveredNode ? '#FFFFFF' : (t.underAttack ? '#FF3D3D' : '#DFF6FF'),
+                        borderWidth: isHoveredNode ? 1.6 : (t.underAttack ? 1.2 : 0.8),
+                        shadowOpacity: isHoveredNode ? 1 : 0.75,
+                        shadowRadius: isHoveredNode ? 11 : 5,
                       },
                     ]}
                   />
@@ -306,6 +399,8 @@ export default function ConquestScreen({
                   ]}
                   onHoverIn={() => setHoveredSystemNumber(t.systemNumber)}
                   onHoverOut={() => setHoveredSystemNumber(null)}
+                  onPressIn={() => setHoveredSystemNumber(t.systemNumber)}
+                  onPressOut={() => setHoveredSystemNumber(null)}
                   onPress={() => {
                     if (onLaunchSystem) onLaunchSystem(t.systemNumber);
                   }}
@@ -646,6 +741,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.75,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 },
+  },
+  liveMapAmbientStar: {
+    position: 'absolute',
+    marginLeft: -1,
+    marginTop: -1,
+    backgroundColor: 'rgba(198,231,255,0.95)',
+    shadowColor: '#BFE7FF',
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  liveMapNebulaPulse: {
+    position: 'absolute',
+    left: '24%',
+    top: '24%',
+    width: '52%',
+    height: '52%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(116,173,255,0.25)',
   },
   targetsWrap: {
     marginBottom: 10,
