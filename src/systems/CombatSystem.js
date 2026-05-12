@@ -65,11 +65,31 @@ const FLAGSHIP_REINFORCE_BY_QUADRANT = {
   ultra316: { count: 50, intervalMs: 5000 },  // Quadrant IV
 };
 const GIGANAUT_PHASE_LABELS = {
-  1: 'ARRIVAL',
-  2: 'ENGAGEMENT',
-  3: 'DOMINANCE',
-  4: 'CORE EXPOSURE',
+  1: 'DREAD ARRIVAL',
+  2: 'SHIELD BREAK',
+  3: 'INTERNAL BREACH',
+  4: 'CORE AWAKENING',
   5: 'CATACLYSM',
+};
+const GIGANAUT_WEAPON_DEFS = {
+  horizonCannons: { phase: 1, role: 'Gigantic spinal railguns with warning lanes and one-shot pressure.' },
+  swarmPorts: { phase: 1, role: 'Launches interceptor drones, suicide bombers, and boarding pods.' },
+  gravityDistortionPulse: { phase: 1, role: 'Creates slow zones, projectile curvature, and drift instability.' },
+  starflareBatteries: { phase: 2, role: 'Rapid plasma artillery burst for bullet-hell pressure.' },
+  voidLances: { phase: 2, role: 'Precision beam sweeps tracking player movement windows.' },
+  flakStormGrid: { phase: 2, role: 'Shrapnel zones and temporary no-fly corridors.' },
+  sentinelWalls: { phase: 3, role: 'Interior wall turrets represented as perimeter kill-lanes.' },
+  arcCorridors: { phase: 3, role: 'Electrified corridor patterns that pulse on timed intervals.' },
+  naniteReconstruction: { phase: 3, role: 'Enemy reconstruction unless reactor systems are crippled.' },
+  stellarAnnihilator: { phase: 4, role: 'Superweapon charge event requiring interruption pressure.' },
+  eventHorizonGenerator: { phase: 4, role: 'Mini-black holes that pull ships and distort trajectories.' },
+  realityFractureMissiles: { phase: 4, role: 'Experimental distortion missiles and battlefield chaos.' },
+};
+const GIGANAUT_VARIANTS = {
+  cathedral: ['light_beams', 'choir_sonic_weapons', 'halo_shields'],
+  hive: ['living_missiles', 'organic_tentacles', 'regenerating_armor'],
+  ancientMachine: ['time_distortion', 'precision_lasers', 'self_repair_nanites'],
+  nomadFortress: ['fleet_deployment', 'mobile_shipyards', 'mining_stations'],
 };
 const GIGANAUT_SWEEP_RATE_BY_PHASE = {
   1: 540,
@@ -599,9 +619,20 @@ export function runCombatFrame(state, deltaMs) {
 
 function runGiganautBehavior(state, enemy, now) {
   if (!enemy.giganaut) {
+    const variantIds = Object.keys(GIGANAUT_VARIANTS);
+    const variant = variantIds[Math.floor(Math.random() * variantIds.length)];
     enemy.giganaut = {
       phase: 1,
       phaseLabel: GIGANAUT_PHASE_LABELS[1],
+      variant,
+      variantWeapons: GIGANAUT_VARIANTS[variant],
+      weapons: GIGANAUT_WEAPON_DEFS,
+      adaptiveAI: {
+        missileInterceptionGrid: false,
+        empShockwaves: false,
+        cloakingDrones: false,
+      },
+      desperationMode: false,
       subsystems: {
         coreReactor: 100,
         commandBridge: 100,
@@ -620,7 +651,15 @@ function runGiganautBehavior(state, enemy, now) {
     gs.phaseLabel = GIGANAUT_PHASE_LABELS[nextPhase];
     gs.phaseChangedAt = now;
   }
+  gs.desperationMode = hpPct <= 0.05;
+  if (gs.desperationMode) {
+    gs.phase = 5;
+    gs.phaseLabel = GIGANAUT_PHASE_LABELS[5];
+  }
   state.phaseLabel = `GIGANAUT ${gs.phase}: ${gs.phaseLabel}`;
+  if (gs.desperationMode) {
+    state.eventBanner = 'DESPERATION MODE: ALL WEAPONS HOT';
+  }
 
   const dx = state.player.x - enemy.x;
   const dy = state.player.y - enemy.y;
@@ -632,7 +671,40 @@ function runGiganautBehavior(state, enemy, now) {
   if (!enemy.giganautBaseSpeed) enemy.giganautBaseSpeed = enemy.speed;
   const engineMult = 0.35 + Math.max(0, enginePct) * 0.65;
   enemy.speed = Math.max(20, enemy.giganautBaseSpeed * engineMult);
+  if (gs.phase === 1 && d < 320) {
+    // Phase 1 remains distant: back-thrust when player closes in.
+    enemy.vx -= nx * 24;
+    enemy.vy -= ny * 24;
+  }
 
+  // 1) Horizon Cannons
+  if (!enemy.giganautNextHorizonAt) enemy.giganautNextHorizonAt = now + 2200;
+  if (now >= enemy.giganautNextHorizonAt && gs.phase >= 1) {
+    const horizonDamage = gs.phase >= 4 ? 42 : 30;
+    for (let i = -1; i <= 1; i += 2) {
+      const s = i * 0.07;
+      const cos = Math.cos(s);
+      const sin = Math.sin(s);
+      const sx = nx * cos - ny * sin;
+      const sy = nx * sin + ny * cos;
+      state.photons.push({
+        id: uid(),
+        x: enemy.x + sx * enemy.size * 0.45,
+        y: enemy.y + sy * enemy.size * 0.45,
+        vx: sx * 560,
+        vy: sy * 560,
+        damage: horizonDamage,
+        size: 18,
+        life: 1800,
+        maxLife: 1800,
+        color: '#FFC77A',
+        glowColor: 'rgba(255,181,90,0.34)',
+      });
+    }
+    enemy.giganautNextHorizonAt = now + (gs.phase >= 4 ? 1800 : 2800);
+  }
+
+  // 2 + 3) Swarm Ports + Gravity Distortion Pulse
   if (!enemy.giganautNextSweepAt) enemy.giganautNextSweepAt = now + 900;
   if (now >= enemy.giganautNextSweepAt) {
     const spread = 0.58 - gs.phase * 0.08;
@@ -687,6 +759,170 @@ function runGiganautBehavior(state, enemy, now) {
     }
   }
 
+  // 4) Starflare Batteries (phase 2+ bullet hell)
+  if (!enemy.giganautNextStarflareAt) enemy.giganautNextStarflareAt = now + 1800;
+  if (now >= enemy.giganautNextStarflareAt && gs.phase >= 2) {
+    const count = gs.phase >= 5 ? 16 : 11;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      state.photons.push({
+        id: uid(),
+        x: enemy.x,
+        y: enemy.y,
+        vx: Math.cos(a) * (220 + gs.phase * 30),
+        vy: Math.sin(a) * (220 + gs.phase * 30),
+        damage: 6.8 + gs.phase * 0.8,
+        size: 6,
+        life: 1800,
+        maxLife: 1800,
+        color: '#FF7A52',
+        glowColor: 'rgba(255,122,82,0.22)',
+      });
+    }
+    enemy.giganautNextStarflareAt = now + (gs.phase >= 4 ? 1600 : 2600);
+  }
+
+  // 6) Flak Storm Grid (phase 2+ shrapnel corridors)
+  if (!enemy.giganautNextFlakAt) enemy.giganautNextFlakAt = now + 3000;
+  if (now >= enemy.giganautNextFlakAt && gs.phase >= 2) {
+    const flakCount = gs.phase >= 5 ? 6 : 4;
+    for (let i = 0; i < flakCount; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sx = state.player.x + Math.cos(a) * (80 + Math.random() * 120);
+      const sy = state.player.y + Math.sin(a) * (80 + Math.random() * 120);
+      if (!state.photons) state.photons = [];
+      state.photons.push({
+        id: uid(),
+        x: sx,
+        y: sy,
+        vx: Math.cos(a + Math.PI) * (120 + Math.random() * 100),
+        vy: Math.sin(a + Math.PI) * (120 + Math.random() * 100),
+        damage: 11 + gs.phase * 1.4,
+        size: 8,
+        life: 1200,
+        maxLife: 1200,
+        color: '#FFB27A',
+        glowColor: 'rgba(255,178,122,0.20)',
+      });
+    }
+    enemy.giganautNextFlakAt = now + (gs.phase >= 4 ? 2600 : 3800);
+  }
+
+  // 7 + 8 + 9) Internal Breach simulation
+  if (gs.phase >= 3) {
+    if (!enemy.giganautNextSentinelAt) enemy.giganautNextSentinelAt = now + 2200;
+    if (now >= enemy.giganautNextSentinelAt) {
+      const worldW = state?.world?.width || 1200;
+      const worldH = state?.world?.height || 800;
+      const edges = [
+        { x: 20, y: Math.random() * worldH },
+        { x: worldW - 20, y: Math.random() * worldH },
+        { x: Math.random() * worldW, y: 20 },
+        { x: Math.random() * worldW, y: worldH - 20 },
+      ];
+      for (const e of edges) {
+        const tdx = state.player.x - e.x;
+        const tdy = state.player.y - e.y;
+        const td = Math.max(1, Math.sqrt(tdx * tdx + tdy * tdy));
+        state.photons.push({
+          id: uid(),
+          x: e.x,
+          y: e.y,
+          vx: (tdx / td) * 280,
+          vy: (tdy / td) * 280,
+          damage: 9 + gs.phase,
+          size: 7,
+          life: 1700,
+          maxLife: 1700,
+          color: '#C0D7FF',
+          glowColor: 'rgba(172,204,255,0.2)',
+        });
+      }
+      enemy.giganautNextSentinelAt = now + 2600;
+    }
+    if (!enemy.giganautNextArcAt) enemy.giganautNextArcAt = now + 1500;
+    if (now >= enemy.giganautNextArcAt) {
+      const arcBand = 42 + (gs.phase * 4);
+      const nearXBand = Math.abs((state.player.x % 160) - 80) < arcBand * 0.25;
+      const nearYBand = Math.abs((state.player.y % 160) - 80) < arcBand * 0.25;
+      if (nearXBand || nearYBand) {
+        applyPlayerDamage(state.player, 7 + gs.phase * 1.4, 'giganaut_arc_corridor');
+      }
+      enemy.giganautNextArcAt = now + 1150;
+    }
+    // Nanite reconstruction until reactor is heavily damaged.
+    if ((gs.subsystems.coreReactor || 0) > 20) {
+      for (const ally of state.enemies) {
+        if (ally.dead || ally.id === enemy.id || !ally.isFlagshipMinion) continue;
+        ally.hp = Math.min(ally.maxHp, ally.hp + 0.12);
+      }
+    }
+  }
+
+  // 10 + 11 + 12) Core Awakening suite
+  if (gs.phase >= 4) {
+    if (!enemy.giganautStellarChargeAt) enemy.giganautStellarChargeAt = now + 9000;
+    if (!enemy.giganautStellarFireAt) enemy.giganautStellarFireAt = 0;
+    if (now >= enemy.giganautStellarChargeAt && now < enemy.giganautStellarChargeAt + 3600) {
+      state.eventBanner = "It’s charging a stellar collapse weapon...";
+    } else if (enemy.giganautStellarChargeAt > 0 && now >= enemy.giganautStellarChargeAt + 3600 && now >= enemy.giganautStellarFireAt) {
+      // Stellar Annihilator
+      const px = state.player.x - enemy.x;
+      const py = state.player.y - enemy.y;
+      const pd = Math.max(1, Math.sqrt(px * px + py * py));
+      state.photons.push({
+        id: uid(),
+        x: enemy.x,
+        y: enemy.y,
+        vx: (px / pd) * 620,
+        vy: (py / pd) * 620,
+        damage: 58,
+        size: 24,
+        life: 1600,
+        maxLife: 1600,
+        color: '#FFE6A8',
+        glowColor: 'rgba(255,230,168,0.34)',
+      });
+      enemy.giganautStellarFireAt = now + 12000;
+      enemy.giganautStellarChargeAt = now + 12000;
+    }
+
+    // Event Horizon Generator
+    if (!enemy.giganautNextHorizonWellAt) enemy.giganautNextHorizonWellAt = now + 4200;
+    if (now >= enemy.giganautNextHorizonWellAt && (state.gravityWells || []).length < 4) {
+      if (!state.gravityWells) state.gravityWells = [];
+      state.gravityWells.push({
+        id: uid(),
+        x: state.player.x + (Math.random() - 0.5) * 220,
+        y: state.player.y + (Math.random() - 0.5) * 220,
+        radius: 88 + gs.phase * 8,
+        strength: 260 + gs.phase * 40,
+        lifeMs: 4200 + gs.phase * 700,
+      });
+      enemy.giganautNextHorizonWellAt = now + 5600;
+    }
+
+    // Reality Fracture Missiles
+    if (!enemy.giganautNextFractureAt) enemy.giganautNextFractureAt = now + 5200;
+    if (now >= enemy.giganautNextFractureAt) {
+      const fd = Math.max(1, d);
+      state.photons.push({
+        id: uid(),
+        x: enemy.x,
+        y: enemy.y,
+        vx: (dx / fd) * 260,
+        vy: (dy / fd) * 260,
+        damage: 18,
+        size: 13,
+        life: 2600,
+        maxLife: 2600,
+        color: '#C488FF',
+        glowColor: 'rgba(196,136,255,0.28)',
+      });
+      enemy.giganautNextFractureAt = now + 6200;
+    }
+  }
+
   if (!enemy.giganautNextBarrageAt) enemy.giganautNextBarrageAt = now + 2600;
   if (now >= enemy.giganautNextBarrageAt && gs.phase >= 3) {
     if (!state.meteors) state.meteors = [];
@@ -705,6 +941,17 @@ function runGiganautBehavior(state, enemy, now) {
       });
     }
     enemy.giganautNextBarrageAt = now + (gs.phase >= 5 ? 2400 : 3800);
+  }
+
+  // Adaptive AI toggles based on current player pressure profile.
+  const closeCombat = d < 150;
+  const missileHeavyPressure = (state.destroyerMissiles?.length || 0) > 18;
+  const sniperStyle = d > 360;
+  gs.adaptiveAI.missileInterceptionGrid = missileHeavyPressure;
+  gs.adaptiveAI.empShockwaves = closeCombat;
+  gs.adaptiveAI.cloakingDrones = sniperStyle;
+  if (gs.adaptiveAI.empShockwaves && now % 1600 < 20 && d < 160) {
+    applyPlayerDamage(state.player, 6.5, 'giganaut_emp_shockwave');
   }
 }
 
