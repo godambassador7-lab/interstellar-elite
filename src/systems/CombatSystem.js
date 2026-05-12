@@ -643,6 +643,35 @@ function runGiganautBehavior(state, enemy, now) {
       },
     };
   }
+  if (!enemy.giganaut.adaptiveAI) {
+    enemy.giganaut.adaptiveAI = {
+      missileInterceptionGrid: false,
+      empShockwaves: false,
+      cloakingDrones: false,
+    };
+  }
+  if (!enemy.giganaut.subsystems) {
+    enemy.giganaut.subsystems = {
+      coreReactor: 100,
+      commandBridge: 100,
+      shieldNodes: 100,
+      weaponArrays: 100,
+      hangarBays: 100,
+      engineCore: 100,
+    };
+  }
+  if (!enemy.giganaut.variant) {
+    const variantIds = Object.keys(GIGANAUT_VARIANTS);
+    const variant = variantIds[Math.floor(Math.random() * variantIds.length)];
+    enemy.giganaut.variant = variant;
+    enemy.giganaut.variantWeapons = GIGANAUT_VARIANTS[variant];
+  } else if (!enemy.giganaut.variantWeapons) {
+    enemy.giganaut.variantWeapons = GIGANAUT_VARIANTS[enemy.giganaut.variant] || [];
+  }
+  if (!enemy.giganaut.weapons) enemy.giganaut.weapons = GIGANAUT_WEAPON_DEFS;
+  if (!enemy.giganaut.phaseLabel) {
+    enemy.giganaut.phaseLabel = GIGANAUT_PHASE_LABELS[enemy.giganaut.phase] || GIGANAUT_PHASE_LABELS[1];
+  }
   const gs = enemy.giganaut;
   const hpPct = enemy.hp / Math.max(1, enemy.maxHp);
   const nextPhase = hpPct > 0.8 ? 1 : hpPct > 0.6 ? 2 : hpPct > 0.35 ? 3 : hpPct > 0.12 ? 4 : 5;
