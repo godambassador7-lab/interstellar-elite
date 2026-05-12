@@ -279,7 +279,20 @@ export default function ConquestScreen({
         <View style={styles.liveMapWrap}>
           <Text style={styles.liveMapTitle}>LIVE GALAXY VIEW</Text>
           <View style={[styles.liveMapFrame, { borderColor: qColor + '5c', height: liveMapHeight }]}>
-            <Image source={STATIC_GALAXY_MAP} resizeMode="cover" style={styles.liveMapImage} />
+            <Animated.View
+              style={{
+                width: '100%',
+                height: '100%',
+                transform: [{
+                  scale: galaxyPulseAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.008],
+                  }),
+                }],
+              }}
+            >
+              <Image source={STATIC_GALAXY_MAP} resizeMode="cover" style={styles.liveMapImage} />
+            </Animated.View>
             <View style={styles.liveMapOverlay}>
               {mapAmbientStars.map((s) => (
                 <Animated.View
@@ -325,14 +338,29 @@ export default function ConquestScreen({
                   },
                 ]}
               />
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.liveMapCoreGlow,
+                  {
+                    opacity: galaxyPulseAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.2, 0.34],
+                    }),
+                    transform: [{
+                      scale: galaxyPulseAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.98, 1.04],
+                      }),
+                    }],
+                  },
+                ]}
+              />
               {systemMapNodes.map((n) => {
                 const t = targetBySystemNumber.get(n.systemNumber);
                 if (!t) return null;
                 const isHoveredNode = hoveredSystemNumber === n.systemNumber;
-                const tc = typeof t.threat === 'number'
-                  ? THREAT_COLORS[getThreatLevel(t.threat)]
-                  : 'rgba(205,225,255,0.72)';
-                const nodeColor = t.conquered ? '#58FF9A' : tc;
+                const nodeColor = REWARD_TYPE_COLORS[t.partType] || '#FFE26D';
                 const nodeSize = isHoveredNode ? 11 : (t.underAttack ? 9 : (t.conquered ? 6.5 : 5.5));
 
                 return (
@@ -760,6 +788,19 @@ const styles = StyleSheet.create({
     height: '52%',
     borderRadius: 999,
     backgroundColor: 'rgba(116,173,255,0.25)',
+  },
+  liveMapCoreGlow: {
+    position: 'absolute',
+    left: '45%',
+    top: '46%',
+    width: '16%',
+    height: '16%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,236,190,0.95)',
+    shadowColor: '#FFE8B6',
+    shadowOpacity: 1,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 0 },
   },
   targetsWrap: {
     marginBottom: 10,
