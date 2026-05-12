@@ -11,6 +11,7 @@ import {
   createAbilities,
   updatePlayer,
   triggerDash,
+  triggerUltimate,
   triggerPulse,
   triggerDrone,
   triggerQuantumSlash,
@@ -107,6 +108,54 @@ function EnemyLaserBeam({ x1, y1, x2, y2, alpha, color }) {
         shadowOffset: { width: 0, height: 0 },
       }}
     />
+  );
+}
+
+function UltimateBeam({ beam }) {
+  if (!beam?.active) return null;
+  const dx = beam.x2 - beam.x1;
+  const dy = beam.y2 - beam.y1;
+  const len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  const outerW = Math.max(8, beam.width || 26);
+  const coreW = Math.max(3, outerW * 0.34);
+  return (
+    <>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: (beam.x1 + beam.x2) / 2 - len / 2,
+          top: (beam.y1 + beam.y2) / 2 - outerW / 2,
+          width: len,
+          height: outerW,
+          borderRadius: outerW * 0.5,
+          backgroundColor: 'rgba(139,223,255,0.82)',
+          shadowColor: '#8BDFFF',
+          shadowOpacity: 1,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 0 },
+          transform: [{ rotate: `${angle}deg` }],
+        }}
+      />
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: (beam.x1 + beam.x2) / 2 - len / 2,
+          top: (beam.y1 + beam.y2) / 2 - coreW / 2,
+          width: len,
+          height: coreW,
+          borderRadius: coreW * 0.5,
+          backgroundColor: 'rgba(255,255,255,0.95)',
+          shadowColor: '#FFFFFF',
+          shadowOpacity: 0.95,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 0 },
+          transform: [{ rotate: `${angle}deg` }],
+        }}
+      />
+    </>
   );
 }
 
@@ -274,6 +323,11 @@ function snapshotAbilities(abilities) {
       cooldownRemaining: abilities.phase.cooldownRemaining,
       maxCooldown: abilities.phase.maxCooldown,
     },
+    ultimate: {
+      active: abilities.ultimate.active,
+      cooldownRemaining: abilities.ultimate.cooldownRemaining,
+      maxCooldown: abilities.ultimate.maxCooldown,
+    },
   };
 }
 
@@ -336,6 +390,9 @@ function makeUiState() {
     boosterMaxCooldown: 500,
     hyperspaceActive: false,
     hyperspaceSessionKey: 0,
+    giganautEntryOverlayOpacity: 0,
+    giganautUltimateMode: false,
+    ultimateBeam: null,
   };
 }
 
@@ -599,7 +656,7 @@ export default function GameScreen({
   const upgradeQueue = useRef([]);
   const nextThresholdIdx = useRef(0);
   const peakComboRef = useRef(0);
-  const abilityUsageRef = useRef({ dash: 0, pulse: 0, drone: 0, phase: 0 });
+  const abilityUsageRef = useRef({ dash: 0, pulse: 0, drone: 0, phase: 0, ultimate: 0 });
   const basePlayerDamageRef = useRef(0);
 
   const { shakeX, shakeY, applyShake } = useShakeOffset();
@@ -779,6 +836,8 @@ export default function GameScreen({
       forceGiganautAfterWavesNoDetonation,
       giganautForcedSpawned: false,
       giganautPostWaveSpawned: false,
+      giganautEntryOverlayShown: false,
+      giganautEntryOverlayUntil: 0,
       latestHighlight: null,
       perfectDodges: 0,
       chainReactionKills: 0,
@@ -817,7 +876,7 @@ export default function GameScreen({
     nextThresholdIdx.current = 0;
     isPaused.current = false;
     peakComboRef.current = 0;
-    abilityUsageRef.current = { dash: 0, pulse: 0, drone: 0, phase: 0 };
+    abilityUsageRef.current = { dash: 0, pulse: 0, drone: 0, phase: 0, ultimate: 0 };
     lastTs.current = null;
     isRunning.current = true;
 
@@ -1208,6 +1267,45 @@ export default function GameScreen({
       }
 
       const remainingNow = g.waveSpawnRemaining + g.enemies.length;
+      const giganautUltimateMode = g.enemies.some((e) => e.isGiganaut && !e.dead);
+      if (g.abilities.ultimate.justEnded) {
+        const noFoesLeft = remainingNow <= 0;
+        if (g.abilities.ultimate.selfDamagePending && !noFoesLeft && !g.victory) {
+          const recoil = g.player.maxHp * 0.08;
+          g.player.hp = Math.max(0, g.player.hp - recoil);
+          g.player.lastDamageSource = 'ultimate_overload';
+          g.player.hitFlash = 16;
+          g.player.shieldRegenDelay = Math.max(g.player.shieldRegenDelay || 0, 800);
+          g.screenShake = Math.max(g.screenShake, 10);
+        }
+        g.abilities.ultimate.selfDamagePending = false;
+        g.abilities.ultimate.justEnded = false;
+      }
+      let ultimateBeam = null;
+      if (g.abilities.ultimate.active) {
+        const tUlt = Math.max(0, Math.min(1, (g.abilities.ultimate.elapsed || 0) / Math.max(1, g.abilities.ultimate.durationMs || 4000)));
+        const beamLen = Math.max(g.world.width, g.world.height, 2200);
+        const beamWidth = 60 - 42 * tUlt;
+        const x1 = g.player.x;
+        const y1 = g.player.y;
+        const x2 = x1 + (g.abilities.ultimate.dirX || 1) * beamLen;
+        const y2 = y1 + (g.abilities.ultimate.dirY || 0) * beamLen;
+        ultimateBeam = {
+          active: true,
+          width: beamWidth,
+          x1: x1 - g.cameraX,
+          y1: y1 - g.cameraY,
+          x2: x2 - g.cameraX,
+          y2: y2 - g.cameraY,
+        };
+      }
+      if (!g.giganautEntryOverlayShown && g.enemies.some((e) => e.isGiganaut && !e.dead)) {
+        g.giganautEntryOverlayShown = true;
+        g.giganautEntryOverlayUntil = nowMs + 1800;
+      }
+      const giganautEntryOverlayOpacity = g.giganautEntryOverlayUntil > nowMs
+        ? Math.max(0, Math.min(1, (g.giganautEntryOverlayUntil - nowMs) / 1800))
+        : 0;
       const livingNemesis = g.enemies.filter((e) => e.isNemesis && !e.dead);
       const markLastFlagship = g.currentWave >= g.maxWaves && livingNemesis.length === 1;
       if (markLastFlagship) {
@@ -1328,6 +1426,9 @@ export default function GameScreen({
         eventBanner: g.inIntercept ? 'Warp tunnel combat active' : '',
         hyperspaceActive: !!g.inIntercept,
         hyperspaceSessionKey: g.inIntercept ? (g.interceptStartedAt || 0) : 0,
+        giganautEntryOverlayOpacity,
+        giganautUltimateMode,
+        ultimateBeam,
         perfectDodges: g.perfectDodges || 0,
         latestHighlight: g.latestHighlight || null,
         flagshipEscape: g.flagshipEscape.active
@@ -1364,12 +1465,24 @@ export default function GameScreen({
   const handleDash = useCallback(() => {
     const g = G.current;
     if (!g || g.victory) return;
+    const giganautUltimateMode = g.enemies.some((e) => e.isGiganaut && !e.dead);
     if (g.flagshipEscape?.active) {
       const now = Date.now();
       if (now < (g.booster.lastUsedAt + g.booster.cooldownMs)) return;
       g.booster.lastUsedAt = now;
       g.booster.activeUntil = now + g.booster.durationMs;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      return;
+    }
+    if (giganautUltimateMode) {
+      const wasActive = !!g.abilities.ultimate.active;
+      triggerUltimate(g.player, g.abilities);
+      if (!wasActive && g.abilities.ultimate.active) {
+        g.abilities.ultimate.selfDamagePending = true;
+        abilityUsageRef.current.ultimate += 1;
+        pushHighlight(g, 'ULTIMATE: BEAM CANNON ONLINE');
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      }
       return;
     }
     triggerDash(g.player, g.abilities);
@@ -1566,6 +1679,9 @@ export default function GameScreen({
     eventBanner,
     hyperspaceActive,
     hyperspaceSessionKey,
+    giganautEntryOverlayOpacity,
+    giganautUltimateMode,
+    ultimateBeam,
     perfectDodges,
     latestHighlight,
     flagshipEscape,
@@ -1652,6 +1768,17 @@ export default function GameScreen({
           <View style={styles.gridV2} />
           <View style={styles.gridV3} />
           <StarField time={time} cameraX={cameraX} cameraY={cameraY} />
+          {giganautEntryOverlayOpacity > 0 && (
+            <View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: `rgba(0,0,0,${0.88 * giganautEntryOverlayOpacity})`,
+                },
+              ]}
+            />
+          )}
         </View>
 
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -1826,6 +1953,7 @@ export default function GameScreen({
               color={e.glow || e.color || '#FF4F62'}
             />
           ))}
+          <UltimateBeam beam={ultimateBeam} />
           {enemies.map((e) => (
             <EnemyShip key={e.id} enemy={e} />
           ))}
@@ -1870,6 +1998,7 @@ export default function GameScreen({
             onDrone={handleDrone}
             onQuantum={handleQuantum}
             onPhase={handlePhase}
+            giganautUltimateMode={giganautUltimateMode}
             showBooster={!!flagshipEscape}
             boosterActive={boosterActive}
             boosterCooldownPct={Math.min(1, Math.max(0, boosterCooldownRemaining / Math.max(1, boosterMaxCooldown)))}

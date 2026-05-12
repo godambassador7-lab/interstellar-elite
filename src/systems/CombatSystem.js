@@ -203,6 +203,34 @@ export function runCombatFrame(state, deltaMs) {
   }
 
   // ── Energy Pulse damage ─────────────────────────────────────────────────────
+  // Giganaut Ultimate Beam damage
+  if (abilities.ultimate?.active) {
+    const beamLen = Math.max(state?.world?.width || 0, state?.world?.height || 0, 2200);
+    const bdx = abilities.ultimate.dirX || 1;
+    const bdy = abilities.ultimate.dirY || 0;
+    const bx1 = player.x;
+    const by1 = player.y;
+    const bx2 = bx1 + bdx * beamLen;
+    const by2 = by1 + bdy * beamLen;
+    const t = Math.max(0, Math.min(1, (abilities.ultimate.elapsed || 0) / Math.max(1, abilities.ultimate.durationMs || 4000)));
+    const width = 60 - 42 * t;
+    const ramp = 1.85 - 1.1 * t;
+    const beamDps = 145 * (abilities.pulse?.damageMult || 1) * ramp;
+    const beamDamage = beamDps * (deltaMs / 1000) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+    for (const enemy of enemies) {
+      if (enemy.dead) continue;
+      const dBeam = distancePointToSegment(enemy.x, enemy.y, bx1, by1, bx2, by2);
+      if (dBeam > enemy.size * 0.5 + width * 0.5) continue;
+      const dealt = applyDamage(state, enemy, beamDamage, newParticles, 'ultimate_beam');
+      if (dealt > 0) playerDealtDamage = true;
+      if (enemy.hp <= 0 && !enemy.dead) {
+        killEnemy(enemy, state, newParticles, deadEnemyIds);
+        scoreGain += enemy.score;
+        comboIncrement++;
+      }
+    }
+  }
+
   if (abilities.pulse.active && !abilities.pulse.dealtDamage) {
     abilities.pulse.dealtDamage = true;
     for (const enemy of enemies) {

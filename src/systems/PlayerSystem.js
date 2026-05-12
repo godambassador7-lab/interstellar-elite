@@ -111,6 +111,18 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
     abilities.dash.cooldownRemaining = Math.max(0, abilities.dash.cooldownRemaining - deltaMs);
   }
 
+  // Ultimate beam timers
+  if (abilities.ultimate?.active) {
+    abilities.ultimate.elapsed += deltaMs;
+    if (abilities.ultimate.elapsed >= abilities.ultimate.durationMs) {
+      abilities.ultimate.active = false;
+      abilities.ultimate.elapsed = 0;
+      abilities.ultimate.justEnded = true;
+    }
+  } else if (abilities.ultimate && abilities.ultimate.cooldownRemaining > 0) {
+    abilities.ultimate.cooldownRemaining = Math.max(0, abilities.ultimate.cooldownRemaining - deltaMs);
+  }
+
   // ── Ability: Pulse ────────────────────────────────────────────────────────────
   if (abilities.pulse.active) {
     abilities.pulse.elapsed += deltaMs;
@@ -226,6 +238,23 @@ export function triggerDash(player, abilities) {
   const fy = player.facingY || 0;
   player.vx = fx * ABILITIES.DASH.FORCE;
   player.vy = fy * ABILITIES.DASH.FORCE;
+}
+
+/**
+ * Trigger ultimate beam ability.
+ */
+export function triggerUltimate(player, abilities) {
+  if (!abilities?.ultimate) return;
+  if (abilities.ultimate.cooldownRemaining > 0 || abilities.ultimate.active) return;
+  abilities.ultimate.active = true;
+  abilities.ultimate.elapsed = 0;
+  abilities.ultimate.justEnded = false;
+  abilities.ultimate.cooldownRemaining = abilities.ultimate.maxCooldown;
+  const fx = player.facingX || 1;
+  const fy = player.facingY || 0;
+  const fl = Math.max(0.0001, Math.hypot(fx, fy));
+  abilities.ultimate.dirX = fx / fl;
+  abilities.ultimate.dirY = fy / fl;
 }
 
 /**
@@ -359,6 +388,17 @@ export function createAbilities() {
       maxCooldown: 7000,
       speedMult: 1.42,
       damageMult: 1.25,
+    },
+    ultimate: {
+      active: false,
+      elapsed: 0,
+      durationMs: 4000,
+      cooldownRemaining: 0,
+      maxCooldown: 18000,
+      dirX: 1,
+      dirY: 0,
+      justEnded: false,
+      selfDamagePending: false,
     },
   };
 }

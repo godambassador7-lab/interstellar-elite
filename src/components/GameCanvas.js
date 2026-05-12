@@ -293,10 +293,10 @@ export function EnemyShip({ enemy }) {
             <View
               style={{
                 position: 'absolute',
-                left: shipBox * 0.82,
-                top: shipBox * 0.44,
-                width: shipBox * 0.06,
-                height: shipBox * 0.16 * pulse,
+                left: shipBox * 0.46,
+                top: shipBox * 0.79,
+                width: shipBox * 0.045,
+                height: shipBox * 0.18 * pulse,
                 borderRadius: shipBox * 0.03,
                 backgroundColor: 'rgba(117,236,255,0.95)',
                 shadowColor: '#6EEFFF',
@@ -308,10 +308,10 @@ export function EnemyShip({ enemy }) {
             <View
               style={{
                 position: 'absolute',
-                left: shipBox * 0.82,
-                top: shipBox * 0.52,
-                width: shipBox * 0.06,
-                height: shipBox * 0.16 * pulse,
+                left: shipBox * 0.505,
+                top: shipBox * 0.79,
+                width: shipBox * 0.045,
+                height: shipBox * 0.18 * pulse,
                 borderRadius: shipBox * 0.03,
                 backgroundColor: 'rgba(79,188,255,0.95)',
                 shadowColor: '#49C6FF',

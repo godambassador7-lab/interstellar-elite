@@ -20,6 +20,7 @@ export function HUD({
   onDrone,
   onQuantum,
   onPhase,
+  giganautUltimateMode = false,
   showBooster = false,
   boosterActive = false,
   boosterCooldownPct = 1,
@@ -41,6 +42,14 @@ export function HUD({
   const phaseCdPct = abilities.phase
     ? abilities.phase.cooldownRemaining / abilities.phase.maxCooldown
     : 1;
+  const ultimateCdPct = abilities.ultimate
+    ? abilities.ultimate.cooldownRemaining / abilities.ultimate.maxCooldown
+    : 1;
+  const dashIcon = showBooster ? 'B' : (giganautUltimateMode ? 'U' : 'D');
+  const dashLabel = showBooster ? 'BOOST' : (giganautUltimateMode ? 'ULT' : 'DASH');
+  const dashCooldownPct = showBooster ? boosterCooldownPct : (giganautUltimateMode ? ultimateCdPct : dashCdPct);
+  const dashActiveState = showBooster ? boosterActive : (giganautUltimateMode ? !!abilities.ultimate?.active : abilities.dash.active);
+  const dashColor = showBooster ? '#7FD9FF' : (giganautUltimateMode ? '#8BDFFF' : '#30FFB5');
 
   const minutes = Math.floor(gameTime / 60);
   const seconds = Math.floor(gameTime % 60);
@@ -101,12 +110,12 @@ export function HUD({
       <View style={styles.abilityRow}>
         <View style={styles.abilityItem}>
           <AbilityButton
-            icon={showBooster ? 'B' : 'D'}
-            label={showBooster ? 'BOOST' : 'DASH'}
-            cooldownPct={showBooster ? boosterCooldownPct : dashCdPct}
-            active={showBooster ? boosterActive : abilities.dash.active}
+            icon={dashIcon}
+            label={dashLabel}
+            cooldownPct={dashCooldownPct}
+            active={dashActiveState}
             onPress={showBooster ? onBooster : onDash}
-            color={showBooster ? '#7FD9FF' : '#30FFB5'}
+            color={dashColor}
             size={58}
           />
         </View>
