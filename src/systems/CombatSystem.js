@@ -56,8 +56,10 @@ const MAX_PARTICLES = 420;
 const MAX_PHOTONS = 220;
 const MAX_DESTROYER_MISSILES = 64;
 const FLAGSHIP_MINION_LAUNCH_SPACING_MS = 120;
-const FLAGSHIP_MINION_LAUNCH_DURATION_MS = 2000;
-const FLAGSHIP_MINION_LAUNCH_SPEED_MULT = 2.0;
+const FLAGSHIP_MINION_GUNSHOT_DURATION_MS = 420;
+const FLAGSHIP_MINION_GUNSHOT_SPEED_MULT = 3.6;
+const GIGANAUT_MINION_GUNSHOT_DURATION_MS = 520;
+const GIGANAUT_MINION_GUNSHOT_SPEED_MULT = 2.8;
 const FLAGSHIP_REINFORCE_BY_QUADRANT = {
   bayron: { count: 20, intervalMs: 10000 },   // Quadrant I
   crimson: { count: 30, intervalMs: 8500 },   // Quadrant II
@@ -105,6 +107,8 @@ const GIGANAUT_REINFORCE_RATE_BY_PHASE = {
   4: 5200,
   5: 4400,
 };
+const GIGANAUT_ESCORT_RESPAWN_MS = 30000;
+const GIGANAUT_ESCORT_BATCH = 3;
 const GIGANAUT_GRAVITY_WELL_RATE_BY_PHASE = {
   1: 0,
   2: 15000,
@@ -717,6 +721,11 @@ function runGiganautBehavior(state, enemy, now) {
   if (gs.desperationMode) {
     state.eventBanner = 'DESPERATION MODE: ALL WEAPONS HOT';
   }
+  if (!enemy.giganautNextEscortAt) enemy.giganautNextEscortAt = now + GIGANAUT_ESCORT_RESPAWN_MS;
+  if (now >= enemy.giganautNextEscortAt) {
+    spawnGiganautEscortFlagships(state, enemy, GIGANAUT_ESCORT_BATCH);
+    enemy.giganautNextEscortAt = now + GIGANAUT_ESCORT_RESPAWN_MS;
+  }
 
   const dx = state.player.x - enemy.x;
   const dy = state.player.y - enemy.y;
@@ -1207,14 +1216,22 @@ function spawnFlagshipReinforcements(state, enemy, count) {
     const x = enemy.x + Math.cos(a) * r;
     const y = enemy.y + Math.sin(a) * r;
     const def = ENEMY_TYPES.swarm;
-    const dx = state.player.x - enemy.x;
-    const dy = state.player.y - enemy.y;
-    const distToPlayer = Math.max(1, Math.sqrt(dx * dx + dy * dy));
-    const launchNx = dx / distToPlayer;
-    const launchNy = dy / distToPlayer;
+    const headingLen = Math.hypot(enemy.vx || 0, enemy.vy || 0);
+    let launchNx = 1;
+    let launchNy = 0;
+    if (headingLen > 0.001) {
+      launchNx = (enemy.vx || 0) / headingLen;
+      launchNy = (enemy.vy || 0) / headingLen;
+    } else {
+      const dx = state.player.x - enemy.x;
+      const dy = state.player.y - enemy.y;
+      const distToPlayer = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+      launchNx = dx / distToPlayer;
+      launchNy = dy / distToPlayer;
+    }
     const spawnX = worldW > 0 ? Math.max(16, Math.min(worldW - 16, x)) : x;
     const spawnY = worldH > 0 ? Math.max(16, Math.min(worldH - 16, y)) : y;
-      state.enemies.push({
+    state.enemies.push({
       id: uid(),
       type: def.type,
       x: spawnX,
@@ -1235,12 +1252,59 @@ function spawnFlagshipReinforcements(state, enemy, count) {
       angle: Math.random() * 360,
       targetAngle: Math.random() * 360,
       turnRate: 180,
-        lastLaserAt: 0,
-        lastSwarmPhotonAt: 0,
+      lastLaserAt: 0,
+      lastSwarmPhotonAt: 0,
       isFlagshipMinion: true,
-      launchVx: launchNx * def.speed * FLAGSHIP_MINION_LAUNCH_SPEED_MULT,
-      launchVy: launchNy * def.speed * FLAGSHIP_MINION_LAUNCH_SPEED_MULT,
-      launchUntil: Date.now() + FLAGSHIP_MINION_LAUNCH_DURATION_MS,
-      });
-    }
+      launchVx: launchNx * def.speed * (enemy.isGiganaut ? GIGANAUT_MINION_GUNSHOT_SPEED_MULT : FLAGSHIP_MINION_GUNSHOT_SPEED_MULT),
+      launchVy: launchNy * def.speed * (enemy.isGiganaut ? GIGANAUT_MINION_GUNSHOT_SPEED_MULT : FLAGSHIP_MINION_GUNSHOT_SPEED_MULT),
+      launchUntil: Date.now() + (enemy.isGiganaut ? GIGANAUT_MINION_GUNSHOT_DURATION_MS : FLAGSHIP_MINION_GUNSHOT_DURATION_MS),
+    });
   }
+}
+
+function spawnGiganautEscortFlagships(state, giganaut, count) {
+  const worldW = state?.world?.width || 0;
+  const worldH = state?.world?.height || 0;
+  const c = Math.max(0, Math.floor(count));
+  for (let i = 0; i < c; i++) {
+    const a = (i / Math.max(1, c)) * Math.PI * 2 + Math.random() * 0.3;
+    const r = 110 + Math.random() * 34;
+    const x = giganaut.x + Math.cos(a) * r;
+    const y = giganaut.y + Math.sin(a) * r;
+    const def = ENEMY_TYPES.elite;
+    const spawnX = worldW > 0 ? Math.max(26, Math.min(worldW - 26, x)) : x;
+    const spawnY = worldH > 0 ? Math.max(26, Math.min(worldH - 26, y)) : y;
+    state.enemies.push({
+      id: uid(),
+      type: def.type,
+      x: spawnX,
+      y: spawnY,
+      vx: 0,
+      vy: 0,
+      hp: def.hp * 2.7,
+      maxHp: def.hp * 2.7,
+      speed: def.speed * 1.12,
+      damage: def.damage * 1.35,
+      size: def.size,
+      color: def.color,
+      glow: def.glow,
+      score: Math.round(def.score * 2.6),
+      points: def.points,
+      dead: false,
+      hitFlash: 0,
+      angle: Math.random() * 360,
+      targetAngle: Math.random() * 360,
+      turnRate: 160,
+      lastLaserAt: 0,
+      lastSwarmPhotonAt: 0,
+      zigZagPhase: Math.random() * Math.PI * 2,
+      zigZagTimer: 0,
+      burstTimer: 0,
+      burstActive: false,
+      burstDuration: 0,
+      isNemesis: true,
+      isGiganaut: false,
+      name: 'ESCORT FLAGSHIP',
+    });
+  }
+}
