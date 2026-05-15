@@ -107,8 +107,9 @@ const GIGANAUT_REINFORCE_RATE_BY_PHASE = {
   4: 5200,
   5: 4400,
 };
-const GIGANAUT_ESCORT_RESPAWN_MS = 30000;
+const GIGANAUT_ESCORT_RESPAWN_MS = 20000;
 const GIGANAUT_ESCORT_BATCH = 3;
+const GIGANAUT_ESCORT_SIZE_MULT = 1.9;
 const GIGANAUT_GRAVITY_WELL_RATE_BY_PHASE = {
   1: 0,
   2: 15000,
@@ -1285,7 +1286,7 @@ function spawnGiganautEscortFlagships(state, giganaut, count) {
       maxHp: def.hp * 2.7,
       speed: def.speed * 1.12,
       damage: def.damage * 1.35,
-      size: def.size,
+      size: def.size * GIGANAUT_ESCORT_SIZE_MULT,
       color: def.color,
       glow: def.glow,
       score: Math.round(def.score * 2.6),
