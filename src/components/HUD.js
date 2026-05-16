@@ -35,6 +35,12 @@ export function HUD({
 
   const dashCdPct = abilities.dash.cooldownRemaining / abilities.dash.maxCooldown;
   const pulseCdPct = abilities.pulse.cooldownRemaining / abilities.pulse.maxCooldown;
+  const overshieldMode = giganautUltimateMode;
+  const pulseIcon = overshieldMode ? 'O' : 'P';
+  const pulseLabel = overshieldMode ? 'OVERSHLD' : 'PULSE';
+  const pulseCooldownPct = overshieldMode ? 0 : pulseCdPct;
+  const pulseActive = overshieldMode ? !!abilities.pulse.overshieldActive : abilities.pulse.active;
+  const pulseColor = overshieldMode ? '#8BDFFF' : '#FF7A2E';
   const droneCdPct = abilities.drone.cooldownRemaining / abilities.drone.maxCooldown;
   const quantumCdPct = abilities.quantum
     ? abilities.quantum.cooldownRemaining / abilities.quantum.maxCooldown
@@ -122,12 +128,12 @@ export function HUD({
 
         <View style={styles.abilityItem}>
           <AbilityButton
-            icon="P"
-            label="PULSE"
-            cooldownPct={pulseCdPct}
-            active={abilities.pulse.active}
+            icon={pulseIcon}
+            label={pulseLabel}
+            cooldownPct={pulseCooldownPct}
+            active={pulseActive}
             onPress={onPulse}
-            color="#FF7A2E"
+            color={pulseColor}
             size={58}
           />
         </View>

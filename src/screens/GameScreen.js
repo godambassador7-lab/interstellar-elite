@@ -13,6 +13,7 @@ import {
   triggerDash,
   triggerUltimate,
   triggerPulse,
+  toggleOvershield,
   triggerDrone,
   triggerQuantumSlash,
   triggerPhaseSwap,
@@ -306,6 +307,7 @@ function snapshotAbilities(abilities) {
       active: abilities.pulse.active,
       cooldownRemaining: abilities.pulse.cooldownRemaining,
       maxCooldown: abilities.pulse.maxCooldown,
+      overshieldActive: !!abilities.pulse.overshieldActive,
     },
     drone: {
       active: abilities.drone.active,
@@ -359,6 +361,7 @@ function makeUiState() {
     dashTrail: [],
     pulseActive: false,
     pulseElapsed: 0,
+    overshieldActive: false,
     dronePositions: [],
     droneActive: false,
     attackRange: 90,
@@ -646,6 +649,7 @@ export default function GameScreen({
   const abilityHotkeysRef = useRef({
     dash: () => {},
     pulse: () => {},
+    overshield: () => {},
     drone: () => {},
     quantum: () => {},
   });
@@ -711,11 +715,12 @@ export default function GameScreen({
     const onKeyDown = (evt) => {
       if (!keyboardEnabled.current) return;
       const key = String(evt.key || '').toLowerCase();
-      if (['j', 'k', 'l', ';'].includes(key)) {
+      if (['j', 'k', 'l', ';', 'o'].includes(key)) {
         evt.preventDefault();
         if (evt.repeat) return;
         if (key === 'j') abilityHotkeysRef.current.dash();
         if (key === 'k') abilityHotkeysRef.current.pulse();
+        if (key === 'o') abilityHotkeysRef.current.overshield();
         if (key === 'l') abilityHotkeysRef.current.drone();
         if (key === ';') abilityHotkeysRef.current.quantum();
         return;
@@ -972,6 +977,7 @@ export default function GameScreen({
         const pdx = g.player.x - m.x;
         const pdy = g.player.y - m.y;
         if (pdx * pdx + pdy * pdy <= (m.size + 18) ** 2) {
+          if (g.abilities.pulse.overshieldActive) continue;
           g.player.hp = Math.max(0, g.player.hp - m.damage * 0.16);
           g.player.shieldRegenDelay = 3000;
           g.player.hitFlash = 8;
@@ -1360,6 +1366,7 @@ export default function GameScreen({
         }),
         pulseActive: g.abilities.pulse.active,
         pulseElapsed: g.abilities.pulse.elapsed,
+        overshieldActive: !!g.abilities.pulse.overshieldActive,
         dronePositions: g.abilities.drone.positions
           ? g.abilities.drone.positions.map((p) => {
               const s = toScreen(p.x, p.y);
@@ -1503,8 +1510,31 @@ export default function GameScreen({
   const handlePulse = useCallback(() => {
     const g = G.current;
     if (!g || g.victory) return;
+    const giganautActive = g.enemies.some((e) => e.isGiganaut && !e.dead);
+    if (giganautActive) {
+      const wasActive = !!g.abilities.pulse.overshieldActive;
+      toggleOvershield(g.player, g.abilities);
+      if (!wasActive && g.abilities.pulse.overshieldActive) {
+        abilityUsageRef.current.pulse += 1;
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      return;
+    }
     triggerPulse(g.player, g.abilities);
     abilityUsageRef.current.pulse += 1;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+  }, []);
+
+  const handleOvershieldHotkey = useCallback(() => {
+    const g = G.current;
+    if (!g || g.victory) return;
+    const giganautActive = g.enemies.some((e) => e.isGiganaut && !e.dead);
+    if (!giganautActive) return;
+    const wasActive = !!g.abilities.pulse.overshieldActive;
+    toggleOvershield(g.player, g.abilities);
+    if (!wasActive && g.abilities.pulse.overshieldActive) {
+      abilityUsageRef.current.pulse += 1;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
   }, []);
 
@@ -1535,10 +1565,11 @@ export default function GameScreen({
     abilityHotkeysRef.current = {
       dash: handleDash,
       pulse: handlePulse,
+      overshield: handleOvershieldHotkey,
       drone: handleDrone,
       quantum: handleQuantum,
     };
-  }, [handleDash, handlePulse, handleDrone, handleQuantum]);
+  }, [handleDash, handlePulse, handleOvershieldHotkey, handleDrone, handleQuantum]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -1655,6 +1686,7 @@ export default function GameScreen({
     dashTrail,
     pulseActive,
     pulseElapsed,
+    overshieldActive,
     dronePositions,
     droneActive,
     attackRange,
@@ -1979,6 +2011,7 @@ export default function GameScreen({
             isMoving={playerMoving}
             time={time}
             shieldPct={playerMaxShield > 0 ? playerShield / playerMaxShield : 0}
+            overshieldActive={overshieldActive}
           />
         </View>
 

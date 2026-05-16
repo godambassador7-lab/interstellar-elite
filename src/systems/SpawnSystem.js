@@ -119,6 +119,7 @@ function createGiganautNemesis(basePos) {
       engineCore: 100,
     },
   };
+  nemesis.visualRadiusHint = 250;
   return nemesis;
 }
 

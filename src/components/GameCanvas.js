@@ -64,12 +64,12 @@ export function useShakeOffset(screenShake) {
 }
 
 // Player ship component - rendered as geometric shapes
-export function PlayerShip({ x, y, hitFlash, attackFlash, attackDamageFlash = 0, facingAngle = 0, dashActive, isMoving = false, time = 0, shieldPct = 1 }) {
+export function PlayerShip({ x, y, hitFlash, attackFlash, attackDamageFlash = 0, facingAngle = 0, dashActive, isMoving = false, time = 0, shieldPct = 1, overshieldActive = false }) {
   const size = PLAYER.SIZE;
   const flamePulse = 0.78 + 0.22 * Math.sin(time * 24);
   const shield = Math.max(0, Math.min(1, shieldPct || 0));
   const smokePulse = 0.72 + 0.28 * Math.abs(Math.sin(time * 2.9));
-  const shieldAlpha = 0.18 + shield * 0.36;
+  const shieldAlpha = (0.18 + shield * 0.36) * (overshieldActive ? 1.45 : 1);
 
   return (
     <View style={{ position: 'absolute', left: x - size, top: y - size, width: size * 2, height: size * 2 }}>
@@ -105,7 +105,7 @@ export function PlayerShip({ x, y, hitFlash, attackFlash, attackDamageFlash = 0,
             width: size * 2.48,
             height: size * 2.48,
             borderRadius: size * 1.24,
-            borderWidth: 3.1,
+            borderWidth: overshieldActive ? 5.2 : 3.1,
             borderColor: `rgba(132,246,255,${0.26 + shield * 0.46})`,
             backgroundColor: `rgba(78,186,255,${shieldAlpha * 0.16})`,
           }} />
@@ -116,7 +116,7 @@ export function PlayerShip({ x, y, hitFlash, attackFlash, attackDamageFlash = 0,
             width: size * 2.32,
             height: size * 2.32,
             borderRadius: size * 1.16,
-            borderWidth: 2.2,
+            borderWidth: overshieldActive ? 3.8 : 2.2,
             borderColor: `rgba(210,254,255,${0.24 + shield * 0.52})`,
             backgroundColor: 'transparent',
           }} />

@@ -135,6 +135,19 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   if (!abilities.pulse.active && abilities.pulse.cooldownRemaining > 0) {
     abilities.pulse.cooldownRemaining = Math.max(0, abilities.pulse.cooldownRemaining - deltaMs);
   }
+  if (abilities.pulse.overshieldActive) {
+    abilities.pulse.overshieldElapsed += deltaMs;
+    const drain = (player.maxHp * (abilities.pulse.overshieldHullDrainPerSec || 0.02)) * dt;
+    if (drain > 0) {
+      player.hp = Math.max(0, player.hp - drain);
+      if (drain > 0) player.lastDamageSource = 'overshield_hull_drain';
+      player.shieldRegenDelay = Math.max(player.shieldRegenDelay || 0, 250);
+    }
+    if (abilities.pulse.overshieldElapsed >= (abilities.pulse.overshieldDurationMs || 10000)) {
+      abilities.pulse.overshieldActive = false;
+      abilities.pulse.overshieldElapsed = 0;
+    }
+  }
 
   // ── Ability: Drone ────────────────────────────────────────────────────────────
   if (abilities.drone.active) {
@@ -268,6 +281,20 @@ export function triggerPulse(player, abilities) {
   abilities.pulse.cooldownRemaining = abilities.pulse.maxCooldown;
 }
 
+export function toggleOvershield(player, abilities) {
+  if (!abilities?.pulse) return;
+  if (abilities.pulse.overshieldActive) {
+    abilities.pulse.overshieldActive = false;
+    abilities.pulse.overshieldElapsed = 0;
+    return;
+  }
+  abilities.pulse.overshieldActive = true;
+  abilities.pulse.overshieldElapsed = 0;
+  abilities.pulse.active = false;
+  abilities.pulse.elapsed = 0;
+  abilities.pulse.dealtDamage = false;
+}
+
 /**
  * Trigger drone ability.
  */
@@ -358,6 +385,10 @@ export function createAbilities() {
       maxCooldown: ABILITIES.PULSE.COOLDOWN,
       dealtDamage: false,
       damageMult: 1,
+      overshieldActive: false,
+      overshieldElapsed: 0,
+      overshieldDurationMs: 10000,
+      overshieldHullDrainPerSec: 0.02,
     },
     drone: {
       active: false,

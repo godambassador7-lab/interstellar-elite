@@ -133,6 +133,10 @@ function applyPlayerDamage(player, amount, source = 'unknown') {
   if (amount > 0) player.lastDamageSource = source;
 }
 
+function isOvershieldActive(state) {
+  return !!state?.abilities?.pulse?.overshieldActive;
+}
+
 function applyPlayerFreeze(player, now, durationMs = FLAGSHIP_SUPER_ORB_FREEZE_MS) {
   player.freezeUntil = Math.max(player.freezeUntil || 0, now + durationMs);
   player.hitFlash = Math.max(player.hitFlash || 0, 10);
@@ -144,6 +148,7 @@ function applyPlayerFreeze(player, now, durationMs = FLAGSHIP_SUPER_ORB_FREEZE_M
  */
 export function runCombatFrame(state, deltaMs) {
   const { player, enemies, particles, abilities } = state;
+  const overshieldActive = isOvershieldActive(state);
   const phaseDamageMult = abilities?.phase?.active ? (abilities.phase.damageMult || 1) : 1;
   const lastStandDamageMult = state?.lastStand?.active ? (state.lastStand.damageMult || 1) : 1;
   const now = Date.now();
@@ -176,7 +181,8 @@ export function runCombatFrame(state, deltaMs) {
       for (const target of selectedTargets) {
         const enemy = target.enemy;
         if (enemy.dead) continue;
-        const dmg = player.damage * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+        const overshieldRingBonus = overshieldActive ? 5 : 0;
+        const dmg = (player.damage + overshieldRingBonus) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
         const dealt = applyDamage(state, enemy, dmg, newParticles);
         if (dealt > 0) playerDealtDamage = true;
         if (enemy.hp <= 0 && !enemy.dead) {
@@ -305,6 +311,7 @@ export function runCombatFrame(state, deltaMs) {
   if (!player.invincible && now > player.invincibleUntil) {
     for (const enemy of enemies) {
       if (enemy.dead) continue;
+      if (overshieldActive) continue;
       if (circlesOverlap(player.x, player.y, PLAYER.SIZE / 2, enemy.x, enemy.y, enemy.size / 2)) {
         applyPlayerDamage(player, enemy.damage * (deltaMs / 1000) * 0.6);
         playerTookDamage = true;
@@ -327,6 +334,7 @@ export function runCombatFrame(state, deltaMs) {
     if (now - enemy.lastLaserAt >= ELITE_LASER_RATE_MS) {
       enemy.lastLaserAt = now;
       enemy.laserFlash  = 80;
+      if (overshieldActive) continue;
       applyPlayerDamage(player, ELITE_LASER_DAMAGE, 'elite_laser');
       playerTookDamage = true;
       if (player.hitFlash < 4) player.hitFlash = 4;
@@ -540,6 +548,10 @@ export function runCombatFrame(state, deltaMs) {
           ph.y += ph.vy * dt;
           ph.size = (ph.baseSize || FLAGSHIP_CHARGE_SIZE) + ((FLAGSHIP_SUPER_ORB_MAX_SIZE - (ph.baseSize || FLAGSHIP_CHARGE_SIZE)) * t);
           if (circlesOverlap(player.x, player.y, playerRadius, ph.x, ph.y, ph.size)) {
+            if (overshieldActive) {
+              ph.life = -1;
+              continue;
+            }
             applyPlayerFreeze(player, now);
             playerTookDamage = true;
           }
@@ -548,6 +560,10 @@ export function runCombatFrame(state, deltaMs) {
             ph.exploded = true;
             ph.size = FLAGSHIP_SUPER_ORB_MAX_SIZE;
             if (circlesOverlap(player.x, player.y, playerRadius, ph.x, ph.y, ph.size)) {
+              if (overshieldActive) {
+                ph.life = -1;
+                continue;
+              }
               applyPlayerFreeze(player, now);
               playerTookDamage = true;
             }
@@ -576,6 +592,10 @@ export function runCombatFrame(state, deltaMs) {
       ph.y    += ph.vy * dt;
       ph.life -= deltaMs;
       if (circlesOverlap(player.x, player.y, playerRadius, ph.x, ph.y, ph.size)) {
+        if (overshieldActive) {
+          ph.life = -1;
+          continue;
+        }
         applyPlayerDamage(player, ph.damage, ph.color === '#FF4E4E' ? 'flagship_red_barrage' : 'enemy_photon');
         playerTookDamage = true;
         player.hitFlash   = 14;
@@ -598,6 +618,11 @@ export function runCombatFrame(state, deltaMs) {
       missile.y += missile.vy * dt;
       missile.life -= deltaMs;
       if (circlesOverlap(player.x, player.y, playerRadius, missile.x, missile.y, missile.size || DESTROYER_MISSILE_SIZE)) {
+        if (overshieldActive) {
+          missile.dead = true;
+          missile.life = -1;
+          continue;
+        }
         applyPlayerDamage(player, missile.damage || DESTROYER_MISSILE_DAMAGE, 'destroyer_missile');
         playerTookDamage = true;
         player.hitFlash = 14;
@@ -912,7 +937,7 @@ function runGiganautBehavior(state, enemy, now) {
       const arcBand = 42 + (gs.phase * 4);
       const nearXBand = Math.abs((state.player.x % 160) - 80) < arcBand * 0.25;
       const nearYBand = Math.abs((state.player.y % 160) - 80) < arcBand * 0.25;
-      if (nearXBand || nearYBand) {
+      if ((nearXBand || nearYBand) && !isOvershieldActive(state)) {
         applyPlayerDamage(state.player, 7 + gs.phase * 1.4, 'giganaut_arc_corridor');
       }
       enemy.giganautNextArcAt = now + 1150;
@@ -1017,7 +1042,7 @@ function runGiganautBehavior(state, enemy, now) {
   gs.adaptiveAI.missileInterceptionGrid = missileHeavyPressure;
   gs.adaptiveAI.empShockwaves = closeCombat;
   gs.adaptiveAI.cloakingDrones = sniperStyle;
-  if (gs.adaptiveAI.empShockwaves && now % 1600 < 20 && d < 160) {
+  if (gs.adaptiveAI.empShockwaves && now % 1600 < 20 && d < 160 && !isOvershieldActive(state)) {
     applyPlayerDamage(state.player, 6.5, 'giganaut_emp_shockwave');
   }
 }
@@ -1267,9 +1292,10 @@ function spawnGiganautEscortFlagships(state, giganaut, count) {
   const worldW = state?.world?.width || 0;
   const worldH = state?.world?.height || 0;
   const c = Math.max(0, Math.floor(count));
+  const visualClearRadius = Math.max((giganaut.visualRadiusHint || 250) + 70, (giganaut.size || 0) * 2.8);
   for (let i = 0; i < c; i++) {
     const a = (i / Math.max(1, c)) * Math.PI * 2 + Math.random() * 0.3;
-    const r = 110 + Math.random() * 34;
+    const r = visualClearRadius + Math.random() * 80;
     const x = giganaut.x + Math.cos(a) * r;
     const y = giganaut.y + Math.sin(a) * r;
     const def = ENEMY_TYPES.elite;
