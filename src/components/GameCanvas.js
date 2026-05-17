@@ -85,6 +85,38 @@ export function PlayerShip({ x, y, hitFlash, attackFlash, attackDamageFlash = 0,
       }} />
       {shield > 0.02 && (
         <>
+          {overshieldActive && (
+            <>
+              <View style={{
+                position: 'absolute',
+                left: -size * 0.64,
+                top: -size * 0.64,
+                width: size * 3.28,
+                height: size * 3.28,
+                borderRadius: size * 1.64,
+                backgroundColor: `rgba(255,76,44,${0.16 + 0.1 * smokePulse})`,
+                shadowColor: '#FF6E3A',
+                shadowOpacity: 0.92,
+                shadowRadius: 24,
+                shadowOffset: { width: 0, height: 0 },
+              }} />
+              <View style={{
+                position: 'absolute',
+                left: -size * 0.64,
+                top: -size * 0.64,
+                width: size * 3.28,
+                height: size * 3.28,
+                borderRadius: size * 1.64,
+                borderWidth: 6,
+                borderColor: `rgba(255,112,64,${0.7 + 0.2 * smokePulse})`,
+                backgroundColor: 'transparent',
+                shadowColor: '#FF8A50',
+                shadowOpacity: 1,
+                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 0 },
+              }} />
+            </>
+          )}
           <View style={{
             position: 'absolute',
             left: -size * 0.34,
