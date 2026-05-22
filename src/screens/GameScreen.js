@@ -809,6 +809,7 @@ export default function GameScreen({
       lastSpawnTime: 0,
       gameTime: 0,
       galaxy: combatGalaxy,
+      systemNumber: Math.max(1, Number(systemNumber) || 1),
       currentWave: 1,
       maxWaves,
       waveSpawnRemaining: getWaveEnemyCount(1, combatGalaxy),

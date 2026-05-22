@@ -30,6 +30,26 @@ const ENEMY_SPRITES = {
     require('../../Enemy Fighter Pack/Small fighers/small fighter 2.png'),
     require('../../Enemy Fighter Pack/Small fighers/small fighter 3.png'),
   ],
+  legionary: [
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/Legionaries/portrait (33).png'),
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/Legionaries/portrait (37).png'),
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/Legionaries/portrait (40).png'),
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/Legionaries/portrait (43).png'),
+  ],
+  raybin: [
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/Raybins/portrait (34).png'),
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/Raybins/portrait (41).png'),
+  ],
+  hord: [
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/The Hord/portrait (32).png'),
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/The Hord/portrait (35).png'),
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/The Hord/portrait (38).png'),
+  ],
+  outlander: [
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/The Outlanders/portrait (36).png'),
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/The Outlanders/portrait (39).png'),
+    require('../../Enemy Fighter Pack/Alien Ship pack 1/The Outlanders/portrait (42).png'),
+  ],
 };
 
 // Star field - static background stars
@@ -230,7 +250,23 @@ export function EnemyShip({ enemy }) {
   const charging = !!enemy.flagshipChargeActive;
   const flashColor = hitFlash > 0 ? '#FFFFFF' : (charging ? '#66C8FF' : ((!isGiganaut && enemy.isLastFlagship) ? '#FF2A2A' : color));
   const hpPct = hp / maxHp;
-  const classKey = isGiganaut ? 'giganaut' : enemy.isNemesis ? 'flagship' : type === 'heavy' ? 'destroyer' : type === 'elite' ? 'interceptor' : 'fighter';
+  const classKey = isGiganaut
+    ? 'giganaut'
+    : enemy.isNemesis
+      ? 'flagship'
+      : type === 'heavy'
+        ? 'destroyer'
+        : type === 'elite'
+          ? 'interceptor'
+          : type === 'legionary'
+            ? 'legionary'
+            : type === 'raybin'
+              ? 'raybin'
+              : type === 'hord'
+                ? 'hord'
+                : type === 'outlander'
+                  ? 'outlander'
+                  : 'fighter';
   const spritePool = ENEMY_SPRITES[classKey];
   const enemyId = String(enemy.id || '');
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
@@ -240,7 +276,13 @@ export function EnemyShip({ enemy }) {
   const FLAGSHIP_BASE_SIZE = ENEMY_TYPES.elite.size;
   const FLAGSHIP_VISUAL_BOX = FLAGSHIP_BASE_SIZE * FLAGSHIP_VISUAL_SCALE;
   const flagshipScale = isGiganaut ? FLAGSHIP_VISUAL_SCALE * GIGANAUT_VISUAL_MULT : FLAGSHIP_VISUAL_SCALE;
-  const scaleByClass = (classKey === 'flagship' || classKey === 'giganaut') ? flagshipScale : classKey === 'interceptor' ? 5.4 : 2.3;
+  const scaleByClass = (classKey === 'flagship' || classKey === 'giganaut')
+    ? flagshipScale
+    : classKey === 'interceptor' || classKey === 'outlander'
+      ? 5.4
+      : classKey === 'hord'
+        ? 3.1
+        : 2.3;
   const shipBox =
     classKey === 'giganaut'
       ? FLAGSHIP_VISUAL_BOX * GIGANAUT_VISUAL_MULT
@@ -249,7 +291,7 @@ export function EnemyShip({ enemy }) {
       : classKey === 'destroyer'
         ? FLAGSHIP_VISUAL_BOX * 0.5
         : size * scaleByClass;
-  const showHpBar = classKey === 'destroyer' || classKey === 'flagship' || isGiganaut;
+  const showHpBar = classKey === 'destroyer' || classKey === 'flagship' || classKey === 'hord' || isGiganaut;
   const enemySpeed = Math.hypot(enemy.vx || 0, enemy.vy || 0);
   const moving = enemySpeed > 8;
   const t = (enemy.gameTime || 0) * 22 + (enemy.id?.length || 0);

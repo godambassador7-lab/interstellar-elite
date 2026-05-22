@@ -28,6 +28,29 @@ const SWARM_PHOTON_DAMAGE    = 2.5;
 const SWARM_PHOTON_SPEED     = 250;
 const SWARM_PHOTON_SIZE      = 5;
 const SWARM_PHOTON_LIFE_MS   = 2000;
+const LEGIONARY_PHOTON_RANGE_SQ = 360 * 360;
+const LEGIONARY_PHOTON_RATE_MS = 260;
+const LEGIONARY_PHOTON_DAMAGE = 4.2;
+const LEGIONARY_PHOTON_SPEED = 390;
+const LEGIONARY_PHOTON_SIZE = 5;
+const LEGIONARY_PHOTON_LIFE_MS = 2000;
+const RAYBIN_MISSILE_RANGE_SQ = 460 * 460;
+const RAYBIN_MISSILE_RATE_MS = 1800;
+const RAYBIN_MISSILE_DAMAGE = 22;
+const RAYBIN_MISSILE_SPEED = 332;
+const RAYBIN_MISSILE_TURN = 0.11;
+const RAYBIN_MISSILE_SIZE = 10;
+const RAYBIN_MISSILE_LIFE_MS = 7000;
+const HORD_WELL_RANGE_SQ = 420 * 420;
+const HORD_WELL_RATE_MS = 7000;
+const HORD_WELL_RADIUS = 92;
+const HORD_WELL_STRENGTH = 240;
+const HORD_WELL_LIFE_MS = 4200;
+const OUTLANDER_TELEPORT_RANGE_SQ = 540 * 540;
+const OUTLANDER_TELEPORT_RATE_MS = 3600;
+const OUTLANDER_LASER_RANGE_SQ = 240 * 240;
+const OUTLANDER_LASER_RATE_MS = 140;
+const OUTLANDER_LASER_DAMAGE = 0.014;
 
 const FLAGSHIP_BARRAGE_DURATION_MS = 3000;
 const FLAGSHIP_BARRAGE_RATE_MS = 110;
@@ -109,7 +132,7 @@ const GIGANAUT_REINFORCE_RATE_BY_PHASE = {
 };
 const GIGANAUT_ESCORT_RESPAWN_MS = 20000;
 const GIGANAUT_ESCORT_BATCH = 3;
-const GIGANAUT_ESCORT_SIZE_MULT = 1.9;
+const GIGANAUT_ESCORT_SIZE_MULT = 1;
 const GIGANAUT_GRAVITY_WELL_RATE_BY_PHASE = {
   1: 0,
   2: 15000,
@@ -406,6 +429,102 @@ export function runCombatFrame(state, deltaMs) {
         color: '#2DFFB2',
         glowColor: 'rgba(45,255,178,0.12)',
       });
+    }
+  }
+  // ── Legionary hyper photons (alien class) ───────────────────────────────────
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.type !== 'legionary') continue;
+    const dx = player.x - enemy.x;
+    const dy = player.y - enemy.y;
+    const dSq = dx * dx + dy * dy;
+    if (dSq > LEGIONARY_PHOTON_RANGE_SQ) continue;
+    if (now - (enemy.lastLegionaryPhotonAt || 0) >= LEGIONARY_PHOTON_RATE_MS) {
+      enemy.lastLegionaryPhotonAt = now;
+      const d = Math.max(1, Math.sqrt(dSq));
+      state.photons.push({
+        id: uid(),
+        x: enemy.x, y: enemy.y,
+        vx: (dx / d) * LEGIONARY_PHOTON_SPEED,
+        vy: (dy / d) * LEGIONARY_PHOTON_SPEED,
+        damage: LEGIONARY_PHOTON_DAMAGE,
+        size: LEGIONARY_PHOTON_SIZE,
+        life: LEGIONARY_PHOTON_LIFE_MS,
+        maxLife: LEGIONARY_PHOTON_LIFE_MS,
+        color: '#67E8FF',
+        glowColor: 'rgba(103,232,255,0.18)',
+      });
+    }
+  }
+  // ── Raybin rapid missiles (alien class) ─────────────────────────────────────
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.type !== 'raybin') continue;
+    const dx = player.x - enemy.x;
+    const dy = player.y - enemy.y;
+    const dSq = dx * dx + dy * dy;
+    if (dSq > RAYBIN_MISSILE_RANGE_SQ) continue;
+    if (now - (enemy.lastRaybinMissileAt || 0) >= RAYBIN_MISSILE_RATE_MS) {
+      enemy.lastRaybinMissileAt = now;
+      const d = Math.max(1, Math.sqrt(dSq));
+      state.destroyerMissiles.push({
+        id: uid(),
+        x: enemy.x, y: enemy.y,
+        vx: (dx / d) * RAYBIN_MISSILE_SPEED,
+        vy: (dy / d) * RAYBIN_MISSILE_SPEED,
+        speed: RAYBIN_MISSILE_SPEED,
+        turnRate: RAYBIN_MISSILE_TURN,
+        damage: RAYBIN_MISSILE_DAMAGE,
+        size: RAYBIN_MISSILE_SIZE,
+        life: RAYBIN_MISSILE_LIFE_MS,
+        maxLife: RAYBIN_MISSILE_LIFE_MS,
+        color: '#FFBA7A',
+        glowColor: 'rgba(255,164,92,0.26)',
+        missile: true,
+      });
+    }
+  }
+  // ── Hord gravity well caster (alien class) ──────────────────────────────────
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.type !== 'hord') continue;
+    const dx = player.x - enemy.x;
+    const dy = player.y - enemy.y;
+    const dSq = dx * dx + dy * dy;
+    if (dSq > HORD_WELL_RANGE_SQ) continue;
+    if (now - (enemy.lastHordWellAt || 0) >= HORD_WELL_RATE_MS) {
+      enemy.lastHordWellAt = now;
+      if (!state.gravityWells) state.gravityWells = [];
+      if (state.gravityWells.length < 6) {
+        state.gravityWells.push({
+          id: uid(),
+          x: player.x + (Math.random() - 0.5) * 120,
+          y: player.y + (Math.random() - 0.5) * 120,
+          radius: HORD_WELL_RADIUS,
+          strength: HORD_WELL_STRENGTH,
+          lifeMs: HORD_WELL_LIFE_MS,
+        });
+      }
+    }
+  }
+  // ── Outlander teleport + photon laser (alien class) ─────────────────────────
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.type !== 'outlander') continue;
+    const dx = player.x - enemy.x;
+    const dy = player.y - enemy.y;
+    const dSq = dx * dx + dy * dy;
+    if (enemy.laserFlash > 0) enemy.laserFlash -= deltaMs;
+    if (dSq <= OUTLANDER_TELEPORT_RANGE_SQ && now - (enemy.lastOutlanderTeleportAt || 0) >= OUTLANDER_TELEPORT_RATE_MS) {
+      enemy.lastOutlanderTeleportAt = now;
+      const angle = Math.atan2(dy, dx) + ((Math.random() - 0.5) * 1.0);
+      const radius = 90 + Math.random() * 55;
+      enemy.x = Math.max(enemy.size / 2, Math.min((state?.world?.width || 1200) - enemy.size / 2, player.x - Math.cos(angle) * radius));
+      enemy.y = Math.max(enemy.size / 2, Math.min((state?.world?.height || 800) - enemy.size / 2, player.y - Math.sin(angle) * radius));
+    }
+    if (dSq <= OUTLANDER_LASER_RANGE_SQ && now - (enemy.lastOutlanderLaserAt || 0) >= OUTLANDER_LASER_RATE_MS) {
+      enemy.lastOutlanderLaserAt = now;
+      enemy.laserFlash = 90;
+      if (overshieldActive) continue;
+      applyPlayerDamage(player, OUTLANDER_LASER_DAMAGE, 'outlander_photon_laser');
+      playerTookDamage = true;
+      if (player.hitFlash < 4) player.hitFlash = 4;
     }
   }
 
@@ -1310,7 +1429,7 @@ function spawnGiganautEscortFlagships(state, giganaut, count) {
       vy: 0,
       hp: def.hp * 2.7,
       maxHp: def.hp * 2.7,
-      speed: def.speed * 1.12,
+        speed: def.speed * 1.5,
       damage: def.damage * 1.35,
       size: def.size * GIGANAUT_ESCORT_SIZE_MULT,
       color: def.color,
