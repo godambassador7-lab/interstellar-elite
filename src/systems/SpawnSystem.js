@@ -5,6 +5,40 @@ import { uid } from '../utils/mathUtils';
 
 const GIGANAUT_SIZE = ENEMY_TYPES.elite.size * 2;
 
+const SYSTEM_ELITE_SPAWN_WEIGHTS = {
+  frontier: [
+    { key: 'legionary', w: 0.46 },
+    { key: 'raybin', w: 0.24 },
+    { key: 'hord', w: 0.14 },
+    { key: 'outlander', w: 0.16 },
+  ],
+  contested: [
+    { key: 'legionary', w: 0.22 },
+    { key: 'raybin', w: 0.42 },
+    { key: 'hord', w: 0.14 },
+    { key: 'outlander', w: 0.22 },
+  ],
+  warzone: [
+    { key: 'legionary', w: 0.16 },
+    { key: 'raybin', w: 0.2 },
+    { key: 'hord', w: 0.48 },
+    { key: 'outlander', w: 0.16 },
+  ],
+  core: [
+    { key: 'legionary', w: 0.14 },
+    { key: 'raybin', w: 0.22 },
+    { key: 'hord', w: 0.2 },
+    { key: 'outlander', w: 0.44 },
+  ],
+};
+
+const SYSTEM_DIFFICULTY_CURVES = {
+  frontier: { waveMult: 0.92, spawnIntervalMult: 1.08, activeCapMult: 0.9, eliteChanceBonus: -0.02 },
+  contested: { waveMult: 1.04, spawnIntervalMult: 0.97, activeCapMult: 1.03, eliteChanceBonus: 0.01 },
+  warzone: { waveMult: 1.14, spawnIntervalMult: 0.88, activeCapMult: 1.16, eliteChanceBonus: 0.03 },
+  core: { waveMult: 1.22, spawnIntervalMult: 0.81, activeCapMult: 1.24, eliteChanceBonus: 0.05 },
+};
+
 function getSystemType(state) {
   const galaxySystems = Math.max(1, Number(state?.galaxy?.systems) || 1);
   const systemNumber = Math.max(1, Math.min(galaxySystems, Number(state?.systemNumber) || 1));
@@ -15,8 +49,26 @@ function getSystemType(state) {
   return 'core';
 }
 
-function chooseAdvancedTypeBySystem(state) {
+function chooseWeightedType(entries, fallback = ENEMY_TYPES.legionary) {
+  if (!entries?.length) return fallback;
+  let r = Math.random();
+  for (const entry of entries) {
+    r -= entry.w;
+    if (r <= 0) return ENEMY_TYPES[entry.key] || fallback;
+  }
+  const tail = entries[entries.length - 1];
+  return ENEMY_TYPES[tail.key] || fallback;
+}
+
+function getSystemSpawnProfile(state) {
   const systemType = getSystemType(state);
+  const weights = SYSTEM_ELITE_SPAWN_WEIGHTS[systemType] || SYSTEM_ELITE_SPAWN_WEIGHTS.frontier;
+  const curve = SYSTEM_DIFFICULTY_CURVES[systemType] || SYSTEM_DIFFICULTY_CURVES.frontier;
+  return { systemType, weights, curve };
+}
+
+function chooseAdvancedTypeBySystem(state) {
+  const { systemType, weights } = getSystemSpawnProfile(state);
   const quadrant = state?.galaxy?.quadrant || 'bayron';
   const locks = {
     bayron: {
@@ -44,8 +96,10 @@ function chooseAdvancedTypeBySystem(state) {
       core: 'outlander',
     },
   };
-  const pick = (locks[quadrant] && locks[quadrant][systemType]) || 'legionary';
-  return ENEMY_TYPES[pick] || ENEMY_TYPES.legionary;
+  const lockPick = (locks[quadrant] && locks[quadrant][systemType]) || 'legionary';
+  const lockWeight = 0.52;
+  if (Math.random() < lockWeight) return ENEMY_TYPES[lockPick] || ENEMY_TYPES.legionary;
+  return chooseWeightedType(weights, ENEMY_TYPES[lockPick] || ENEMY_TYPES.legionary);
 }
 
 function chooseTypeForSpecialScenario(state) {
@@ -85,12 +139,14 @@ function normalizeAngleDelta(delta) {
   return d;
 }
 
-export function getWaveEnemyCount(wave, galaxy) {
+export function getWaveEnemyCount(wave, galaxy, systemNumber = 1) {
   const baseEnemies = galaxy?.baseEnemies ?? 14;
   const enemyGrowth = galaxy?.enemyGrowth ?? 5;
   const threat = galaxy?.threat ?? 1;
+  const systemType = getSystemType({ galaxy, systemNumber });
+  const curveCfg = SYSTEM_DIFFICULTY_CURVES[systemType] || SYSTEM_DIFFICULTY_CURVES.frontier;
   const curve = 1 + Math.min(0.42, Math.max(0, wave - 1) * 0.035);
-  return Math.max(6, Math.round((baseEnemies + (wave - 1) * enemyGrowth) * threat * curve));
+  return Math.max(6, Math.round((baseEnemies + (wave - 1) * enemyGrowth) * threat * curve * curveCfg.waveMult));
 }
 
 /**
@@ -102,22 +158,24 @@ export function trySpawn(state) {
   if (state.waveSpawnRemaining <= 0) return null;
   if (now < (state.nextWaveSpawnAt || 0)) return null;
   const threat = state.galaxy?.threat ?? 1;
+  const { curve: systemCurve } = getSystemSpawnProfile(state);
   const specialMode = state?.specialScenario;
   const specialActiveMult = specialMode === 'armageddon' ? 1.85 : specialMode === 'meganaut' ? 1.46 : specialMode === 'singularity' ? 1.28 : 1;
-  const maxActive = Math.round((10 + state.currentWave * 1.8) * threat * specialActiveMult);
+  const maxActive = Math.round((10 + state.currentWave * 1.8) * threat * specialActiveMult * systemCurve.activeCapMult);
   if (state.enemies.length >= maxActive) return null;
 
   const waveSoft = Math.min(11, state.currentWave);
   const interval = Math.max(
     130,
     ((840 - waveSoft * 44) / threat) *
-      (specialMode === 'armageddon' ? 0.5 : specialMode === 'meganaut' ? 0.62 : specialMode === 'singularity' ? 0.56 : 1)
+      (specialMode === 'armageddon' ? 0.5 : specialMode === 'meganaut' ? 0.62 : specialMode === 'singularity' ? 0.56 : 1) *
+      systemCurve.spawnIntervalMult
   );
   if (now - state.lastSpawnTime < interval) return null;
   state.lastSpawnTime = now;
 
   const waveProgress = state.currentWave / Math.max(1, state.maxWaves);
-  const eliteChance = Math.min(0.28, 0.035 + waveProgress * 0.13 + state.currentWave * 0.015 * threat);
+  const eliteChance = Math.min(0.34, Math.max(0.02, 0.035 + waveProgress * 0.13 + state.currentWave * 0.015 * threat + systemCurve.eliteChanceBonus));
   const heavyChance = Math.min(0.3, 0.085 + waveProgress * 0.11 + state.currentWave * 0.016 * threat);
 
   const advancedChance = Math.min(0.42, Math.max(0, waveProgress - 0.14) * 0.55 + state.currentWave * 0.012);

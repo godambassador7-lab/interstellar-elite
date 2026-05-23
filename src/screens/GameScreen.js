@@ -925,12 +925,12 @@ If history survives.`
       currentWave: 1,
       maxWaves,
       waveSpawnRemaining: specialScenario === 'armageddon'
-        ? Math.max(22, Math.round(getWaveEnemyCount(1, combatGalaxy) * 1.6))
-        : specialScenario === 'meganaut'
-          ? Math.max(14, Math.round(getWaveEnemyCount(1, combatGalaxy) * 1.25))
-        : specialScenario === 'singularity'
-          ? 0
-          : getWaveEnemyCount(1, combatGalaxy),
+        ? Math.max(22, Math.round(getWaveEnemyCount(1, combatGalaxy, systemNumber) * 1.6))
+          : specialScenario === 'meganaut'
+          ? Math.max(14, Math.round(getWaveEnemyCount(1, combatGalaxy, systemNumber) * 1.25))
+          : specialScenario === 'singularity'
+            ? 0
+          : getWaveEnemyCount(1, combatGalaxy, systemNumber),
       nextWaveSpawnAt: Date.now() + 500,
       nextShopWave: randomShopInterval(),
       upgradeThresholds: runUpgradeThresholds,
@@ -1402,12 +1402,12 @@ If history survives.`
           g.currentWave += 1;
           if (g.specialScenario === 'armageddon') {
             const armScale = 1.52 + Math.min(0.46, g.currentWave * 0.012);
-            g.waveSpawnRemaining = Math.max(24, Math.round(getWaveEnemyCount(g.currentWave, g.galaxy) * armScale));
+            g.waveSpawnRemaining = Math.max(24, Math.round(getWaveEnemyCount(g.currentWave, g.galaxy, systemNumber) * armScale));
           } else if (g.specialScenario === 'meganaut') {
             const megaScale = 1.22 + Math.min(0.3, g.currentWave * 0.024);
-            g.waveSpawnRemaining = Math.max(16, Math.round(getWaveEnemyCount(g.currentWave, g.galaxy) * megaScale));
+            g.waveSpawnRemaining = Math.max(16, Math.round(getWaveEnemyCount(g.currentWave, g.galaxy, systemNumber) * megaScale));
           } else {
-            g.waveSpawnRemaining = getWaveEnemyCount(g.currentWave, g.galaxy);
+            g.waveSpawnRemaining = getWaveEnemyCount(g.currentWave, g.galaxy, systemNumber);
           }
           g.nextWaveSpawnAt = Date.now() + (shouldOpenShop ? 350 : 900);
 
