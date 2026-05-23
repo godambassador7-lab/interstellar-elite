@@ -182,7 +182,7 @@ export default function ConquestScreen({
       let x = 0.5;
       let y = 0.5;
       let placed = false;
-      for (let tries = 0; tries < 64; tries++) {
+      for (let tries = 0; tries < 220; tries++) {
         const ang = rand() * Math.PI * 2;
         const radial = Math.sqrt(rand());
         const rx = 0.42;
@@ -204,11 +204,33 @@ export default function ConquestScreen({
           break;
         }
       }
+
       if (!placed) {
-        const ang = rand() * Math.PI * 2;
-        const radial = 0.12 + rand() * 0.3;
-        x = 0.5 + Math.cos(ang) * radial;
-        y = 0.5 + Math.sin(ang) * radial * 0.88;
+        // Fallback still constrained to the visible tilted galaxy body.
+        let best = null;
+        for (let retries = 0; retries < 420; retries++) {
+          const ang = rand() * Math.PI * 2;
+          const radial = 0.08 + rand() * 0.36;
+          const fx = 0.5 + Math.cos(ang) * radial * 0.95;
+          const fy = 0.5 + Math.sin(ang) * radial * 0.82;
+          if (fx < 0.1 || fx > 0.9 || fy < 0.14 || fy > 0.86 || !inGalaxyShape(fx, fy)) continue;
+          let minD2 = Infinity;
+          for (const n of nodes) {
+            const dx = n.nx - fx;
+            const dy = n.ny - fy;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < minD2) minD2 = d2;
+          }
+          if (!best || minD2 > best.minD2) best = { x: fx, y: fy, minD2 };
+        }
+        if (best) {
+          x = best.x;
+          y = best.y;
+        } else {
+          // Final emergency clamp around luminous core, never in outer black space.
+          x = 0.5 + (rand() - 0.5) * 0.22;
+          y = 0.5 + (rand() - 0.5) * 0.16;
+        }
       }
       nodes.push({ systemNumber: i, nx: x, ny: y });
     }
