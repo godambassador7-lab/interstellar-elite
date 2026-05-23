@@ -1,7 +1,7 @@
 // src/screens/GameScreen.js
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image, Platform, Share, useWindowDimensions } from 'react-native';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { View, StyleSheet, SafeAreaView, Animated, Text, TouchableOpacity, PanResponder, Image, Platform, Share, useWindowDimensions, ScrollView } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Video, ResizeMode } from 'expo-av';
 
@@ -639,6 +639,8 @@ function hasActiveWeapon(abilities) {
 export default function GameScreen({
   galaxy,
   systemNumber = 1,
+  showIntroStory = false,
+  onIntroStoryComplete,
   specialScenario = null,
   quadrantAbilityUnlocks = {},
   metaUpgrades = {},
@@ -653,6 +655,9 @@ export default function GameScreen({
   const [uiState, setUiState] = useState(makeUiState);
   const [gameKey, setGameKey] = useState(0);
   const [battleBgCrop, setBattleBgCrop] = useState(() => pickBattleBgCrop());
+  const [showIntroOverlay, setShowIntroOverlay] = useState(!!showIntroStory);
+  const [introTypedChars, setIntroTypedChars] = useState(0);
+  const introFade = useRef(new Animated.Value(0)).current;
 
   const G = useRef(null);
   const joystick = useRef({ dx: 0, dy: 0 });
@@ -675,8 +680,84 @@ export default function GameScreen({
   const peakComboRef = useRef(0);
   const abilityUsageRef = useRef({ dash: 0, pulse: 0, drone: 0, phase: 0, ultimate: 0 });
   const basePlayerDamageRef = useRef(0);
+  const introVisibleRef = useRef(!!showIntroStory);
 
   const { shakeX, shakeY, applyShake } = useShakeOffset();
+  const introFullText = useMemo(() => (
+`They called you a dreamer.
+A coward hiding behind shields.
+A scientist afraid of real power.
+
+For decades, the civilizations of the known universe mocked your life's work — defensive barrier systems capable of absorbing the destructive force of stars themselves. While empires raced to create larger fleets, stronger cannons, and weapons capable of tearing holes through space-time, you warned them of the inevitable consequence:
+
+Every distortion.
+Every rupture.
+Every experimental superweapon.
+
+The universe was becoming unstable.
+
+No one listened.
+
+Then they stole your technology.
+
+Your shielding systems were reverse-engineered into weapons beyond imagination. Planet-killers. Singularity bombs. Temporal fractures. Entire star systems vanished in moments as governments and warlords competed for domination. Space itself began to collapse under the strain.
+
+Now, the universe approaches what your calculations named:
+
+THE GREAT CRITICAL MASS
+
+The final threshold where accumulated space-time instability triggers a total universal implosion.
+
+There is no senate left to appeal to.
+No alliance powerful enough to stop the chaos.
+Only one truth remains:
+
+The galaxy cannot be trusted with this power.
+
+You are the Celestial Engineer — the greatest scientific mind ever born — and creator of the only technology capable of stabilizing the universe. To save existence itself, you must seize control of the fractured systems before rival empires destroy reality entirely.
+
+Your mission is no longer conquest for power.
+It is conquest for survival.
+
+Every world secured strengthens the Stabilization Network.
+Every enemy defeated removes another catastrophic weapon from circulation.
+Every fleet you command pushes the universe one step farther from annihilation.
+
+Some will call you a tyrant.
+Others, a savior.
+
+History will decide.
+
+If history survives.`
+  ), []);
+
+  useEffect(() => {
+    const visible = !!showIntroStory;
+    setShowIntroOverlay(visible);
+    introVisibleRef.current = visible;
+    if (visible) {
+      setIntroTypedChars(0);
+      introFade.setValue(0);
+      Animated.timing(introFade, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showIntroStory]);
+  useEffect(() => {
+    if (!showIntroOverlay) return undefined;
+    const interval = setInterval(() => {
+      setIntroTypedChars((prev) => {
+        if (prev >= introFullText.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        return Math.min(introFullText.length, prev + 18);
+      });
+    }, 45);
+    return () => clearInterval(interval);
+  }, [showIntroOverlay, introFullText]);
 
   const pushHighlight = useCallback((g, type, details = {}) => {
     g.latestHighlight = {
@@ -973,6 +1054,11 @@ export default function GameScreen({
       lastTs.current = ts;
 
       if (isPaused.current) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+      if (introVisibleRef.current) {
+        lastTs.current = ts;
         rafRef.current = requestAnimationFrame(loop);
         return;
       }
@@ -1807,6 +1893,11 @@ export default function GameScreen({
     setUiState(makeUiState());
     setGameKey((k) => k + 1);
   }, []);
+  const handleBeginMission = useCallback(() => {
+    setShowIntroOverlay(false);
+    introVisibleRef.current = false;
+    onIntroStoryComplete?.();
+  }, [onIntroStoryComplete]);
 
   const {
     playerHp,
@@ -2310,6 +2401,23 @@ export default function GameScreen({
             </TouchableOpacity>
           </View>
         )}
+
+        {showIntroOverlay && (
+          <Animated.View style={[styles.introOverlay, { opacity: introFade }]}>
+            <Animated.Text style={[styles.introTitle, {
+              opacity: introFade,
+              transform: [{ translateY: introFade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+            }]}>
+              INTERSTELLAR ELITE
+            </Animated.Text>
+            <ScrollView style={styles.introScroll} contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.introText}>{introFullText.slice(0, introTypedChars)}</Text>
+            </ScrollView>
+            <TouchableOpacity style={styles.introBtn} activeOpacity={0.85} onPress={handleBeginMission}>
+              <Text style={styles.introBtnText}>BEGIN MISSION</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
       </Animated.View>
     </SafeAreaView>
   );
@@ -2590,5 +2698,69 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     letterSpacing: 1.2,
+  },
+  introOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 400,
+    backgroundColor: 'rgba(2,6,14,0.98)',
+    paddingTop: 56,
+    paddingHorizontal: 18,
+    paddingBottom: 22,
+  },
+  introTitle: {
+    color: '#67F3FF',
+    fontFamily: 'Courier New',
+    fontSize: 24,
+    fontWeight: 'bold',
+    letterSpacing: 2.8,
+    textAlign: 'center',
+    marginBottom: 12,
+    textShadowColor: '#67F3FF',
+    textShadowRadius: 12,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  introScroll: {
+    flex: 1,
+  },
+  introContent: {
+    paddingBottom: 20,
+  },
+  introText: {
+    color: 'rgba(206,224,244,0.9)',
+    fontFamily: 'Courier New',
+    fontSize: 12,
+    lineHeight: 18,
+    letterSpacing: 0.4,
+  },
+  introCritical: {
+    color: '#FF6D6D',
+    fontFamily: 'Courier New',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    textAlign: 'center',
+    textShadowColor: '#FF3D3D',
+    textShadowRadius: 10,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  introBtn: {
+    marginTop: 12,
+    borderWidth: 1.5,
+    borderColor: '#44FF88',
+    backgroundColor: 'rgba(68,255,136,0.12)',
+    borderRadius: 6,
+    alignItems: 'center',
+    paddingVertical: 13,
+  },
+  introBtnText: {
+    color: '#44FF88',
+    fontFamily: 'Courier New',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 2,
   },
 });

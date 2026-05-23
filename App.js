@@ -60,6 +60,7 @@ export default function App() {
   const [selectedForceGiganautOnly, setSelectedForceGiganautOnly] = useState(false);
   const [selectedForceGiganautAfterWavesNoDetonation, setSelectedForceGiganautAfterWavesNoDetonation] = useState(false);
   const [selectedDefenseTerritory, setSelectedDefenseTerritory] = useState(null);
+  const [introPending, setIntroPending] = useState(false);
   const [autoOpenGalaxyId, setAutoOpenGalaxyId] = useState(null);
   const [selectedDefenseDoctrine, setSelectedDefenseDoctrine] = useState('fortress');
   const [warCredits, setWarCredits] = useState(0);
@@ -578,6 +579,7 @@ export default function App() {
             <MenuScreen
               onStart={(profile) => {
                 setRunProfile(profile || 'combat');
+                setIntroPending(true);
                 setScreen('map');
               }}
             />
@@ -611,6 +613,8 @@ export default function App() {
             <GameScreen
               galaxy={selectedGalaxy}
               systemNumber={selectedSystemNumber}
+              showIntroStory={introPending}
+              onIntroStoryComplete={() => setIntroPending(false)}
               specialScenario={specialScenario}
               quadrantAbilityUnlocks={quadrantAbilityUnlocks}
               forceGiganautOnly={selectedForceGiganautOnly}
