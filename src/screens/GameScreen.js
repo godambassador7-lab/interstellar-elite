@@ -120,6 +120,10 @@ function UltimateBeam({ beam }) {
   const angle = Math.atan2(dy, dx) * (180 / Math.PI);
   const outerW = Math.max(8, beam.width || 26);
   const coreW = Math.max(3, outerW * 0.34);
+  const outerColor = beam.outerColor || 'rgba(139,223,255,0.82)';
+  const coreColor = beam.coreColor || 'rgba(255,255,255,0.95)';
+  const outerShadow = beam.outerShadow || '#8BDFFF';
+  const coreShadow = beam.coreShadow || '#FFFFFF';
   return (
     <>
       <View
@@ -131,8 +135,8 @@ function UltimateBeam({ beam }) {
           width: len,
           height: outerW,
           borderRadius: outerW * 0.5,
-          backgroundColor: 'rgba(139,223,255,0.82)',
-          shadowColor: '#8BDFFF',
+          backgroundColor: outerColor,
+          shadowColor: outerShadow,
           shadowOpacity: 1,
           shadowRadius: 14,
           shadowOffset: { width: 0, height: 0 },
@@ -148,8 +152,8 @@ function UltimateBeam({ beam }) {
           width: len,
           height: coreW,
           borderRadius: coreW * 0.5,
-          backgroundColor: 'rgba(255,255,255,0.95)',
-          shadowColor: '#FFFFFF',
+          backgroundColor: coreColor,
+          shadowColor: coreShadow,
           shadowOpacity: 0.95,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: 0 },
@@ -302,6 +306,8 @@ function snapshotAbilities(abilities) {
       active: abilities.dash.active,
       cooldownRemaining: abilities.dash.cooldownRemaining,
       maxCooldown: abilities.dash.maxCooldown,
+      timeLeapUnlocked: !!abilities.dash.timeLeapUnlocked,
+      timeLeapJumpsLeft: abilities.dash.timeLeapJumpsLeft || 0,
     },
     pulse: {
       active: abilities.pulse.active,
@@ -396,6 +402,11 @@ function makeUiState() {
     giganautEntryOverlayOpacity: 0,
     giganautUltimateMode: false,
     ultimateBeam: null,
+    specialScenario: null,
+    scenarioTargetText: '',
+    scenarioProgressText: '',
+    eliteIncomingText: '',
+    eliteIncomingUntil: 0,
   };
 }
 
@@ -628,6 +639,8 @@ function hasActiveWeapon(abilities) {
 export default function GameScreen({
   galaxy,
   systemNumber = 1,
+  specialScenario = null,
+  quadrantAbilityUnlocks = {},
   metaUpgrades = {},
   meteorUnlocked = false,
   forceGiganautOnly = false,
@@ -774,7 +787,10 @@ export default function GameScreen({
 
     const baseWaves = galaxy?.waves ?? 4;
     const extraWaves = Math.min(4, Math.floor((systemNumber - 1) / 12));
-    const maxWaves = forceGiganautOnly ? 1 : (baseWaves + extraWaves);
+    let maxWaves = forceGiganautOnly ? 1 : (baseWaves + extraWaves);
+    if (specialScenario === 'meganaut') maxWaves = 4;
+    if (specialScenario === 'armageddon') maxWaves = 30;
+    if (specialScenario === 'singularity') maxWaves = 1;
     const runUpgradeThresholds = getUpgradeThresholdsForRun({
       threat: combatGalaxy.threat ?? 1,
       systemNumber,
@@ -787,6 +803,21 @@ export default function GameScreen({
     basePlayerDamageRef.current = player.damage;
     const abilities = createAbilities();
     applyMetaUpgrades(player, abilities, metaUpgrades);
+    if (quadrantAbilityUnlocks?.bayron) {
+      player.speed *= 1.08;
+      player.attackRange *= 1.06;
+    }
+    if (quadrantAbilityUnlocks?.crimson) {
+      player.damageMultiplier = (player.damageMultiplier || 1) * 1.1;
+    }
+    if (quadrantAbilityUnlocks?.watupi) {
+      player.shieldRegenMult = (player.shieldRegenMult || 1) * 1.2;
+      abilities.drone.count = Math.min(8, (abilities.drone.count || 2) + 1);
+    }
+    if (quadrantAbilityUnlocks?.ultra316) {
+      abilities.phase.maxCooldown = Math.max(3600, abilities.phase.maxCooldown * 0.78);
+      abilities.dash.maxCooldown = Math.max(1000, abilities.dash.maxCooldown * 0.85);
+    }
     player.maxHp = Math.round(player.maxHp * profileConfig.playerHpMult);
     player.hp = player.maxHp;
     player.maxShield = Math.round(player.maxShield * profileConfig.playerShieldMult);
@@ -812,7 +843,13 @@ export default function GameScreen({
       systemNumber: Math.max(1, Number(systemNumber) || 1),
       currentWave: 1,
       maxWaves,
-      waveSpawnRemaining: getWaveEnemyCount(1, combatGalaxy),
+      waveSpawnRemaining: specialScenario === 'armageddon'
+        ? Math.max(22, Math.round(getWaveEnemyCount(1, combatGalaxy) * 1.6))
+        : specialScenario === 'meganaut'
+          ? Math.max(14, Math.round(getWaveEnemyCount(1, combatGalaxy) * 1.25))
+        : specialScenario === 'singularity'
+          ? 0
+          : getWaveEnemyCount(1, combatGalaxy),
       nextWaveSpawnAt: Date.now() + 500,
       nextShopWave: randomShopInterval(),
       upgradeThresholds: runUpgradeThresholds,
@@ -832,7 +869,7 @@ export default function GameScreen({
       meteors: [],
       nextMeteorAt: Date.now() + 6000,
       meteorStormUntil: 0,
-      inIntercept: forceGiganautOnly ? false : Math.random() < 0.65,
+      inIntercept: specialScenario === 'singularity' ? true : (forceGiganautOnly ? false : Math.random() < 0.65),
       interceptEndsAt: 0,
       interceptStartedAt: 0,
       nextInterceptHazardAt: 0,
@@ -840,6 +877,7 @@ export default function GameScreen({
       phaseLabel: 'SYSTEM BATTLE',
       forceGiganautOnly,
       forceGiganautAfterWavesNoDetonation,
+      specialScenario,
       giganautForcedSpawned: false,
       giganautPostWaveSpawned: false,
       giganautEntryOverlayShown: false,
@@ -865,8 +903,32 @@ export default function GameScreen({
         durationMs: 1500,
         speedMult: 1.5,
       },
+      singularity: {
+        active: specialScenario === 'singularity',
+        endAt: Date.now() + 32000,
+        nextTimeShiftAt: Date.now() + 1200,
+        timeScale: 1,
+      },
+      eliteIncomingUntil: 0,
+      lastEliteIncomingAt: 0,
     };
-    if (forceGiganautOnly) {
+    if (specialScenario === 'meganaut') {
+      G.current.forceGiganautAfterWavesNoDetonation = true;
+      G.current.nextWaveSpawnAt = Date.now() + 450;
+      G.current.phaseLabel = 'MEGANAUT BATTLE';
+      pushHighlight(G.current, 'MEGANAUT PHASE START');
+    } else if (specialScenario === 'armageddon') {
+      G.current.phaseLabel = 'UNIVERSAL ARMAGEDDON';
+      G.current.nextWaveSpawnAt = Date.now() + 350;
+      G.current.abilities.ultimate.maxCooldown = 3800;
+      G.current.abilities.ultimate.cooldownRemaining = 0;
+      pushHighlight(G.current, 'ARMAGEDDON START');
+    } else if (specialScenario === 'singularity') {
+      G.current.phaseLabel = 'SINGULARITY BATTLE';
+      G.current.interceptEndsAt = Date.now() + 35000;
+      G.current.nextInterceptHazardAt = Date.now() + 320;
+      pushHighlight(G.current, 'SINGULARITY BREACH');
+    } else if (forceGiganautOnly) {
       G.current.waveSpawnRemaining = 1;
       G.current.nextWaveSpawnAt = Date.now() + 300;
       G.current.phaseLabel = 'GIGANAUT INCURSION';
@@ -896,7 +958,18 @@ export default function GameScreen({
       }
 
       if (lastTs.current === null) lastTs.current = ts;
-      const dt = Math.min(ts - lastTs.current, 50);
+      const nowMs = Date.now();
+      const rawDt = Math.min(ts - lastTs.current, 50);
+      let timeScale = 1;
+      if (g.specialScenario === 'singularity') {
+        if (nowMs >= (g.singularity.nextTimeShiftAt || 0)) {
+          const rolls = [0.25, 0.5, 0.8, 1, 1.4, 1.9, 2.3];
+          g.singularity.timeScale = rolls[Math.floor(Math.random() * rolls.length)];
+          g.singularity.nextTimeShiftAt = nowMs + 900 + Math.random() * 1500;
+        }
+        timeScale = g.singularity.timeScale || 1;
+      }
+      const dt = rawDt * timeScale;
       lastTs.current = ts;
 
       if (isPaused.current) {
@@ -906,7 +979,6 @@ export default function GameScreen({
 
       g.gameTime += dt / 1000;
       const dtSec = dt / 1000;
-      const nowMs = Date.now();
 
       if (g.player.hp > 0 && g.player.hp / Math.max(1, g.player.maxHp) <= 0.2) {
         if (!g.lastStand.active) pushHighlight(g, 'LAST STAND ONLINE');
@@ -988,28 +1060,53 @@ export default function GameScreen({
 
       if (g.inIntercept) {
         if (nowMs >= g.nextInterceptHazardAt) {
-          const spawnCount = 1 + Math.floor(Math.random() * 2);
+          const spawnCount = g.specialScenario === 'singularity' ? (2 + Math.floor(Math.random() * 4)) : (1 + Math.floor(Math.random() * 2));
           for (let i = 0; i < spawnCount; i++) {
             g.enemies.push({
               id: `int-${nowMs}-${i}-${Math.random()}`,
-              type: 'elite',
+              type: g.specialScenario === 'singularity'
+                ? (Math.random() < 0.4 ? 'outlander' : Math.random() < 0.7 ? 'raybin' : 'elite')
+                : 'elite',
               x: 80 + Math.random() * (g.world.width - 160),
               y: -20,
               vx: 0, vy: 0, facingAngle: 0,
-              size: 16, hp: 34, maxHp: 34, speed: 170, damage: 10, score: 32,
+              size: 16, hp: g.specialScenario === 'singularity' ? 48 : 34, maxHp: g.specialScenario === 'singularity' ? 48 : 34, speed: g.specialScenario === 'singularity' ? 210 : 170, damage: g.specialScenario === 'singularity' ? 15 : 10, score: 32,
               color: '#67F3FF', glow: '#67F3FF', points: 2, dead: false, hitFlash: 0,
               zigZagPhase: Math.random() * Math.PI * 2, zigZagTimer: 0, burstTimer: 0, burstActive: false, burstDuration: 0,
               lastLaserAt: 0, laserFlash: 0, lastPhotonAt: 0, lastSwarmPhotonAt: 0,
             });
           }
-          g.nextInterceptHazardAt = nowMs + 700 + Math.random() * 1000;
+          g.nextInterceptHazardAt = nowMs + (g.specialScenario === 'singularity' ? 300 : 700) + Math.random() * (g.specialScenario === 'singularity' ? 650 : 1000);
         }
         if (nowMs >= g.interceptEndsAt) {
           g.inIntercept = false;
-          g.phaseLabel = 'SYSTEM BATTLE';
-          g.score += 120 + Math.floor(g.combo * 6);
-          pushHighlight(g, 'LIGHTSPEED SURVIVAL');
+          if (g.specialScenario === 'singularity') {
+            // Keep this deliberately brutal: only 20% clear rate by design.
+            if (Math.random() < 0.2) {
+              g.victory = true;
+              isRunning.current = false;
+              g.score += 1800;
+              g.phaseLabel = 'SINGULARITY SURVIVED';
+              pushHighlight(g, 'SINGULARITY SURVIVAL');
+            } else {
+              g.player.lastDamageSource = 'singularity_collapse';
+              g.player.hp = 0;
+            }
+          } else {
+            g.phaseLabel = 'SYSTEM BATTLE';
+            g.score += 120 + Math.floor(g.combo * 6);
+            pushHighlight(g, 'LIGHTSPEED SURVIVAL');
+          }
         }
+      }
+
+      // Elite fleet warning popup for the 4 new elite classes.
+      const eliteFleetPresent = g.enemies.some(
+        (e) => !e.dead && (e.type === 'legionary' || e.type === 'raybin' || e.type === 'hord' || e.type === 'outlander')
+      );
+      if (eliteFleetPresent && nowMs >= (g.lastEliteIncomingAt || 0) + 12000) {
+        g.lastEliteIncomingAt = nowMs;
+        g.eliteIncomingUntil = nowMs + 5000;
       }
 
       const keyboardVector = keyInput.current;
@@ -1213,9 +1310,19 @@ export default function GameScreen({
       if (waveRemaining <= 0 && !g.victory) {
         if (g.currentWave < g.maxWaves) {
           const clearedWave = g.currentWave;
-          const shouldOpenShop = clearedWave >= g.nextShopWave;
+          const shouldOpenShop = g.specialScenario === 'armageddon'
+            ? (clearedWave % 10 === 0)
+            : (!g.specialScenario && clearedWave >= g.nextShopWave);
           g.currentWave += 1;
-          g.waveSpawnRemaining = getWaveEnemyCount(g.currentWave, g.galaxy);
+          if (g.specialScenario === 'armageddon') {
+            const armScale = 1.52 + Math.min(0.46, g.currentWave * 0.012);
+            g.waveSpawnRemaining = Math.max(24, Math.round(getWaveEnemyCount(g.currentWave, g.galaxy) * armScale));
+          } else if (g.specialScenario === 'meganaut') {
+            const megaScale = 1.22 + Math.min(0.3, g.currentWave * 0.024);
+            g.waveSpawnRemaining = Math.max(16, Math.round(getWaveEnemyCount(g.currentWave, g.galaxy) * megaScale));
+          } else {
+            g.waveSpawnRemaining = getWaveEnemyCount(g.currentWave, g.galaxy);
+          }
           g.nextWaveSpawnAt = Date.now() + (shouldOpenShop ? 350 : 900);
 
           if (shouldOpenShop) {
@@ -1275,6 +1382,9 @@ export default function GameScreen({
 
       const remainingNow = g.waveSpawnRemaining + g.enemies.length;
       const giganautUltimateMode = g.enemies.some((e) => e.isGiganaut && !e.dead);
+      if (g.specialScenario === 'armageddon') {
+        g.phaseLabel = `UNIVERSAL ARMAGEDDON W${g.currentWave}/30`;
+      }
       if (g.abilities.ultimate.justEnded) {
         const noFoesLeft = remainingNow <= 0;
         if (g.abilities.ultimate.selfDamagePending && !noFoesLeft && !g.victory) {
@@ -1291,8 +1401,9 @@ export default function GameScreen({
       let ultimateBeam = null;
       if (g.abilities.ultimate.active) {
         const tUlt = Math.max(0, Math.min(1, (g.abilities.ultimate.elapsed || 0) / Math.max(1, g.abilities.ultimate.durationMs || 4000)));
+        const isZeta = g.specialScenario === 'armageddon';
         const beamLen = Math.max(g.world.width, g.world.height, 2200);
-        const beamWidth = 60 - 42 * tUlt;
+        const beamWidth = isZeta ? (78 - 48 * tUlt) : (60 - 42 * tUlt);
         const x1 = g.player.x;
         const y1 = g.player.y;
         const x2 = x1 + (g.abilities.ultimate.dirX || 1) * beamLen;
@@ -1304,6 +1415,10 @@ export default function GameScreen({
           y1: y1 - g.cameraY,
           x2: x2 - g.cameraX,
           y2: y2 - g.cameraY,
+          outerColor: isZeta ? 'rgba(182,84,255,0.9)' : 'rgba(139,223,255,0.82)',
+          coreColor: isZeta ? 'rgba(8,4,18,0.96)' : 'rgba(255,255,255,0.95)',
+          outerShadow: isZeta ? '#CA7DFF' : '#8BDFFF',
+          coreShadow: isZeta ? '#5A33A6' : '#FFFFFF',
         };
       }
       if (!g.giganautEntryOverlayShown && g.enemies.some((e) => e.isGiganaut && !e.dead)) {
@@ -1431,12 +1546,33 @@ export default function GameScreen({
         })),
         phaseLabel: g.phaseLabel,
         phaseTimer: g.inIntercept ? Math.max(0, (g.interceptEndsAt - Date.now()) / 1000) : 0,
-        eventBanner: g.inIntercept ? 'Warp tunnel combat active' : '',
+        eventBanner: g.specialScenario === 'singularity'
+          ? `Time dilation x${(g.singularity.timeScale || 1).toFixed(2)}`
+          : g.inIntercept ? 'Warp tunnel combat active' : '',
         hyperspaceActive: !!g.inIntercept,
         hyperspaceSessionKey: g.inIntercept ? (g.interceptStartedAt || 0) : 0,
         giganautEntryOverlayOpacity,
         giganautUltimateMode,
         ultimateBeam,
+        specialScenario: g.specialScenario || null,
+        scenarioTargetText:
+          g.specialScenario === 'singularity'
+            ? 'Survive space-time collapse and enemy pursuit'
+            : g.specialScenario === 'meganaut'
+              ? 'Clear 4 siege waves, then eliminate the Meganaut'
+              : g.specialScenario === 'armageddon'
+                ? 'Hold the line for 30 waves with the Zeta-beam'
+                : '',
+        scenarioProgressText:
+          g.specialScenario === 'singularity'
+            ? `Time Left ${Math.max(0, (g.interceptEndsAt - nowMs) / 1000).toFixed(1)}s`
+            : g.specialScenario === 'meganaut'
+              ? `Siege Wave ${g.currentWave}/4`
+              : g.specialScenario === 'armageddon'
+                ? `Armageddon Wave ${g.currentWave}/30`
+                : '',
+        eliteIncomingText: (g.eliteIncomingUntil || 0) > nowMs ? 'Elite Fleet Incoming' : '',
+        eliteIncomingUntil: g.eliteIncomingUntil || 0,
         perfectDodges: g.perfectDodges || 0,
         latestHighlight: g.latestHighlight || null,
         flagshipEscape: g.flagshipEscape.active
@@ -1464,7 +1600,7 @@ export default function GameScreen({
       isRunning.current = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [gameKey, galaxy, systemNumber, metaUpgrades, applyShake, forceGiganautOnly, forceGiganautAfterWavesNoDetonation]);
+  }, [gameKey, galaxy, systemNumber, specialScenario, quadrantAbilityUnlocks, metaUpgrades, applyShake, forceGiganautOnly, forceGiganautAfterWavesNoDetonation]);
 
   const handleJoystick = useCallback((delta) => {
     joystick.current = delta;
@@ -1486,14 +1622,26 @@ export default function GameScreen({
       const wasActive = !!g.abilities.ultimate.active;
       triggerUltimate(g.player, g.abilities);
       if (!wasActive && g.abilities.ultimate.active) {
-        g.abilities.ultimate.selfDamagePending = true;
+            g.abilities.ultimate.selfDamagePending = g.specialScenario !== 'armageddon';
         abilityUsageRef.current.ultimate += 1;
         pushHighlight(g, 'ULTIMATE: BEAM CANNON ONLINE');
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
       }
       return;
     }
-    triggerDash(g.player, g.abilities);
+    const keyboardVector = keyInput.current || { dx: 0, dy: 0 };
+    const useKeyboard = Math.abs(keyboardVector.dx) > 0.001 || Math.abs(keyboardVector.dy) > 0.001;
+    const source = useKeyboard ? keyboardVector : (joystick.current || { dx: 0, dy: 0 });
+    const dirLen = Math.hypot(source.dx || 0, source.dy || 0);
+    const dirX = dirLen > 0.001 ? (source.dx / dirLen) : (g.player.facingX || 1);
+    const dirY = dirLen > 0.001 ? (source.dy / dirLen) : (g.player.facingY || 0);
+    triggerDash(g.player, g.abilities, {
+      dirX,
+      dirY,
+      worldWidth: g.world.width,
+      worldHeight: g.world.height,
+      leapDistance: 220,
+    });
     abilityUsageRef.current.dash += 1;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, []);
@@ -1715,6 +1863,11 @@ export default function GameScreen({
     giganautEntryOverlayOpacity,
     giganautUltimateMode,
     ultimateBeam,
+    specialScenario: activeScenario,
+    scenarioTargetText,
+    scenarioProgressText,
+    eliteIncomingText,
+    eliteIncomingUntil,
     perfectDodges,
     latestHighlight,
     flagshipEscape,
@@ -2053,9 +2206,28 @@ export default function GameScreen({
             )}
             {!!eventBanner && <Text style={styles.phaseBannerText}>{eventBanner}</Text>}
             <Text style={styles.phaseMetaText}>Perfect Dodges: {perfectDodges}</Text>
+            {!!activeScenario && (
+              <View style={styles.scenarioCard}>
+                <Text style={styles.scenarioTitle}>
+                  {activeScenario === 'singularity'
+                    ? 'SINGULARITY BATTLE'
+                    : activeScenario === 'meganaut'
+                      ? 'MEGANAUT BATTLE'
+                      : 'UNIVERSAL ARMAGEDDON'}
+                </Text>
+                <Text style={styles.scenarioText}>{scenarioTargetText}</Text>
+                <Text style={styles.scenarioProgress}>{scenarioProgressText}</Text>
+              </View>
+            )}
             {!!flagshipEscape && flagshipEscape.countdownMs > 0 && (
               <Text style={styles.phaseWarningText}>CORE DETONATION IN {(flagshipEscape.countdownMs / 1000).toFixed(1)}s</Text>
             )}
+          </View>
+        )}
+
+        {!!eliteIncomingText && eliteIncomingUntil > Date.now() && (
+          <View style={styles.eliteIncomingBanner} pointerEvents="none">
+            <Text style={styles.eliteIncomingText}>{eliteIncomingText}</Text>
           </View>
         )}
 
@@ -2101,7 +2273,15 @@ export default function GameScreen({
 
         {isVictory && (
           <View style={styles.victoryOverlay}>
-            <Text style={styles.victoryTitle}>SYSTEM SECURED</Text>
+            <Text style={styles.victoryTitle}>
+              {specialScenario === 'singularity'
+                ? 'SINGULARITY SECURED'
+                : specialScenario === 'meganaut'
+                  ? 'MEGANAUT DOWN'
+                  : specialScenario === 'armageddon'
+                    ? 'ARMAGEDDON SURVIVED'
+                    : 'SYSTEM SECURED'}
+            </Text>
             <Text style={styles.victorySub}>
               {(galaxy?.name?.toUpperCase() || 'SECTOR') + ` | SYSTEM ${systemNumber}`}
             </Text>
@@ -2114,6 +2294,7 @@ export default function GameScreen({
                   score,
                   waves: maxWaves,
                   systemNumber,
+                  specialScenario: specialScenario || undefined,
                   flawless: !G.current?.playerTookDamageEver,
                   giganautEncounter: !!forceGiganautOnly,
                   giganautPostWaveTest: !!forceGiganautAfterWavesNoDetonation,
@@ -2246,6 +2427,63 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     letterSpacing: 1.2,
+  },
+  scenarioCard: {
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(103,243,255,0.42)',
+    backgroundColor: 'rgba(4,14,28,0.76)',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  scenarioTitle: {
+    color: '#7FEFFF',
+    fontFamily: 'Courier New',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1.3,
+  },
+  scenarioText: {
+    marginTop: 1,
+    color: 'rgba(182,214,242,0.84)',
+    fontFamily: 'Courier New',
+    fontSize: 9,
+    letterSpacing: 0.8,
+  },
+  scenarioProgress: {
+    marginTop: 1,
+    color: '#FFC66B',
+    fontFamily: 'Courier New',
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.9,
+  },
+  eliteIncomingBanner: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '44%',
+    alignItems: 'center',
+    zIndex: 260,
+  },
+  eliteIncomingText: {
+    color: '#FFD26B',
+    fontFamily: 'Courier New',
+    fontSize: 28,
+    fontWeight: 'bold',
+    letterSpacing: 3.4,
+    textTransform: 'uppercase',
+    textShadowColor: '#FF7A2E',
+    textShadowRadius: 14,
+    textShadowOffset: { width: 0, height: 0 },
+    backgroundColor: 'rgba(14,8,6,0.68)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,160,86,0.74)',
+    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
   shareBtn: {
     position: 'absolute',

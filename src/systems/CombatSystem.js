@@ -330,6 +330,25 @@ export function runCombatFrame(state, deltaMs) {
     }
   }
 
+  // Interdimensional Filaments: upgraded orbit arms that shred close targets.
+  if (abilities.drone.active && (player.filamentArmsCount || 0) > 0) {
+    const arms = Math.max(0, player.filamentArmsCount || 0);
+    const filamentRadius = 34 + arms * 9;
+    const filamentDps = 16 + arms * 5.5;
+    const filamentDamage = filamentDps * (deltaMs / 1000) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+    for (const enemy of enemies) {
+      if (enemy.dead) continue;
+      if (!circlesOverlap(player.x, player.y, filamentRadius, enemy.x, enemy.y, enemy.size * 0.5)) continue;
+      const dealt = applyDamage(state, enemy, filamentDamage, newParticles, 'filaments');
+      if (dealt > 0) playerDealtDamage = true;
+      if (enemy.hp <= 0 && !enemy.dead) {
+        killEnemy(enemy, state, newParticles, deadEnemyIds);
+        scoreGain += enemy.score;
+        comboIncrement++;
+      }
+    }
+  }
+
   // ── Enemy contact damage ────────────────────────────────────────────────────
   if (!player.invincible && now > player.invincibleUntil) {
     for (const enemy of enemies) {

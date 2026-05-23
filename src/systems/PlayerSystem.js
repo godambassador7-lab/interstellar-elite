@@ -88,6 +88,17 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   const worldWidth = state?.world?.width || SCREEN.width;
   const worldHeight = state?.world?.height || SCREEN.height;
   const hr = PLAYER.SIZE / 2;
+  if (hyperspaceActive) {
+    // Keep ship on-screen during hyperspace phases.
+    const camX = state?.cameraX ?? 0;
+    const camY = state?.cameraY ?? 0;
+    const minX = camX + hr;
+    const maxX = camX + SCREEN.width - hr;
+    const minY = camY + hr;
+    const maxY = camY + SCREEN.height - hr;
+    player.x = Math.max(minX, Math.min(maxX, player.x));
+    player.y = Math.max(minY, Math.min(maxY, player.y));
+  }
   if (player.x < hr) { player.x = hr; player.vx = Math.abs(player.vx) * 0.5; }
   if (player.x > worldWidth - hr) { player.x = worldWidth - hr; player.vx = -Math.abs(player.vx) * 0.5; }
   if (player.y < hr) { player.y = hr; player.vy = Math.abs(player.vy) * 0.5; }
@@ -101,9 +112,12 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   // ── Ability: Dash ─────────────────────────────────────────────────────────────
   if (abilities.dash.active) {
     abilities.dash.elapsed += deltaMs;
-    if (abilities.dash.elapsed >= ABILITIES.DASH.DURATION) {
+    const dashDuration = abilities.dash.durationOverrideMs || ABILITIES.DASH.DURATION;
+    if (abilities.dash.elapsed >= dashDuration) {
       abilities.dash.active = false;
       abilities.dash.elapsed = 0;
+      abilities.dash.timeLeapJumpsLeft = 0;
+      abilities.dash.durationOverrideMs = 0;
     }
   }
   // Cooldown tick
@@ -147,6 +161,21 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
       abilities.pulse.overshieldActive = false;
       abilities.pulse.overshieldElapsed = 0;
     }
+  }
+
+  if (abilities.drone.active && (player.filamentArmsCount || 0) > 0) {
+    // Interdimensional filament drain ramps up over sustained activation.
+    const count = Math.max(0, player.filamentArmsCount || 0);
+    const activeSec = abilities.drone.elapsed / 1000;
+    const ramp = 1 + Math.min(2.2, activeSec * 0.4);
+    const shieldDrainPerSec = (0.8 + count * 0.45) * ramp;
+    const drain = shieldDrainPerSec * dt;
+    player.shield = Math.max(0, player.shield - drain);
+    if (player.shield <= 0 && drain > 0) {
+      player.hp = Math.max(0, player.hp - drain * 0.35);
+      player.lastDamageSource = 'filament_overload';
+    }
+    player.shieldRegenDelay = Math.max(player.shieldRegenDelay || 0, 300);
   }
 
   // ── Ability: Drone ────────────────────────────────────────────────────────────
@@ -218,7 +247,10 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
   if (player.shieldRegenDelay > 0) {
     player.shieldRegenDelay = Math.max(0, player.shieldRegenDelay - deltaMs);
   } else if (player.shield < player.maxShield) {
-    player.shield = Math.min(player.maxShield, player.shield + PLAYER.SHIELD_REGEN_RATE * dt);
+    player.shield = Math.min(
+      player.maxShield,
+      player.shield + PLAYER.SHIELD_REGEN_RATE * (player.shieldRegenMult || 1) * dt
+    );
   }
 
   // ── Screen shake decay ────────────────────────────────────────────────────────
@@ -240,7 +272,34 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
 /**
  * Trigger dash ability.
  */
-export function triggerDash(player, abilities) {
+export function triggerDash(player, abilities, options = {}) {
+  if (abilities.dash.timeLeapUnlocked) {
+    if (!abilities.dash.active && abilities.dash.cooldownRemaining > 0) return;
+    if (!abilities.dash.active) {
+      abilities.dash.active = true;
+      abilities.dash.elapsed = 0;
+      abilities.dash.hitIds = new Set();
+      abilities.dash.durationOverrideMs = abilities.dash.timeLeapWindowMs || 3000;
+      abilities.dash.timeLeapJumpsLeft = Math.max(2, abilities.dash.timeLeapMaxJumps || 2);
+      abilities.dash.cooldownRemaining = abilities.dash.maxCooldown;
+    }
+    if ((abilities.dash.timeLeapJumpsLeft || 0) <= 0) return;
+    const dirX = options.dirX ?? player.facingX ?? 1;
+    const dirY = options.dirY ?? player.facingY ?? 0;
+    const dirLen = Math.max(0.0001, Math.hypot(dirX, dirY));
+    const nx = dirX / dirLen;
+    const ny = dirY / dirLen;
+    const leapDistance = options.leapDistance || 210;
+    const worldWidth = options.worldWidth || SCREEN.width;
+    const worldHeight = options.worldHeight || SCREEN.height;
+    const hr = PLAYER.SIZE / 2;
+    player.x = Math.max(hr, Math.min(worldWidth - hr, player.x + nx * leapDistance));
+    player.y = Math.max(hr, Math.min(worldHeight - hr, player.y + ny * leapDistance));
+    player.vx = nx * ABILITIES.DASH.FORCE * 0.2;
+    player.vy = ny * ABILITIES.DASH.FORCE * 0.2;
+    abilities.dash.timeLeapJumpsLeft = Math.max(0, (abilities.dash.timeLeapJumpsLeft || 0) - 1);
+    return;
+  }
   if (abilities.dash.cooldownRemaining > 0 || abilities.dash.active) return;
   abilities.dash.active = true;
   abilities.dash.elapsed = 0;
@@ -351,6 +410,8 @@ export function createPlayer() {
     maxShield: PLAYER.SHIELD_MAX,
     shieldRegenDelay: 0,
     speed: PLAYER.BASE_SPEED,
+    shieldRegenMult: 1,
+    filamentArmsCount: 0,
     damage: PLAYER.ATTACK_DAMAGE,
     damageMultiplier: 1,
     attackTargets: 1,
@@ -377,6 +438,11 @@ export function createAbilities() {
       cooldownRemaining: 0,
       maxCooldown: ABILITIES.DASH.COOLDOWN,
       hitIds: new Set(),
+      timeLeapUnlocked: false,
+      timeLeapMaxJumps: 2,
+      timeLeapJumpsLeft: 0,
+      timeLeapWindowMs: 3000,
+      durationOverrideMs: 0,
     },
     pulse: {
       active: false,

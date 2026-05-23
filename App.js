@@ -89,6 +89,18 @@ export default function App() {
   const [defenseEvents, setDefenseEvents] = useState([]);
   const [flawlessSystemsStreak, setFlawlessSystemsStreak] = useState(0);
   const [giganautFirstPickTestPending, setGiganautFirstPickTestPending] = useState(true);
+  const [specialScenario, setSpecialScenario] = useState(null); // null | singularity | meganaut | armageddon
+  const [specialProgress, setSpecialProgress] = useState({
+    singularityComplete: false,
+    meganautComplete: false,
+    armageddonComplete: false,
+  });
+  const [quadrantAbilityUnlocks, setQuadrantAbilityUnlocks] = useState({
+    bayron: false,
+    crimson: false,
+    watupi: false,
+    ultra316: false,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -233,6 +245,27 @@ export default function App() {
     return unlockedGalaxyIndex >= thirdQuadrantStart;
   }, [unlockedGalaxyIndex]);
 
+  const completedByQuadrant = useMemo(() => {
+    const out = { bayron: false, crimson: false, watupi: false, ultra316: false };
+    for (const q of Object.keys(out)) {
+      const idxs = GALAXIES.map((g, i) => ({ g, i })).filter(({ g }) => g.quadrant === q);
+      out[q] = idxs.length > 0 && idxs.every(({ g, i }) => (completedSystemsByGalaxy[i] || 0) >= g.systems);
+    }
+    return out;
+  }, [completedSystemsByGalaxy]);
+  const completedQuadrantCount = useMemo(
+    () => Object.values(completedByQuadrant).filter(Boolean).length,
+    [completedByQuadrant]
+  );
+  useEffect(() => {
+    setQuadrantAbilityUnlocks((prev) => ({
+      bayron: prev.bayron || completedByQuadrant.bayron,
+      crimson: prev.crimson || completedByQuadrant.crimson,
+      watupi: prev.watupi || completedByQuadrant.watupi,
+      ultra316: prev.ultra316 || completedByQuadrant.ultra316,
+    }));
+  }, [completedByQuadrant]);
+
   const shipParts = useMemo(
     () => PART_TYPES.reduce((sum, k) => sum + (shipPartsByType[k] || 0), 0),
     [shipPartsByType]
@@ -255,12 +288,47 @@ export default function App() {
     const nextSystem = Number.isFinite(systemNumberOverride)
       ? Math.max(1, Math.min(galaxy.systems, Math.floor(systemNumberOverride)))
       : Math.min(galaxy.systems, completed + 1);
+    const territoryKey = `${galaxy.id}:${nextSystem}`;
+    const replayLocked =
+      Number.isFinite(systemNumberOverride) &&
+      nextSystem <= completed &&
+      !!territories[territoryKey];
+    // Captured systems are locked from replay; only re-open if the station was later destroyed.
+    if (replayLocked) return;
+    if (!specialProgress.singularityComplete && completedQuadrantCount >= 2) {
+      setSpecialScenario('singularity');
+      setSelectedGalaxy(galaxy);
+      setSelectedSystemNumber(nextSystem);
+      setSelectedForceGiganautOnly(false);
+      setSelectedForceGiganautAfterWavesNoDetonation(false);
+      setScreen('game');
+      return;
+    }
+    if (!specialProgress.meganautComplete && completedQuadrantCount >= 3) {
+      setSpecialScenario('meganaut');
+      setSelectedGalaxy(galaxy);
+      setSelectedSystemNumber(nextSystem);
+      setSelectedForceGiganautOnly(false);
+      setSelectedForceGiganautAfterWavesNoDetonation(false);
+      setScreen('game');
+      return;
+    }
+    if (!specialProgress.armageddonComplete && completedQuadrantCount >= 4) {
+      setSpecialScenario('armageddon');
+      setSelectedGalaxy(galaxy);
+      setSelectedSystemNumber(nextSystem);
+      setSelectedForceGiganautOnly(false);
+      setSelectedForceGiganautAfterWavesNoDetonation(false);
+      setScreen('game');
+      return;
+    }
     const isLastSystemInGalaxy = nextSystem >= galaxy.systems;
     const rollGiganautFromFlawless = flawlessSystemsStreak >= 10 && Math.random() < 0.25;
     const forceGiganautOnly = isLastSystemInGalaxy || rollGiganautFromFlawless;
     const forceGiganautAfterWavesNoDetonation = giganautFirstPickTestPending;
 
     setSelectedGalaxy(galaxy);
+    setSpecialScenario(null);
     setSelectedSystemNumber(nextSystem);
     setSelectedForceGiganautOnly(forceGiganautOnly);
     setSelectedForceGiganautAfterWavesNoDetonation(forceGiganautAfterWavesNoDetonation);
@@ -297,6 +365,46 @@ export default function App() {
   };
 
   const handleSystemComplete = (galaxyId, summary = {}) => {
+    if (summary.specialScenario) {
+      const mode = summary.specialScenario;
+      if (mode === 'singularity') {
+        setSpecialProgress((p) => ({ ...p, singularityComplete: true }));
+        setDefenseEvents((prev) => ([
+          {
+            type: 'special_victory',
+            galaxyId,
+            systemNumber: summary.systemNumber || 1,
+            summary: 'SINGULARITY BATTLE WON. Space-time rupture stabilized.',
+          },
+          ...prev,
+        ].slice(0, 24)));
+      } else if (mode === 'meganaut') {
+        setSpecialProgress((p) => ({ ...p, meganautComplete: true }));
+        setDefenseEvents((prev) => ([
+          {
+            type: 'special_victory',
+            galaxyId,
+            systemNumber: summary.systemNumber || 1,
+            summary: 'MEGANAUT BATTLE WON. Planet-class flagship destroyed.',
+          },
+          ...prev,
+        ].slice(0, 24)));
+      } else if (mode === 'armageddon') {
+        setSpecialProgress((p) => ({ ...p, armageddonComplete: true }));
+        setDefenseEvents((prev) => ([
+          {
+            type: 'special_victory',
+            galaxyId,
+            systemNumber: summary.systemNumber || 1,
+            summary: 'UNIVERSAL ARMAGEDDON SURVIVED. Giganaut command secured.',
+          },
+          ...prev,
+        ].slice(0, 24)));
+      }
+      setSpecialScenario(null);
+      setScreen('map');
+      return;
+    }
     const idx = GALAXIES.findIndex((g) => g.id === galaxyId);
     if (idx < 0) {
       setScreen('map');
@@ -503,6 +611,8 @@ export default function App() {
             <GameScreen
               galaxy={selectedGalaxy}
               systemNumber={selectedSystemNumber}
+              specialScenario={specialScenario}
+              quadrantAbilityUnlocks={quadrantAbilityUnlocks}
               forceGiganautOnly={selectedForceGiganautOnly}
               forceGiganautAfterWavesNoDetonation={selectedForceGiganautAfterWavesNoDetonation}
               metaUpgrades={ownedMetaUpgrades}

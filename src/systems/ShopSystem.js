@@ -29,6 +29,60 @@ function weightedPickUnique(pool, count, getWeight) {
 
 export const SHOP_OFFERS = [
   {
+    id: 'ion_thruster',
+    title: 'Ion Thruster',
+    category: 'Mobility',
+    tier: 'basic',
+    baseWeight: 2.0,
+    cost: 260,
+    desc: '+0.5% speed (caps at 250% of normal speed).',
+    apply: (player) => {
+      const cap = 2.5;
+      player.ionThrusterMult = clamp((player.ionThrusterMult || 1) + 0.005, 1, cap);
+      player.speed = Math.min(player.speed * 1.005, 280 * cap);
+    },
+  },
+  {
+    id: 'quantum_shielding',
+    title: 'Quantum Shielding',
+    category: 'Defense',
+    tier: 'advanced',
+    baseWeight: 1.6,
+    cost: 300,
+    desc: '+0.5% shield regeneration (caps at 4x base regen).',
+    apply: (player) => {
+      player.shieldRegenMult = clamp((player.shieldRegenMult || 1) + 0.005, 1, 4);
+    },
+  },
+  {
+    id: 'interdimensional_filaments',
+    title: 'Interdimensional Filaments',
+    category: 'Weapon',
+    tier: 'high',
+    baseWeight: 0.86,
+    cost: 480,
+    desc: 'Unlocks filament arms (2 start, up to 8) while ORBIT is active.',
+    apply: (player) => {
+      const current = Math.max(0, player.filamentArmsCount || 0);
+      player.filamentArmsCount = current < 2 ? 2 : clamp(current + 1, 0, 8);
+    },
+  },
+  {
+    id: 'time_leap',
+    title: 'Time Leap',
+    category: 'Utility',
+    tier: 'high',
+    baseWeight: 0.78,
+    cost: 520,
+    desc: 'Replaces dash with instant jumps for 3s (2-5 jumps window).',
+    apply: (player, abilities) => {
+      abilities.dash.timeLeapUnlocked = true;
+      abilities.dash.timeLeapMaxJumps = clamp((abilities.dash.timeLeapMaxJumps || 2) + 1, 2, 5);
+      abilities.dash.maxCooldown = Math.max(1400, abilities.dash.maxCooldown * 0.96);
+      abilities.dash.cooldownRemaining = Math.min(abilities.dash.cooldownRemaining, abilities.dash.maxCooldown);
+    },
+  },
+  {
     id: 'repair_nanites',
     title: 'Repair Nanites',
     category: 'Powerup',

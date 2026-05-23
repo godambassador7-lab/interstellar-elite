@@ -48,6 +48,36 @@ function chooseAdvancedTypeBySystem(state) {
   return ENEMY_TYPES[pick] || ENEMY_TYPES.legionary;
 }
 
+function chooseTypeForSpecialScenario(state) {
+  const mode = state?.specialScenario;
+  if (!mode) return null;
+  const r = Math.random();
+  if (mode === 'singularity') {
+    if (r < 0.24) return ENEMY_TYPES.outlander;
+    if (r < 0.44) return ENEMY_TYPES.raybin;
+    if (r < 0.62) return ENEMY_TYPES.legionary;
+    if (r < 0.78) return ENEMY_TYPES.elite;
+    return ENEMY_TYPES.hord;
+  }
+  if (mode === 'meganaut') {
+    if (r < 0.26) return ENEMY_TYPES.hord;
+    if (r < 0.48) return ENEMY_TYPES.raybin;
+    if (r < 0.64) return ENEMY_TYPES.outlander;
+    if (r < 0.8) return ENEMY_TYPES.heavy;
+    return ENEMY_TYPES.elite;
+  }
+  if (mode === 'armageddon') {
+    if (r < 0.17) return ENEMY_TYPES.hord;
+    if (r < 0.31) return ENEMY_TYPES.raybin;
+    if (r < 0.43) return ENEMY_TYPES.outlander;
+    if (r < 0.56) return ENEMY_TYPES.legionary;
+    if (r < 0.72) return ENEMY_TYPES.heavy;
+    if (r < 0.88) return ENEMY_TYPES.elite;
+    return ENEMY_TYPES.swarm;
+  }
+  return null;
+}
+
 function normalizeAngleDelta(delta) {
   let d = delta;
   while (d > 180) d -= 360;
@@ -72,11 +102,17 @@ export function trySpawn(state) {
   if (state.waveSpawnRemaining <= 0) return null;
   if (now < (state.nextWaveSpawnAt || 0)) return null;
   const threat = state.galaxy?.threat ?? 1;
-  const maxActive = Math.round((10 + state.currentWave * 1.8) * threat);
+  const specialMode = state?.specialScenario;
+  const specialActiveMult = specialMode === 'armageddon' ? 1.85 : specialMode === 'meganaut' ? 1.46 : specialMode === 'singularity' ? 1.28 : 1;
+  const maxActive = Math.round((10 + state.currentWave * 1.8) * threat * specialActiveMult);
   if (state.enemies.length >= maxActive) return null;
 
   const waveSoft = Math.min(11, state.currentWave);
-  const interval = Math.max(260, (840 - waveSoft * 44) / threat);
+  const interval = Math.max(
+    130,
+    ((840 - waveSoft * 44) / threat) *
+      (specialMode === 'armageddon' ? 0.5 : specialMode === 'meganaut' ? 0.62 : specialMode === 'singularity' ? 0.56 : 1)
+  );
   if (now - state.lastSpawnTime < interval) return null;
   state.lastSpawnTime = now;
 
@@ -87,7 +123,10 @@ export function trySpawn(state) {
   const advancedChance = Math.min(0.42, Math.max(0, waveProgress - 0.14) * 0.55 + state.currentWave * 0.012);
   const r = Math.random();
   let typeDef;
-  if (r < advancedChance) {
+  const specialDef = chooseTypeForSpecialScenario(state);
+  if (specialDef) {
+    typeDef = specialDef;
+  } else if (r < advancedChance) {
     typeDef = chooseAdvancedTypeBySystem(state);
   } else if (r < advancedChance + eliteChance) {
     typeDef = ENEMY_TYPES.elite;
@@ -98,7 +137,11 @@ export function trySpawn(state) {
   }
 
   const desiredCount =
-    typeDef.type === 'hord' && Math.random() < Math.min(0.86, 0.5 + state.currentWave * 0.04)
+    specialMode === 'armageddon'
+      ? Math.floor(3 + Math.random() * 4)
+      : specialMode === 'meganaut'
+        ? Math.floor(2 + Math.random() * 4)
+      : typeDef.type === 'hord' && Math.random() < Math.min(0.86, 0.5 + state.currentWave * 0.04)
       ? Math.floor(3 + Math.random() * 3)
       : (typeDef.type === 'swarm' || typeDef.type === 'legionary') && Math.random() < Math.min(0.72, 0.44 + state.currentWave * 0.05)
       ? Math.floor(2 + Math.random() * 3)

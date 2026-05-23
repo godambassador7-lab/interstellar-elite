@@ -51,8 +51,9 @@ export function HUD({
   const ultimateCdPct = abilities.ultimate
     ? abilities.ultimate.cooldownRemaining / abilities.ultimate.maxCooldown
     : 1;
-  const dashIcon = showBooster ? 'B' : (giganautUltimateMode ? 'U' : 'D');
-  const dashLabel = showBooster ? 'BOOST' : (giganautUltimateMode ? 'ULT' : 'DASH');
+  const leapMode = !!abilities?.dash?.timeLeapUnlocked && !showBooster && !giganautUltimateMode;
+  const dashIcon = showBooster ? 'B' : (giganautUltimateMode ? 'U' : (leapMode ? 'T' : 'D'));
+  const dashLabel = showBooster ? 'BOOST' : (giganautUltimateMode ? 'ULT' : (leapMode ? `LEAP ${abilities?.dash?.timeLeapJumpsLeft || 0}` : 'DASH'));
   const dashCooldownPct = showBooster ? boosterCooldownPct : (giganautUltimateMode ? ultimateCdPct : dashCdPct);
   const dashActiveState = showBooster ? boosterActive : (giganautUltimateMode ? !!abilities.ultimate?.active : abilities.dash.active);
   const dashColor = showBooster ? '#7FD9FF' : (giganautUltimateMode ? '#8BDFFF' : '#30FFB5');
