@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Asset } from 'expo-asset';
 
 import MenuScreen from './src/screens/MenuScreen';
+import IntroStoryScreen from './src/screens/IntroStoryScreen';
 import UniverseMapScreen from './src/screens/UniverseMapScreen';
 import GameScreen from './src/screens/GameScreen';
 import StationDefenseScreen from './src/screens/StationDefenseScreen';
@@ -53,14 +54,13 @@ const WARM_ASSETS = [
 export default function App() {
   const [coreAssetsReady, setCoreAssetsReady] = useState(false);
   const [assetLoadPct, setAssetLoadPct] = useState(0);
-  const [screen, setScreen] = useState('menu'); // menu | map | game | defense_prep | defense
+  const [screen, setScreen] = useState('menu'); // menu | intro | map | game | defense_prep | defense
   const [selectedGalaxy, setSelectedGalaxy] = useState(GALAXIES[0]);
   const [runProfile, setRunProfile] = useState('combat');
   const [selectedSystemNumber, setSelectedSystemNumber] = useState(1);
   const [selectedForceGiganautOnly, setSelectedForceGiganautOnly] = useState(false);
   const [selectedForceGiganautAfterWavesNoDetonation, setSelectedForceGiganautAfterWavesNoDetonation] = useState(false);
   const [selectedDefenseTerritory, setSelectedDefenseTerritory] = useState(null);
-  const [introPending, setIntroPending] = useState(false);
   const [autoOpenGalaxyId, setAutoOpenGalaxyId] = useState(null);
   const [selectedDefenseDoctrine, setSelectedDefenseDoctrine] = useState('fortress');
   const [warCredits, setWarCredits] = useState(0);
@@ -579,7 +579,14 @@ export default function App() {
             <MenuScreen
               onStart={(profile) => {
                 setRunProfile(profile || 'combat');
-                setIntroPending(true);
+                setScreen('intro');
+              }}
+            />
+          )}
+
+          {screen === 'intro' && (
+            <IntroStoryScreen
+              onContinue={() => {
                 setScreen('map');
               }}
             />
@@ -613,8 +620,8 @@ export default function App() {
             <GameScreen
               galaxy={selectedGalaxy}
               systemNumber={selectedSystemNumber}
-              showIntroStory={introPending}
-              onIntroStoryComplete={() => setIntroPending(false)}
+              showIntroStory={false}
+              onIntroStoryComplete={() => {}}
               specialScenario={specialScenario}
               quadrantAbilityUnlocks={quadrantAbilityUnlocks}
               forceGiganautOnly={selectedForceGiganautOnly}
