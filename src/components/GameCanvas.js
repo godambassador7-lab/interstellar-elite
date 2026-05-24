@@ -6,6 +6,11 @@ import { View, Animated, Text, Image } from 'react-native';
 import { SCREEN, COLORS, PLAYER, ABILITIES, ENEMY_TYPES } from '../utils/constants';
 
 const PLAYER_SHIP_SPRITE = require('../../user ship1.png');
+const MEGANAUT_PHASE_SPRITES = [
+  require('../../Enemy Fighter Pack/Meganaut sprites/phase 1.png'),
+  require('../../Enemy Fighter Pack/Meganaut sprites/phase 2.png'),
+  require('../../Enemy Fighter Pack/Meganaut sprites/phase 3.png'),
+];
 const ENEMY_SPRITES = {
   giganaut: [
     require('../../Enemy Fighter Pack/Giganaut.png'),
@@ -270,7 +275,12 @@ export function EnemyShip({ enemy }) {
   const spritePool = ENEMY_SPRITES[classKey];
   const enemyId = String(enemy.id || '');
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
-  const sprite = spritePool[spriteSeed % spritePool.length];
+  const meganautPhaseRaw = Number(enemy?.giganaut?.phase || 1);
+  const meganautPhaseIndex = Math.max(0, Math.min(MEGANAUT_PHASE_SPRITES.length - 1, meganautPhaseRaw - 1));
+  const meganautOverdrive = isGiganaut && meganautPhaseRaw >= 4;
+  const sprite = isGiganaut
+    ? MEGANAUT_PHASE_SPRITES[meganautPhaseIndex]
+    : spritePool[spriteSeed % spritePool.length];
   const FLAGSHIP_VISUAL_SCALE = 15.75;
   const GIGANAUT_VISUAL_MULT = 2;
   const FLAGSHIP_BASE_SIZE = ENEMY_TYPES.elite.size;
@@ -317,11 +327,11 @@ export function EnemyShip({ enemy }) {
         left: shipBox * 0.08, top: shipBox * 0.08,
         width: shipBox * 0.84, height: shipBox * 0.84,
         borderRadius: shipBox * 0.42,
-        backgroundColor: flashColor,
-        opacity: hitFlash > 0 ? 0.5 : (enemy.isLastFlagship ? 0.34 : 0.12),
-        shadowColor: (!isGiganaut && enemy.isLastFlagship) ? '#FF1C1C' : flashColor,
-        shadowOpacity: charging ? 0.95 : ((!isGiganaut && enemy.isLastFlagship) ? 0.95 : 0.4),
-        shadowRadius: charging ? (10 + chargeT * 16) : ((!isGiganaut && enemy.isLastFlagship) ? 20 : 7),
+        backgroundColor: meganautOverdrive ? '#FF3A2A' : flashColor,
+        opacity: hitFlash > 0 ? 0.5 : (meganautOverdrive ? 0.28 : (enemy.isLastFlagship ? 0.34 : 0.12)),
+        shadowColor: meganautOverdrive ? '#FF2A1A' : ((!isGiganaut && enemy.isLastFlagship) ? '#FF1C1C' : flashColor),
+        shadowOpacity: meganautOverdrive ? 0.98 : (charging ? 0.95 : ((!isGiganaut && enemy.isLastFlagship) ? 0.95 : 0.4)),
+        shadowRadius: meganautOverdrive ? 22 : (charging ? (10 + chargeT * 16) : ((!isGiganaut && enemy.isLastFlagship) ? 20 : 7)),
         shadowOffset: { width: 0, height: 0 },
       }} />
 
@@ -398,6 +408,36 @@ export function EnemyShip({ enemy }) {
         )}
         {isGiganaut && (
           <>
+            {meganautOverdrive && (
+              <>
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: shipBox * 0.02,
+                    top: shipBox * 0.14,
+                    width: shipBox * 0.96,
+                    height: shipBox * 0.72,
+                    borderRadius: shipBox * 0.12,
+                    backgroundColor: `rgba(255,62,38,${0.12 + gigaPulse * 0.2})`,
+                    shadowColor: '#FF472D',
+                    shadowOpacity: 0.92,
+                    shadowRadius: 22,
+                    shadowOffset: { width: 0, height: 0 },
+                  }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: shipBox * 0.1 - gigaShift * 0.5,
+                    top: shipBox * 0.26,
+                    width: shipBox * 0.8,
+                    height: shipBox * 0.5,
+                    borderRadius: shipBox * 0.12,
+                    backgroundColor: `rgba(42,34,34,${0.2 + gigaPulse * 0.18})`,
+                  }}
+                />
+              </>
+            )}
             <View
               style={{
                 position: 'absolute',
@@ -407,8 +447,8 @@ export function EnemyShip({ enemy }) {
                 height: shipBox * 0.56,
                 borderRadius: shipBox * 0.08,
                 borderWidth: 2,
-                borderColor: 'rgba(128,208,255,0.45)',
-                backgroundColor: 'rgba(21,44,76,0.42)',
+                borderColor: meganautOverdrive ? 'rgba(255,124,88,0.64)' : 'rgba(128,208,255,0.45)',
+                backgroundColor: meganautOverdrive ? 'rgba(88,24,18,0.46)' : 'rgba(21,44,76,0.42)',
               }}
             />
             <View
@@ -420,8 +460,8 @@ export function EnemyShip({ enemy }) {
                 height: shipBox * 0.68,
                 borderRadius: shipBox * 0.1,
                 borderWidth: 2,
-                borderColor: 'rgba(107,189,255,0.32)',
-                backgroundColor: 'rgba(15,30,58,0.3)',
+                borderColor: meganautOverdrive ? 'rgba(255,96,76,0.56)' : 'rgba(107,189,255,0.32)',
+                backgroundColor: meganautOverdrive ? 'rgba(54,18,22,0.34)' : 'rgba(15,30,58,0.3)',
               }}
             />
             <View
@@ -432,10 +472,12 @@ export function EnemyShip({ enemy }) {
                 width: shipBox * 0.14,
                 height: shipBox * 0.14,
                 borderRadius: shipBox * 0.07,
-                backgroundColor: `rgba(131,229,255,${0.45 + gigaPulse * 0.45})`,
-                shadowColor: '#9BE8FF',
+                backgroundColor: meganautOverdrive
+                  ? `rgba(255,78,54,${0.5 + gigaPulse * 0.4})`
+                  : `rgba(131,229,255,${0.45 + gigaPulse * 0.45})`,
+                shadowColor: meganautOverdrive ? '#FF6848' : '#9BE8FF',
                 shadowOpacity: 1,
-                shadowRadius: 12,
+                shadowRadius: meganautOverdrive ? 16 : 12,
                 shadowOffset: { width: 0, height: 0 },
               }}
             />
