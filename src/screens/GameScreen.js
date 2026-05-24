@@ -612,15 +612,15 @@ function applyGravityFromWells(entity, wells, dtSec, weight = 1) {
     const ny = dy / dist;
     const normalized = 1 - dist / w.radius;
 
-    // Always apply a gentle inward pull, even near the edge of the well.
-    const basePull = w.strength * (0.16 + 0.84 * normalized * normalized) * weight;
+    // Strong inward pull profile; wells should feel close to inescapable when caught deep.
+    const basePull = w.strength * (0.32 + 1.18 * normalized * normalized) * weight;
 
-    // Fast outward movement should be able to overcome the well.
+    // Outward movement still helps, but only slightly under intense gravity.
     const radialTowardSpeed = entity.vx * nx + entity.vy * ny;
     const outwardSpeed = Math.max(0, -radialTowardSpeed);
-    const escapeFactor = Math.max(0.2, 1 - (outwardSpeed / 420));
+    const escapeFactor = Math.max(0.55, 1 - (outwardSpeed / 620));
 
-    const pull = Math.min(260, basePull * escapeFactor);
+    const pull = Math.min(1200, basePull * escapeFactor);
     entity.vx += nx * pull * dtSec;
     entity.vy += ny * pull * dtSec;
   }
