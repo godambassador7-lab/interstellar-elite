@@ -275,12 +275,13 @@ export function EnemyShip({ enemy }) {
   const spritePool = ENEMY_SPRITES[classKey];
   const enemyId = String(enemy.id || '');
   const spriteSeed = enemyId.split('').reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 7);
+  const isMeganautScenario = isGiganaut && enemy?.specialScenario === 'meganaut';
   const meganautPhaseRaw = Number(enemy?.giganaut?.phase || 1);
   const meganautPhaseIndex = Math.max(0, Math.min(MEGANAUT_PHASE_SPRITES.length - 1, meganautPhaseRaw - 1));
-  const meganautOverdrive = isGiganaut && meganautPhaseRaw >= 4;
-  const sprite = isGiganaut
+  const meganautOverdrive = isMeganautScenario && meganautPhaseRaw >= 4;
+  const sprite = isMeganautScenario
     ? MEGANAUT_PHASE_SPRITES[meganautPhaseIndex]
-    : spritePool[spriteSeed % spritePool.length];
+    : (isGiganaut ? ENEMY_SPRITES.giganaut[0] : spritePool[spriteSeed % spritePool.length]);
   const FLAGSHIP_VISUAL_SCALE = 15.75;
   const GIGANAUT_VISUAL_MULT = 2;
   const FLAGSHIP_BASE_SIZE = ENEMY_TYPES.elite.size;

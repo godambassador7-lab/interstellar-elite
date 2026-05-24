@@ -5,6 +5,7 @@ import { uid } from '../utils/mathUtils';
 
 const GIGANAUT_SIZE = ENEMY_TYPES.elite.size * 2;
 const SPECIAL_CLASS_SIZE_MULT = 3;
+const ELITE_SIZE_MULT = 2 / 3;
 
 const SYSTEM_ELITE_SPAWN_WEIGHTS = {
   frontier: [
@@ -283,21 +284,30 @@ function createEnemy(def, pos) {
     def.type === 'raybin' ||
     def.type === 'hord' ||
     def.type === 'outlander';
+  const isElite = def.type === 'elite';
   const heavyRole = def.type === 'heavy'
     ? (Math.random() < 0.5 ? 'siege' : 'hunter')
+    : null;
+  const eliteRole = isElite
+    ? (Math.random() < 0.34 ? 'long_range_laser' : 'standard')
     : null;
   const flankSide = Math.random() < 0.5 ? -1 : 1;
   return {
     id: uid(),
     type: def.type,
     heavyRole,
+    eliteRole,
     flankSide,
     x: pos.x,
     y: pos.y,
     vx: 0,
     vy: 0,
     facingAngle: 0,
-    size: isSpecialClass ? def.size * SPECIAL_CLASS_SIZE_MULT : def.size,
+    size: isSpecialClass
+      ? def.size * SPECIAL_CLASS_SIZE_MULT
+      : isElite
+        ? def.size * ELITE_SIZE_MULT
+        : def.size,
     hp: def.hp,
     maxHp: def.hp,
     speed: def.speed * (0.85 + Math.random() * 0.3),

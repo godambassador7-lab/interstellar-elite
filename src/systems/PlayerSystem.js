@@ -406,6 +406,8 @@ export function createPlayer() {
     facingAngle: 0,
     hp: PLAYER.HEALTH,
     maxHp: PLAYER.HEALTH,
+    overshield: PLAYER.SHIELD_MAX,
+    maxOvershield: PLAYER.SHIELD_MAX,
     shield: PLAYER.SHIELD_MAX,
     maxShield: PLAYER.SHIELD_MAX,
     shieldRegenDelay: 0,

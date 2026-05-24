@@ -6,6 +6,9 @@ import { PLAYER, ENEMY_TYPES, COMBO, PARTICLES, COLORS, ABILITIES } from '../uti
 const ELITE_LASER_RANGE_SQ   = 150 * 150;
 const ELITE_LASER_RATE_MS    = 200;
 const ELITE_LASER_DAMAGE     = 0.01;
+const ELITE_LONG_RANGE_LASER_RANGE_SQ = 320 * 320;
+const ELITE_LONG_RANGE_LASER_RATE_MS = 520;
+const ELITE_LONG_RANGE_LASER_DAMAGE = 0.016;
 
 const HEAVY_PHOTON_RANGE_SQ  = 320 * 320;
 const HEAVY_PHOTON_RATE_MS   = 2800;
@@ -145,14 +148,18 @@ const GIGANAUT_GRAVITY_WELL_RATE_BY_PHASE = {
 // Absorb damage into shield first; any overflow hits HP; resets regen timer.
 function applyPlayerDamage(player, amount, source = 'unknown') {
   if (player.phaseShift) return;
-  if (player.shield > 0) {
-    const absorbed = Math.min(player.shield, amount);
-    player.shield = Math.max(0, player.shield - absorbed);
-    const overflow = amount - absorbed;
-    if (overflow > 0) player.hp = Math.max(0, player.hp - overflow);
-  } else {
-    player.hp = Math.max(0, player.hp - amount);
+  let remaining = amount;
+  if ((player.overshield || 0) > 0) {
+    const absorbedByOver = Math.min(player.overshield, remaining);
+    player.overshield = Math.max(0, player.overshield - absorbedByOver);
+    remaining -= absorbedByOver;
   }
+  if (remaining > 0 && player.shield > 0) {
+    const absorbed = Math.min(player.shield, remaining);
+    player.shield = Math.max(0, player.shield - absorbed);
+    remaining -= absorbed;
+  }
+  if (remaining > 0) player.hp = Math.max(0, player.hp - remaining);
   player.shieldRegenDelay = PLAYER.SHIELD_REGEN_DELAY;
   if (amount > 0) player.lastDamageSource = source;
 }
@@ -373,12 +380,16 @@ export function runCombatFrame(state, deltaMs) {
     if (enemy.laserFlash > 0) enemy.laserFlash -= deltaMs;
     const ldx = player.x - enemy.x;
     const ldy = player.y - enemy.y;
-    if (ldx * ldx + ldy * ldy > ELITE_LASER_RANGE_SQ) continue;
-    if (now - enemy.lastLaserAt >= ELITE_LASER_RATE_MS) {
+    const longRange = enemy.eliteRole === 'long_range_laser';
+    const laserRangeSq = longRange ? ELITE_LONG_RANGE_LASER_RANGE_SQ : ELITE_LASER_RANGE_SQ;
+    const laserRateMs = longRange ? ELITE_LONG_RANGE_LASER_RATE_MS : ELITE_LASER_RATE_MS;
+    const laserDamage = longRange ? ELITE_LONG_RANGE_LASER_DAMAGE : ELITE_LASER_DAMAGE;
+    if (ldx * ldx + ldy * ldy > laserRangeSq) continue;
+    if (now - enemy.lastLaserAt >= laserRateMs) {
       enemy.lastLaserAt = now;
       enemy.laserFlash  = 80;
       if (overshieldActive) continue;
-      applyPlayerDamage(player, ELITE_LASER_DAMAGE, 'elite_laser');
+      applyPlayerDamage(player, laserDamage, longRange ? 'elite_long_laser' : 'elite_laser');
       playerTookDamage = true;
       if (player.hitFlash < 4) player.hitFlash = 4;
     }
@@ -775,6 +786,8 @@ export function runCombatFrame(state, deltaMs) {
     state.nearMissTimer = (state.nearMissTimer || 0) + deltaMs;
     if (state.nearMissTimer >= 1200 && hasCloseThreat(state, 34)) {
       state.perfectDodges = (state.perfectDodges || 0) + 1;
+      const dodgeRegenAmount = player.maxHp * 0.005;
+      player.hp = Math.min(player.maxHp, player.hp + dodgeRegenAmount);
       state.nearMissTimer = 0;
       state.lastPerfectDodgeAt = now;
     }

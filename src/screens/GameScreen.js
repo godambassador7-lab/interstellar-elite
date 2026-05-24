@@ -919,6 +919,8 @@ If history survives.`
     player.maxHp = Math.round(player.maxHp * profileConfig.playerHpMult);
     player.hp = player.maxHp;
     player.maxShield = Math.round(player.maxShield * profileConfig.playerShieldMult);
+    player.maxOvershield = player.maxShield;
+    player.overshield = player.maxOvershield;
     player.shield = player.maxShield;
 
     G.current = {
@@ -1596,6 +1598,7 @@ If history survives.`
             x: s.x,
             y: s.y,
             gameTime: g.gameTime,
+            specialScenario: g.specialScenario || null,
             facingAngle: g.inIntercept ? 90 : e.facingAngle,
           };
         }),
