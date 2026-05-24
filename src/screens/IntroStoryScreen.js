@@ -3,7 +3,19 @@ import { Animated, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity,
 
 export default function IntroStoryScreen({ onContinue }) {
   const [typedChars, setTypedChars] = useState(0);
+  const [starDrift, setStarDrift] = useState(0);
   const fade = useRef(new Animated.Value(0)).current;
+  const stars = useMemo(
+    () => Array.from({ length: 72 }, (_, i) => ({
+      id: `intro-star-${i}`,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 1 + Math.random() * 2.2,
+      speed: 0.15 + Math.random() * 0.55,
+      opacity: 0.25 + Math.random() * 0.65,
+    })),
+    []
+  );
   const fullText = useMemo(() => (
 `They called you a dreamer.
 A coward hiding behind shields.
@@ -63,11 +75,15 @@ If history survives.`
     const interval = setInterval(() => {
       setTypedChars((prev) => {
         if (prev >= fullText.length) return prev;
-        return Math.min(fullText.length, prev + 18);
+        return Math.min(fullText.length, prev + 1);
       });
-    }, 45);
+    }, 65);
     return () => clearInterval(interval);
   }, [fullText]);
+  useEffect(() => {
+    const id = setInterval(() => setStarDrift((v) => (v + 0.6) % 120), 40);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -84,6 +100,23 @@ If history survives.`
           CELESTIAL ENGINEER DOSSIER
         </Animated.Text>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View pointerEvents="none" style={styles.starLayer}>
+            {stars.map((s) => (
+              <View
+                key={s.id}
+                style={[
+                  styles.star,
+                  {
+                    left: `${s.x}%`,
+                    top: `${((s.y + starDrift * s.speed) % 120) - 10}%`,
+                    width: s.size,
+                    height: s.size,
+                    opacity: s.opacity,
+                  },
+                ]}
+              />
+            ))}
+          </View>
           <Text style={styles.text}>{fullText.slice(0, typedChars)}</Text>
         </ScrollView>
         <TouchableOpacity style={styles.button} activeOpacity={0.85} onPress={onContinue}>
@@ -120,12 +153,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(7,12,24,0.84)',
   },
   content: { paddingHorizontal: 16, paddingVertical: 14 },
+  starLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  star: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+  },
   text: {
-    color: 'rgba(214,232,255,0.92)',
+    color: '#FFFFFF',
     fontFamily: 'Courier New',
     fontSize: 12,
     lineHeight: 19,
     letterSpacing: 0.35,
+    fontWeight: 'bold',
   },
   button: {
     marginTop: 14,
@@ -145,4 +188,3 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
   },
 });
-

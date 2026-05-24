@@ -657,6 +657,7 @@ export default function GameScreen({
   const [battleBgCrop, setBattleBgCrop] = useState(() => pickBattleBgCrop());
   const [showIntroOverlay, setShowIntroOverlay] = useState(!!showIntroStory);
   const [introTypedChars, setIntroTypedChars] = useState(0);
+  const [introStarDrift, setIntroStarDrift] = useState(0);
   const introFade = useRef(new Animated.Value(0)).current;
 
   const G = useRef(null);
@@ -683,6 +684,17 @@ export default function GameScreen({
   const introVisibleRef = useRef(!!showIntroStory);
 
   const { shakeX, shakeY, applyShake } = useShakeOffset();
+  const introStars = useMemo(
+    () => Array.from({ length: 84 }, (_, i) => ({
+      id: `intro-overlay-star-${i}`,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 1 + Math.random() * 2.2,
+      speed: 0.15 + Math.random() * 0.55,
+      opacity: 0.2 + Math.random() * 0.7,
+    })),
+    []
+  );
   const introFullText = useMemo(() => (
 `They called you a dreamer.
 A coward hiding behind shields.
@@ -753,11 +765,16 @@ If history survives.`
           clearInterval(interval);
           return prev;
         }
-        return Math.min(introFullText.length, prev + 18);
+        return Math.min(introFullText.length, prev + 1);
       });
-    }, 45);
+    }, 65);
     return () => clearInterval(interval);
   }, [showIntroOverlay, introFullText]);
+  useEffect(() => {
+    if (!showIntroOverlay) return undefined;
+    const id = setInterval(() => setIntroStarDrift((v) => (v + 0.6) % 120), 40);
+    return () => clearInterval(id);
+  }, [showIntroOverlay]);
 
   const pushHighlight = useCallback((g, type, details = {}) => {
     g.latestHighlight = {
@@ -2433,6 +2450,23 @@ If history survives.`
               INTERSTELLAR ELITE
             </Animated.Text>
             <ScrollView style={styles.introScroll} contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
+              <View pointerEvents="none" style={styles.introStarLayer}>
+                {introStars.map((s) => (
+                  <View
+                    key={s.id}
+                    style={[
+                      styles.introStar,
+                      {
+                        left: `${s.x}%`,
+                        top: `${((s.y + introStarDrift * s.speed) % 120) - 10}%`,
+                        width: s.size,
+                        height: s.size,
+                        opacity: s.opacity,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
               <Text style={styles.introText}>{introFullText.slice(0, introTypedChars)}</Text>
             </ScrollView>
             <TouchableOpacity style={styles.introBtn} activeOpacity={0.85} onPress={handleBeginMission}>
@@ -2751,12 +2785,22 @@ const styles = StyleSheet.create({
   introContent: {
     paddingBottom: 20,
   },
+  introStarLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  introStar: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+  },
   introText: {
-    color: 'rgba(206,224,244,0.9)',
+    color: '#FFFFFF',
     fontFamily: 'Courier New',
     fontSize: 12,
     lineHeight: 18,
     letterSpacing: 0.4,
+    fontWeight: 'bold',
   },
   introCritical: {
     color: '#FF6D6D',
