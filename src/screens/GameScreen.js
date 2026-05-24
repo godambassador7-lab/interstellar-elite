@@ -963,6 +963,7 @@ If history survives.`
       giganautPostWaveSpawned: false,
       giganautEntryOverlayShown: false,
       giganautEntryOverlayUntil: 0,
+      meganautPracticeTriggered: false,
       latestHighlight: null,
       perfectDodges: 0,
       chainReactionKills: 0,
@@ -1443,12 +1444,33 @@ If history survives.`
           g.phaseLabel = 'GIGANAUT ARRIVAL';
           pushHighlight(g, 'GIGANAUT WARP-IN');
         } else if (!g.flagshipEscape.active) {
+          const canTriggerMeganautPractice =
+            g.systemNumber === 1 &&
+            !g.specialScenario &&
+            g.forceGiganautAfterWavesNoDetonation &&
+            g.giganautPostWaveSpawned &&
+            !g.meganautPracticeTriggered;
           if (g.forceGiganautAfterWavesNoDetonation && g.giganautPostWaveSpawned) {
-            g.victory = true;
-            isRunning.current = false;
-            g.score += 700;
-            g.phaseLabel = 'SYSTEM SECURED';
-            pushHighlight(g, 'GIGANAUT DESTROYED');
+            if (canTriggerMeganautPractice) {
+              g.meganautPracticeTriggered = true;
+              g.specialScenario = 'meganaut';
+              g.currentWave = 1;
+              g.maxWaves = 4;
+              g.waveSpawnRemaining = Math.max(14, Math.round(getWaveEnemyCount(1, g.galaxy, systemNumber) * 1.25));
+              g.nextWaveSpawnAt = Date.now() + 450;
+              g.giganautPostWaveSpawned = false;
+              g.giganautForcedSpawned = false;
+              g.giganautEntryOverlayShown = false;
+              g.giganautEntryOverlayUntil = 0;
+              g.phaseLabel = 'MEGANAUT BATTLE';
+              pushHighlight(g, 'MEGANAUT PHASE START');
+            } else {
+              g.victory = true;
+              isRunning.current = false;
+              g.score += 700;
+              g.phaseLabel = 'SYSTEM SECURED';
+              pushHighlight(g, 'GIGANAUT DESTROYED');
+            }
           } else {
             g.flagshipEscape.active = true;
             g.flagshipEscape.countdownMs = 3000;
