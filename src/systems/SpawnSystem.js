@@ -4,6 +4,7 @@ import { ENEMY_TYPES, SCREEN } from '../utils/constants';
 import { uid } from '../utils/mathUtils';
 
 const GIGANAUT_SIZE = ENEMY_TYPES.elite.size * 2;
+const SPECIAL_CLASS_SIZE_MULT = 3;
 
 const SYSTEM_ELITE_SPAWN_WEIGHTS = {
   frontier: [
@@ -277,6 +278,11 @@ export function createGiganautNemesisAt(basePos) {
 }
 
 function createEnemy(def, pos) {
+  const isSpecialClass =
+    def.type === 'legionary' ||
+    def.type === 'raybin' ||
+    def.type === 'hord' ||
+    def.type === 'outlander';
   const heavyRole = def.type === 'heavy'
     ? (Math.random() < 0.5 ? 'siege' : 'hunter')
     : null;
@@ -291,7 +297,7 @@ function createEnemy(def, pos) {
     vx: 0,
     vy: 0,
     facingAngle: 0,
-    size: def.size,
+    size: isSpecialClass ? def.size * SPECIAL_CLASS_SIZE_MULT : def.size,
     hp: def.hp,
     maxHp: def.hp,
     speed: def.speed * (0.85 + Math.random() * 0.3),

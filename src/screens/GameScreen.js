@@ -1461,11 +1461,13 @@ If history survives.`
           g.phaseLabel = 'GIGANAUT ARRIVAL';
           pushHighlight(g, 'GIGANAUT WARP-IN');
         } else if (!g.flagshipEscape.active) {
+          const giganautStillActive = g.enemies.some((e) => e.isGiganaut && !e.dead);
           const canTriggerMeganautPractice =
             g.systemNumber === 1 &&
             !g.specialScenario &&
             g.forceGiganautAfterWavesNoDetonation &&
             g.giganautPostWaveSpawned &&
+            !giganautStillActive &&
             !g.meganautPracticeTriggered;
           if (g.forceGiganautAfterWavesNoDetonation && g.giganautPostWaveSpawned) {
             if (canTriggerMeganautPractice) {

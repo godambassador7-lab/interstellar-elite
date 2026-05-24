@@ -46,6 +46,7 @@ const HORD_WELL_RATE_MS = 7000;
 const HORD_WELL_RADIUS = 92;
 const HORD_WELL_STRENGTH = 240;
 const HORD_WELL_LIFE_MS = 4200;
+const SHIP_GRAVITY_WELL_STRENGTH_MULT = 10;
 const OUTLANDER_TELEPORT_RANGE_SQ = 540 * 540;
 const OUTLANDER_TELEPORT_RATE_MS = 3600;
 const OUTLANDER_LASER_RANGE_SQ = 240 * 240;
@@ -517,7 +518,7 @@ export function runCombatFrame(state, deltaMs) {
           x: player.x + (Math.random() - 0.5) * 120,
           y: player.y + (Math.random() - 0.5) * 120,
           radius: HORD_WELL_RADIUS,
-          strength: HORD_WELL_STRENGTH,
+          strength: HORD_WELL_STRENGTH * SHIP_GRAVITY_WELL_STRENGTH_MULT,
           lifeMs: HORD_WELL_LIFE_MS,
         });
       }
@@ -982,7 +983,7 @@ function runGiganautBehavior(state, enemy, now) {
         x: state.player.x + (Math.random() - 0.5) * 140,
         y: state.player.y + (Math.random() - 0.5) * 140,
         radius: 72 + gs.phase * 9,
-        strength: 180 + gs.phase * 36,
+        strength: (180 + gs.phase * 36) * SHIP_GRAVITY_WELL_STRENGTH_MULT,
         lifeMs: 3600 + gs.phase * 600,
       });
       enemy.giganautNextWellAt = now + wellRate;
@@ -1126,7 +1127,7 @@ function runGiganautBehavior(state, enemy, now) {
         x: state.player.x + (Math.random() - 0.5) * 220,
         y: state.player.y + (Math.random() - 0.5) * 220,
         radius: 88 + gs.phase * 8,
-        strength: 260 + gs.phase * 40,
+        strength: (260 + gs.phase * 40) * SHIP_GRAVITY_WELL_STRENGTH_MULT,
         lifeMs: 4200 + gs.phase * 700,
       });
       enemy.giganautNextHorizonWellAt = now + 5600;
