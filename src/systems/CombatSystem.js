@@ -182,6 +182,7 @@ export function runCombatFrame(state, deltaMs) {
   const overshieldActive = isOvershieldActive(state);
   const phaseDamageMult = abilities?.phase?.active ? (abilities.phase.damageMult || 1) : 1;
   const lastStandDamageMult = state?.lastStand?.active ? (state.lastStand.damageMult || 1) : 1;
+  const phantomDamageMult = abilities?.phantom?.active ? 2 : 1;
   const now = Date.now();
   let scoreGain = 0;
   let comboIncrement = 0;
@@ -213,7 +214,7 @@ export function runCombatFrame(state, deltaMs) {
         const enemy = target.enemy;
         if (enemy.dead) continue;
         const overshieldRingBonus = overshieldActive ? 5 : 0;
-        const dmg = (player.damage + overshieldRingBonus) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+        const dmg = (player.damage + overshieldRingBonus) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult * phantomDamageMult;
         const dealt = applyDamage(state, enemy, dmg, newParticles);
         if (dealt > 0) playerDealtDamage = true;
         if (enemy.hp <= 0 && !enemy.dead) {
@@ -232,7 +233,7 @@ export function runCombatFrame(state, deltaMs) {
       if (enemy.dead || abilities.dash.hitIds.has(enemy.id)) continue;
       if (circlesOverlap(player.x, player.y, PLAYER.SIZE / 2 + 10, enemy.x, enemy.y, enemy.size / 2)) {
         abilities.dash.hitIds.add(enemy.id);
-        const dmg = ABILITIES.DASH.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+        const dmg = ABILITIES.DASH.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult * phantomDamageMult;
         const dealt = applyDamage(state, enemy, dmg, newParticles);
         if (dealt > 0) playerDealtDamage = true;
         if (enemy.hp <= 0 && !enemy.dead) {
@@ -258,7 +259,7 @@ export function runCombatFrame(state, deltaMs) {
     const width = 60 - 42 * t;
     const ramp = 1.85 - 1.1 * t;
     const beamDps = 145 * (abilities.pulse?.damageMult || 1) * ramp;
-    const beamDamage = beamDps * (deltaMs / 1000) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+    const beamDamage = beamDps * (deltaMs / 1000) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult * phantomDamageMult;
     for (const enemy of enemies) {
       if (enemy.dead) continue;
       const dBeam = distancePointToSegment(enemy.x, enemy.y, bx1, by1, bx2, by2);
@@ -278,7 +279,7 @@ export function runCombatFrame(state, deltaMs) {
     for (const enemy of enemies) {
       if (enemy.dead) continue;
       if (dist(player, enemy) <= ABILITIES.PULSE.RADIUS + enemy.size / 2) {
-        const dmg = ABILITIES.PULSE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+        const dmg = ABILITIES.PULSE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult * phantomDamageMult;
         const dealt = applyDamage(state, enemy, dmg, newParticles, 'offensive_shield');
         if (dealt > 0) playerDealtDamage = true;
         if (enemy.hp <= 0 && !enemy.dead) {
@@ -324,7 +325,7 @@ export function runCombatFrame(state, deltaMs) {
           if (!abilities.drone.hitCooldowns.has(hitKey) ||
               now - abilities.drone.hitCooldowns.get(hitKey) > 600) {
             abilities.drone.hitCooldowns.set(hitKey, now);
-            const dmg = ABILITIES.DRONE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+            const dmg = ABILITIES.DRONE.DAMAGE * player.damageMultiplier * phaseDamageMult * lastStandDamageMult * phantomDamageMult;
             const dealt = applyDamage(state, enemy, dmg, newParticles);
             if (dealt > 0) playerDealtDamage = true;
             if (enemy.hp <= 0 && !enemy.dead) {
@@ -343,7 +344,7 @@ export function runCombatFrame(state, deltaMs) {
     const arms = Math.max(0, player.filamentArmsCount || 0);
     const filamentRadius = 34 + arms * 9;
     const filamentDps = 16 + arms * 5.5;
-    const filamentDamage = filamentDps * (deltaMs / 1000) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult;
+    const filamentDamage = filamentDps * (deltaMs / 1000) * player.damageMultiplier * phaseDamageMult * lastStandDamageMult * phantomDamageMult;
     for (const enemy of enemies) {
       if (enemy.dead) continue;
       if (!circlesOverlap(player.x, player.y, filamentRadius, enemy.x, enemy.y, enemy.size * 0.5)) continue;

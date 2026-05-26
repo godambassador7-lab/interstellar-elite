@@ -17,6 +17,7 @@ import {
   triggerDrone,
   triggerQuantumSlash,
   triggerPhaseSwap,
+  triggerPhantomMirror,
 } from '../systems/PlayerSystem';
 import { runCombatFrame } from '../systems/CombatSystem';
 import { trySpawn, updateEnemyMovement, getWaveEnemyCount, createGiganautNemesisAt } from '../systems/SpawnSystem';
@@ -330,6 +331,11 @@ function snapshotAbilities(abilities) {
       active: abilities.phase.active,
       cooldownRemaining: abilities.phase.cooldownRemaining,
       maxCooldown: abilities.phase.maxCooldown,
+    },
+    phantom: {
+      active: !!abilities.phantom?.active,
+      cooldownRemaining: abilities.phantom?.cooldownRemaining || 0,
+      maxCooldown: abilities.phantom?.maxCooldown || 1,
     },
     ultimate: {
       active: abilities.ultimate.active,
@@ -671,6 +677,7 @@ export default function GameScreen({
     overshield: () => {},
     drone: () => {},
     quantum: () => {},
+    phantom: () => {},
   });
   const rafRef = useRef(null);
   const lastTs = useRef(null);
@@ -826,7 +833,7 @@ If history survives.`
     const onKeyDown = (evt) => {
       if (!keyboardEnabled.current) return;
       const key = String(evt.key || '').toLowerCase();
-      if (['j', 'k', 'l', 'u', 'o'].includes(key)) {
+      if (['j', 'k', 'l', 'u', 'o', 'i'].includes(key)) {
         evt.preventDefault();
         if (evt.repeat) return;
         if (key === 'j') abilityHotkeysRef.current.dash();
@@ -834,6 +841,7 @@ If history survives.`
         if (key === 'o') abilityHotkeysRef.current.overshield();
         if (key === 'l') abilityHotkeysRef.current.drone();
         if (key === 'u') abilityHotkeysRef.current.quantum();
+        if (key === 'i') abilityHotkeysRef.current.phantom();
         return;
       }
       if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd'].includes(key)) return;
@@ -1882,6 +1890,18 @@ If history survives.`
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, []);
 
+  const handlePhantomMirror = useCallback(() => {
+    const g = G.current;
+    if (!g || g.victory) return;
+    if (g.specialScenario !== 'meganaut') return;
+    const wasActive = !!g.abilities.phantom?.active;
+    triggerPhantomMirror(g.player, g.abilities);
+    if (!wasActive && g.abilities.phantom?.active) {
+      pushHighlight(g, 'PHANTOM MIRROR');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+  }, [pushHighlight]);
+
   useEffect(() => {
     abilityHotkeysRef.current = {
       dash: handleDash,
@@ -1889,8 +1909,9 @@ If history survives.`
       overshield: handleOvershieldHotkey,
       drone: handleDrone,
       quantum: handleQuantum,
+      phantom: handlePhantomMirror,
     };
-  }, [handleDash, handlePulse, handleOvershieldHotkey, handleDrone, handleQuantum]);
+  }, [handleDash, handlePulse, handleOvershieldHotkey, handleDrone, handleQuantum, handlePhantomMirror]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -2039,6 +2060,14 @@ If history survives.`
   const escapeAngle = (Math.atan2(escapeDy / escapeLen, escapeDx / escapeLen) * 180) / Math.PI;
   const hyperspaceBgShift = Math.sin(time * 1.6) * 12;
   const hyperspaceBgDriftY = Math.sin(time * 1.1) * 6;
+  const phantomMirrorActive = !!abilities?.phantom?.active && activeScenario === 'meganaut';
+  const facingRad = ((playerFacingAngle || 0) - 90) * (Math.PI / 180);
+  const phantomX = playerX - Math.cos(facingRad) * 86 + Math.sin(time * 2.4) * 16;
+  const phantomY = playerY - Math.sin(facingRad) * 86 + Math.cos(time * 2.4) * 16;
+  const tetherDx = phantomX - playerX;
+  const tetherDy = phantomY - playerY;
+  const tetherLen = Math.max(1, Math.hypot(tetherDx, tetherDy));
+  const tetherAngle = (Math.atan2(tetherDy, tetherDx) * 180) / Math.PI;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -2300,6 +2329,41 @@ If history survives.`
             shieldPct={playerMaxShield > 0 ? playerShield / playerMaxShield : 0}
             overshieldActive={overshieldActive}
           />
+          {phantomMirrorActive && (
+            <>
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: (playerX + phantomX) * 0.5 - tetherLen * 0.5,
+                  top: (playerY + phantomY) * 0.5 - 2,
+                  width: tetherLen,
+                  height: 4,
+                  backgroundColor: 'rgba(255,206,92,0.84)',
+                  shadowColor: '#FFCC5A',
+                  shadowOpacity: 1,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 0 },
+                  transform: [{ rotate: `${tetherAngle}deg` }],
+                }}
+              />
+              <View pointerEvents="none" style={{ opacity: 0.52 }}>
+                <PlayerShip
+                  x={phantomX}
+                  y={phantomY}
+                  hitFlash={0}
+                  attackFlash={playerAttackFlash}
+                  attackDamageFlash={playerAttackDamageFlash}
+                  facingAngle={playerFacingAngle}
+                  dashActive={dashActive}
+                  isMoving={playerMoving}
+                  time={time}
+                  shieldPct={0}
+                  overshieldActive={false}
+                />
+              </View>
+            </>
+          )}
         </View>
 
         {abilities && !isDead && !isVictory && !showShop && (

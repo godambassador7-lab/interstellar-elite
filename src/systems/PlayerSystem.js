@@ -229,6 +229,18 @@ export function updatePlayer(state, joystick, deltaMs, abilities) {
     abilities.quantum.cooldownRemaining = Math.max(0, abilities.quantum.cooldownRemaining - deltaMs);
   }
 
+  // Phantom Mirror timers
+  if (abilities.phantom?.active) {
+    abilities.phantom.elapsed += deltaMs;
+    if (abilities.phantom.elapsed >= abilities.phantom.durationMs) {
+      abilities.phantom.active = false;
+      abilities.phantom.elapsed = 0;
+    }
+  }
+  if (abilities.phantom && !abilities.phantom.active && abilities.phantom.cooldownRemaining > 0) {
+    abilities.phantom.cooldownRemaining = Math.max(0, abilities.phantom.cooldownRemaining - deltaMs);
+  }
+
   // ── Dash trail ────────────────────────────────────────────────────────────────
   if (abilities.dash.active) {
     state.dashTrail.push({
@@ -393,6 +405,21 @@ export function triggerQuantumSlash(player, abilities) {
 }
 
 /**
+ * Trigger Phantom Mirror (Meganaut-only clone window).
+ */
+export function triggerPhantomMirror(player, abilities) {
+  if (!abilities?.phantom) return;
+  if (abilities.phantom.cooldownRemaining > 0 || abilities.phantom.active) return;
+  abilities.phantom.active = true;
+  abilities.phantom.elapsed = 0;
+  abilities.phantom.cooldownRemaining = abilities.phantom.maxCooldown;
+  // Drawback: shields collapse on activation.
+  player.shield = 0;
+  player.overshield = 0;
+  player.shieldRegenDelay = Math.max(player.shieldRegenDelay || 0, PLAYER.SHIELD_REGEN_DELAY);
+}
+
+/**
  * Create initial player state.
  */
 export function createPlayer() {
@@ -498,6 +525,13 @@ export function createAbilities() {
       dirY: 0,
       justEnded: false,
       selfDamagePending: false,
+    },
+    phantom: {
+      active: false,
+      elapsed: 0,
+      durationMs: 7000,
+      cooldownRemaining: 0,
+      maxCooldown: 18000,
     },
   };
 }
