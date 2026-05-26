@@ -18,7 +18,7 @@ import {
   triggerQuantumSlash,
   triggerPhaseSwap,
 } from '../systems/PlayerSystem';
-import { runCombatFrame, applyQuantumSlashSwipe } from '../systems/CombatSystem';
+import { runCombatFrame } from '../systems/CombatSystem';
 import { trySpawn, updateEnemyMovement, getWaveEnemyCount, createGiganautNemesisAt } from '../systems/SpawnSystem';
 import { pickUpgradeChoices, applyUpgrade } from '../systems/UpgradeSystem';
 import { pickShopOffers, randomShopInterval, applyShopOffer } from '../systems/ShopSystem';
@@ -826,14 +826,14 @@ If history survives.`
     const onKeyDown = (evt) => {
       if (!keyboardEnabled.current) return;
       const key = String(evt.key || '').toLowerCase();
-      if (['j', 'k', 'l', ';', 'o'].includes(key)) {
+      if (['j', 'k', 'l', 'u', 'o'].includes(key)) {
         evt.preventDefault();
         if (evt.repeat) return;
         if (key === 'j') abilityHotkeysRef.current.dash();
         if (key === 'k') abilityHotkeysRef.current.pulse();
         if (key === 'o') abilityHotkeysRef.current.overshield();
         if (key === 'l') abilityHotkeysRef.current.drone();
-        if (key === ';') abilityHotkeysRef.current.quantum();
+        if (key === 'u') abilityHotkeysRef.current.quantum();
         return;
       }
       if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd'].includes(key)) return;
@@ -1828,9 +1828,51 @@ If history survives.`
   const handleQuantum = useCallback(() => {
     const g = G.current;
     if (!g || g.victory) return;
+    const wasActive = !!g.abilities.quantum.active;
     triggerQuantumSlash(g.player, g.abilities);
+    if (!wasActive && g.abilities.quantum.active) {
+      const now = Date.now();
+      const camLeft = g.cameraX;
+      const camTop = g.cameraY;
+      const camRight = camLeft + SCREEN.width;
+      const camBottom = camTop + SCREEN.height;
+      const visibleTargets = g.enemies.filter(
+        (e) => !e.dead && e.x >= camLeft && e.x <= camRight && e.y >= camTop && e.y <= camBottom
+      );
+      if (visibleTargets.length > 0) {
+        const deadIds = new Set();
+        let scoreGain = 0;
+        let comboGain = 0;
+        for (const e of visibleTargets) {
+          deadIds.add(e.id);
+          scoreGain += e.score || 0;
+          comboGain += 1;
+          g.totalDamageDealt = (g.totalDamageDealt || 0) + Math.max(0, e.hp || 0);
+          g.quantumTrails.push({
+            id: `${now}-${Math.random()}`,
+            fromX: g.player.x,
+            fromY: g.player.y,
+            toX: e.x,
+            toY: e.y,
+            life: 260,
+            maxLife: 260,
+          });
+        }
+        g.enemies = g.enemies.filter((e) => !deadIds.has(e.id));
+        g.combo += comboGain;
+        g.lastKillTime = now;
+        const comboMult = 1 + Math.floor(g.combo / 5);
+        g.score += scoreGain * comboMult;
+        pushHighlight(g, 'QUANTUM LIGHT RAYS');
+      }
+      g.abilities.quantum.active = false;
+      g.abilities.quantum.freezeRemaining = 0;
+      g.abilities.quantum.slashWindowRemaining = 0;
+      g.abilities.quantum.lastSwipePoint = null;
+      g.abilities.quantum.hitCooldowns.clear();
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-  }, []);
+  }, [pushHighlight]);
 
   const handlePhase = useCallback(() => {
     const g = G.current;
@@ -1852,52 +1894,8 @@ If history survives.`
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => {
-        const g = G.current;
-        return !!g?.abilities?.quantum?.active;
-      },
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        const g = G.current;
-        return !!g?.abilities?.quantum?.active && (Math.abs(gestureState.dx) + Math.abs(gestureState.dy) > 4);
-      },
-      onPanResponderGrant: (evt) => {
-        const g = G.current;
-        if (!g?.abilities?.quantum?.active) return;
-        const { locationX, locationY } = evt.nativeEvent;
-        g.abilities.quantum.lastSwipePoint = {
-          x: locationX + g.cameraX,
-          y: locationY + g.cameraY,
-        };
-      },
-      onPanResponderMove: (evt) => {
-        const g = G.current;
-        if (!g?.abilities?.quantum?.active) return;
-        const { locationX, locationY } = evt.nativeEvent;
-        const curr = { x: locationX + g.cameraX, y: locationY + g.cameraY };
-        const prev = g.abilities.quantum.lastSwipePoint || curr;
-        const dx = curr.x - prev.x;
-        const dy = curr.y - prev.y;
-        if (dx * dx + dy * dy < 90) return;
-        applyQuantumSlashSwipe(g, prev, curr);
-        g.quantumTrails.push({
-          id: `${Date.now()}-${Math.random()}`,
-          fromX: prev.x,
-          fromY: prev.y,
-          toX: curr.x,
-          toY: curr.y,
-          life: 220,
-          maxLife: 220,
-        });
-        g.abilities.quantum.lastSwipePoint = curr;
-      },
-      onPanResponderRelease: () => {
-        const g = G.current;
-        if (g?.abilities?.quantum) g.abilities.quantum.lastSwipePoint = null;
-      },
-      onPanResponderTerminate: () => {
-        const g = G.current;
-        if (g?.abilities?.quantum) g.abilities.quantum.lastSwipePoint = null;
-      },
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: () => false,
     })
   ).current;
 

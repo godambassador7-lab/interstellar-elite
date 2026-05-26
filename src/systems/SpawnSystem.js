@@ -6,6 +6,8 @@ import { uid } from '../utils/mathUtils';
 const GIGANAUT_SIZE = ENEMY_TYPES.elite.size * 2;
 const SPECIAL_CLASS_SIZE_MULT = 3;
 const ELITE_SIZE_MULT = 2 / 3;
+const MASS_REFERENCE_SIZE = ENEMY_TYPES.swarm.size || 14;
+const MASS_SPEED_EXP = 0.58;
 
 const SYSTEM_ELITE_SPAWN_WEIGHTS = {
   frontier: [
@@ -291,6 +293,13 @@ function createEnemy(def, pos) {
   const eliteRole = isElite
     ? (Math.random() < 0.34 ? 'long_range_laser' : 'standard')
     : null;
+  const scaledSize = isSpecialClass
+    ? def.size * SPECIAL_CLASS_SIZE_MULT
+    : isElite
+      ? def.size * ELITE_SIZE_MULT
+      : def.size;
+  const massSpeedFactor = Math.pow(MASS_REFERENCE_SIZE / Math.max(8, scaledSize), MASS_SPEED_EXP);
+  const smallFighterSpeedMult = def.type === 'swarm' ? 2.5 : 1;
   const flankSide = Math.random() < 0.5 ? -1 : 1;
   return {
     id: uid(),
@@ -303,14 +312,10 @@ function createEnemy(def, pos) {
     vx: 0,
     vy: 0,
     facingAngle: 0,
-    size: isSpecialClass
-      ? def.size * SPECIAL_CLASS_SIZE_MULT
-      : isElite
-        ? def.size * ELITE_SIZE_MULT
-        : def.size,
+    size: scaledSize,
     hp: def.hp,
     maxHp: def.hp,
-    speed: def.speed * (0.85 + Math.random() * 0.3),
+    speed: def.speed * (0.85 + Math.random() * 0.3) * massSpeedFactor * smallFighterSpeedMult,
     damage: def.damage,
     score: def.score,
     color: def.color,

@@ -914,7 +914,8 @@ function runGiganautBehavior(state, enemy, now) {
   const enginePct = (gs.subsystems.engineCore || 0) / 100;
   if (!enemy.giganautBaseSpeed) enemy.giganautBaseSpeed = enemy.speed;
   const engineMult = 0.35 + Math.max(0, enginePct) * 0.65;
-  enemy.speed = Math.max(20, enemy.giganautBaseSpeed * engineMult);
+  const scenarioSpeedMult = state?.specialScenario === 'meganaut' ? 0.52 : 0.72;
+  enemy.speed = Math.max(14, enemy.giganautBaseSpeed * engineMult * scenarioSpeedMult);
   if (gs.phase === 1 && d < 320) {
     // Phase 1 remains distant: back-thrust when player closes in.
     enemy.vx -= nx * 24;
