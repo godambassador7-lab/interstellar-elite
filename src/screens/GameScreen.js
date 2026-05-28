@@ -351,6 +351,8 @@ function makeUiState() {
     playerMaxHp: 100,
     playerShield: 50,
     playerMaxShield: 50,
+    playerOvershield: 50,
+    playerMaxOvershield: 50,
     photons: [],
     destroyerMissiles: [],
     playerX: SCREEN.width / 2,
@@ -1584,6 +1586,8 @@ If history survives.`
         playerMaxHp: g.player.maxHp,
         playerShield: g.player.shield,
         playerMaxShield: g.player.maxShield,
+        playerOvershield: g.player.overshield,
+        playerMaxOvershield: g.player.maxOvershield,
         playerX: g.player.x - g.cameraX,
         playerY: g.player.y - g.cameraY,
         playerHitFlash: g.player.hitFlash,
@@ -2019,6 +2023,8 @@ If history survives.`
     playerMaxHp,
     playerShield,
     playerMaxShield,
+    playerOvershield,
+    playerMaxOvershield,
     photons,
     destroyerMissiles,
     playerX,
@@ -2424,6 +2430,8 @@ If history survives.`
             playerMaxHp={playerMaxHp}
             playerShield={playerShield}
             playerMaxShield={playerMaxShield}
+            playerOvershield={playerOvershield}
+            playerMaxOvershield={playerMaxOvershield}
             score={score}
             totalDamage={totalDamage}
             combo={combo}

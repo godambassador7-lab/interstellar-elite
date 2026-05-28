@@ -10,6 +10,8 @@ export function HUD({
   playerMaxHp,
   playerShield = 0,
   playerMaxShield = 50,
+  playerOvershield = 0,
+  playerMaxOvershield = 50,
   score,
   totalDamage,
   combo,
@@ -32,6 +34,7 @@ export function HUD({
   const hpPct     = playerHp / playerMaxHp;
   const hpColor   = hpPct > 0.5 ? COLORS.healthBar : hpPct > 0.25 ? '#FFB02E' : COLORS.healthLow;
   const shieldPct = playerMaxShield > 0 ? Math.max(0, Math.min(1, playerShield / playerMaxShield)) : 0;
+  const overshieldPct = playerMaxOvershield > 0 ? Math.max(0, Math.min(1, playerOvershield / playerMaxOvershield)) : 0;
 
   const dashCdPct = abilities.dash.cooldownRemaining / abilities.dash.maxCooldown;
   const pulseCdPct = abilities.pulse.cooldownRemaining / abilities.pulse.maxCooldown;
@@ -82,8 +85,9 @@ export function HUD({
             <Text style={styles.shieldLabel}>SHLD</Text>
             <View style={styles.shieldTrack}>
               <View style={[styles.shieldFill, { width: `${shieldPct * 100}%` }]} />
+              <View style={[styles.overshieldFill, { width: `${overshieldPct * 100}%` }]} />
             </View>
-            <Text style={styles.shieldNum}>{Math.ceil(playerShield)}</Text>
+            <Text style={styles.shieldNum}>{Math.ceil(playerShield)}|{Math.ceil(playerOvershield)}</Text>
           </View>
         </View>
 
@@ -228,6 +232,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   shieldFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
     height: '100%',
     borderRadius: 4,
     backgroundColor: '#52D8FF',
@@ -235,12 +242,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOpacity: 0.8,
   },
+  overshieldFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,126,84,0.78)',
+    shadowColor: '#FF8E62',
+    shadowRadius: 5,
+    shadowOpacity: 0.85,
+  },
   shieldNum: {
     fontFamily: 'Courier New',
     fontSize: 10,
     fontWeight: 'bold',
     color: '#52D8FF',
-    width: 28,
+    width: 56,
     textAlign: 'right',
   },
   hpTrack: {
