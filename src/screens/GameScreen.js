@@ -19,7 +19,7 @@ import {
   triggerPhaseSwap,
   triggerPhantomMirror,
 } from '../systems/PlayerSystem';
-import { runCombatFrame } from '../systems/CombatSystem';
+import { runCombatFrame, applyQuantumSlashSwipe } from '../systems/CombatSystem';
 import { trySpawn, updateEnemyMovement, getWaveEnemyCount, createGiganautNemesisAt } from '../systems/SpawnSystem';
 import { pickUpgradeChoices, applyUpgrade } from '../systems/UpgradeSystem';
 import { pickShopOffers, randomShopInterval, applyShopOffer } from '../systems/ShopSystem';
@@ -1848,36 +1848,88 @@ If history survives.`
         (e) => !e.dead && e.x >= camLeft && e.x <= camRight && e.y >= camTop && e.y <= camBottom
       );
       if (visibleTargets.length > 0) {
-        const deadIds = new Set();
-        let scoreGain = 0;
-        let comboGain = 0;
-        for (const e of visibleTargets) {
-          deadIds.add(e.id);
-          scoreGain += e.score || 0;
-          comboGain += 1;
-          g.totalDamageDealt = (g.totalDamageDealt || 0) + Math.max(0, e.hp || 0);
+        const orderedTargets = [];
+        const remaining = [...visibleTargets];
+        let anchorX = g.player.x;
+        let anchorY = g.player.y;
+        const maxChainTargets = 8;
+        while (remaining.length > 0 && orderedTargets.length < maxChainTargets) {
+          let bestIdx = 0;
+          let bestDist = Infinity;
+          for (let i = 0; i < remaining.length; i++) {
+            const t = remaining[i];
+            const dx = t.x - anchorX;
+            const dy = t.y - anchorY;
+            const d = dx * dx + dy * dy;
+            if (d < bestDist) {
+              bestDist = d;
+              bestIdx = i;
+            }
+          }
+          const nextTarget = remaining.splice(bestIdx, 1)[0];
+          orderedTargets.push(nextTarget);
+          anchorX = nextTarget.x;
+          anchorY = nextTarget.y;
+        }
+
+        const hr = PLAYER.SIZE / 2;
+        for (const e of orderedTargets) {
+          const from = { x: g.player.x, y: g.player.y };
+          const to = { x: e.x, y: e.y };
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const len = Math.max(0.001, Math.sqrt(dx * dx + dy * dy));
+          const nx = dx / len;
+          const ny = dy / len;
+          const ox = -ny * 6;
+          const oy = nx * 6;
+
           g.quantumTrails.push({
             id: `${now}-${Math.random()}`,
-            fromX: g.player.x,
-            fromY: g.player.y,
-            toX: e.x,
-            toY: e.y,
-            life: 260,
-            maxLife: 260,
+            fromX: from.x,
+            fromY: from.y,
+            toX: to.x,
+            toY: to.y,
+            width: 8,
+            color: '#A8F5FF',
+            life: 460,
+            maxLife: 460,
           });
+          g.quantumTrails.push({
+            id: `${now}-${Math.random()}`,
+            fromX: from.x + ox,
+            fromY: from.y + oy,
+            toX: to.x + ox,
+            toY: to.y + oy,
+            width: 4,
+            color: '#66E7FF',
+            life: 360,
+            maxLife: 360,
+          });
+          g.quantumTrails.push({
+            id: `${now}-${Math.random()}`,
+            fromX: from.x - ox,
+            fromY: from.y - oy,
+            toX: to.x - ox,
+            toY: to.y - oy,
+            width: 4,
+            color: '#FFFFFF',
+            life: 300,
+            maxLife: 300,
+          });
+
+          applyQuantumSlashSwipe(g, from, to);
+
+          g.player.x = clamp(hr, to.x, g.world.width - hr);
+          g.player.y = clamp(hr, to.y, g.world.height - hr);
+          g.player.vx = nx * 140;
+          g.player.vy = ny * 140;
+          g.player.facingX = nx;
+          g.player.facingY = ny;
+          g.player.facingAngle = (Math.atan2(ny, nx) * 180) / Math.PI + 90;
         }
-        g.enemies = g.enemies.filter((e) => !deadIds.has(e.id));
-        g.combo += comboGain;
-        g.lastKillTime = now;
-        const comboMult = 1 + Math.floor(g.combo / 5);
-        g.score += scoreGain * comboMult;
         pushHighlight(g, 'QUANTUM LIGHT RAYS');
       }
-      g.abilities.quantum.active = false;
-      g.abilities.quantum.freezeRemaining = 0;
-      g.abilities.quantum.slashWindowRemaining = 0;
-      g.abilities.quantum.lastSwipePoint = null;
-      g.abilities.quantum.hitCooldowns.clear();
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
   }, [pushHighlight]);

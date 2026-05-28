@@ -771,22 +771,24 @@ export function QuantumSwipeTrail({ trail }) {
         const dy = seg.toY - seg.fromY;
         const len = Math.sqrt(dx * dx + dy * dy);
         const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+        const width = Math.max(3, seg.width || 4);
+        const color = seg.color || '#7EE9FF';
         return (
           <View
             key={seg.id}
             style={{
               position: 'absolute',
               left: seg.fromX,
-              top: seg.fromY - 2,
+              top: seg.fromY - width * 0.5,
               width: Math.max(2, len),
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: '#7EE9FF',
+              height: width,
+              borderRadius: width * 0.5,
+              backgroundColor: color,
               opacity: seg.opacity,
               transform: [{ rotate: `${angle}deg` }],
-              shadowColor: '#7EE9FF',
-              shadowRadius: 8,
-              shadowOpacity: 0.8,
+              shadowColor: color,
+              shadowRadius: Math.max(8, width * 2.4),
+              shadowOpacity: 0.95,
               shadowOffset: { width: 0, height: 0 },
             }}
           />
