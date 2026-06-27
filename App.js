@@ -1,7 +1,7 @@
 // App.js
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, StatusBar, StyleSheet, View, Text } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Image, Platform, StatusBar, StyleSheet, View, Text, useWindowDimensions } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Asset } from 'expo-asset';
 
@@ -30,6 +30,7 @@ import {
 } from './src/systems/NemesisSystem';
 
 const CORE_ASSETS = [
+  require('./ChatGPT Image Apr 25, 2026, 09_38_15 PM.png'),
   require('./main menu title.png'),
   require('./battle background.png'),
   require('./universe map.png'),
@@ -52,8 +53,11 @@ const WARM_ASSETS = [
 ];
 
 export default function App() {
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const [coreAssetsReady, setCoreAssetsReady] = useState(false);
   const [assetLoadPct, setAssetLoadPct] = useState(0);
+  const logoPulse = useRef(new Animated.Value(0)).current;
+  const loadScan = useRef(new Animated.Value(0)).current;
   const [screen, setScreen] = useState('menu'); // menu | intro | map | game | defense_prep | defense
   const [selectedGalaxy, setSelectedGalaxy] = useState(GALAXIES[0]);
   const [runProfile, setRunProfile] = useState('combat');
@@ -102,6 +106,33 @@ export default function App() {
     watupi: false,
     ultra316: false,
   });
+  const shouldRotateForMobileWeb =
+    Platform.OS === 'web' && viewportHeight > viewportWidth && Math.min(viewportWidth, viewportHeight) <= 820;
+  const landscapeFrameStyle = shouldRotateForMobileWeb
+    ? {
+        width: viewportHeight,
+        height: viewportWidth,
+        transform: [{ rotate: '90deg' }],
+      }
+    : null;
+
+  const requestLandscapePlayback = async () => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+
+    try {
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (_) {
+      // Fullscreen is optional and browser-dependent.
+    }
+
+    try {
+      await window.screen?.orientation?.lock?.('landscape');
+    } catch (_) {
+      // Orientation lock usually requires fullscreen and is not supported everywhere.
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -139,6 +170,41 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const logoLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoPulse, {
+          toValue: 1,
+          duration: 1300,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoPulse, {
+          toValue: 0,
+          duration: 1300,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    const scanLoop = Animated.loop(
+      Animated.timing(loadScan, {
+        toValue: 1,
+        duration: 1500,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    logoLoop.start();
+    scanLoop.start();
+
+    return () => {
+      logoLoop.stop();
+      scanLoop.stop();
+    };
+  }, [loadScan, logoPulse]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return undefined;
@@ -565,97 +631,142 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <StatusBar hidden />
+      <View style={styles.viewportShell}>
+        <View style={[styles.landscapeFrame, landscapeFrameStyle]}>
 
-      {!coreAssetsReady && (
-        <View style={styles.loadingOverlay}>
-          <Text style={styles.loadingText}>LOADING ASSETS...</Text>
-          <Text style={styles.loadingPctText}>{assetLoadPct}%</Text>
+          {!coreAssetsReady && (
+            <View style={styles.loadingOverlay}>
+              <View style={styles.loadingStarfield} />
+              <Animated.View
+                style={[
+                  styles.loadingLogoWrap,
+                  {
+                    transform: [
+                      {
+                        scale: logoPulse.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.018],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <Image
+                  source={require('./ChatGPT Image Apr 25, 2026, 09_38_15 PM.png')}
+                  resizeMode="contain"
+                  style={styles.loadingLogo}
+                />
+              </Animated.View>
+              <Text style={styles.loadingText}>INITIALIZING JUMP DRIVE</Text>
+              <View style={styles.loadingBarTrack}>
+                <View style={[styles.loadingBarFill, { width: `${assetLoadPct}%` }]} />
+                <Animated.View
+                  style={[
+                    styles.loadingBarScan,
+                    {
+                      transform: [
+                        {
+                          translateX: loadScan.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-48, 280],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.loadingPctText}>{assetLoadPct}%</Text>
+            </View>
+          )}
+
+          {coreAssetsReady && (
+            <>
+              {screen === 'menu' && (
+                <MenuScreen
+                  onStart={(profile) => {
+                    requestLandscapePlayback();
+                    setRunProfile(profile || 'combat');
+                    setScreen('intro');
+                  }}
+                />
+              )}
+
+              {screen === 'intro' && (
+                <IntroStoryScreen
+                  onContinue={() => {
+                    setScreen('map');
+                  }}
+                />
+              )}
+
+              {screen === 'map' && (
+                <UniverseMapScreen
+                  unlockedGalaxyIndex={unlockedGalaxyIndex}
+                  completedSystemsByGalaxy={completedSystemsByGalaxy}
+                  warCredits={warCredits}
+                  ownedMetaUpgrades={ownedMetaUpgrades}
+                  shipParts={shipParts}
+                  shipPartsByType={shipPartsByType}
+                  metaUpgradeCatalog={META_UPGRADES}
+                  stationUpgradeCatalog={STATION_UPGRADES}
+                  stationUpgrades={stationUpgrades}
+                  territories={territories}
+                  defenseEvents={defenseEvents}
+                  onBuyMetaUpgrade={handleBuyMetaUpgrade}
+                  onBuyStationUpgrade={handleBuyStationUpgrade}
+                  onSelectGalaxy={handleSelectGalaxy}
+                  onNodeLongPressDefense={handleNodeLongPressDefense}
+                  autoOpenGalaxyId={autoOpenGalaxyId}
+                  onAutoOpenGalaxyHandled={() => setAutoOpenGalaxyId(null)}
+                  onBack={() => setScreen('menu')}
+                  onDefendStation={handleDefendStation}
+                />
+              )}
+
+              {screen === 'game' && (
+                <GameScreen
+                  galaxy={selectedGalaxy}
+                  systemNumber={selectedSystemNumber}
+                  showIntroStory={false}
+                  onIntroStoryComplete={() => {}}
+                  specialScenario={specialScenario}
+                  quadrantAbilityUnlocks={quadrantAbilityUnlocks}
+                  forceGiganautOnly={selectedForceGiganautOnly}
+                  forceGiganautAfterWavesNoDetonation={selectedForceGiganautAfterWavesNoDetonation}
+                  metaUpgrades={ownedMetaUpgrades}
+                  meteorUnlocked={meteorUnlocked}
+                  runProfile={runProfile}
+                  onSystemComplete={handleSystemComplete}
+                  onMainMenu={() => setScreen('menu')}
+                />
+              )}
+
+              {screen === 'defense_prep' && (
+                <DefensePrepScreen
+                  territory={selectedDefenseTerritory}
+                  defaultDoctrine={selectedDefenseDoctrine}
+                  enemyCounterStyle={adaptiveCounterStyle}
+                  onBack={() => setScreen('map')}
+                  onStartDefense={handleStartDefense}
+                />
+              )}
+
+              {screen === 'defense' && (
+                <StationDefenseScreen
+                  territory={selectedDefenseTerritory}
+                  stationUpgrades={stationUpgrades}
+                  doctrine={selectedDefenseDoctrine}
+                  enemyCounterStyle={adaptiveCounterStyle}
+                  onDefenseComplete={handleDefenseComplete}
+                  onMainMenu={() => setScreen('menu')}
+                />
+              )}
+            </>
+          )}
         </View>
-      )}
-
-      {coreAssetsReady && (
-        <>
-          {screen === 'menu' && (
-            <MenuScreen
-              onStart={(profile) => {
-                setRunProfile(profile || 'combat');
-                setScreen('intro');
-              }}
-            />
-          )}
-
-          {screen === 'intro' && (
-            <IntroStoryScreen
-              onContinue={() => {
-                setScreen('map');
-              }}
-            />
-          )}
-
-          {screen === 'map' && (
-            <UniverseMapScreen
-              unlockedGalaxyIndex={unlockedGalaxyIndex}
-              completedSystemsByGalaxy={completedSystemsByGalaxy}
-              warCredits={warCredits}
-              ownedMetaUpgrades={ownedMetaUpgrades}
-              shipParts={shipParts}
-              shipPartsByType={shipPartsByType}
-              metaUpgradeCatalog={META_UPGRADES}
-              stationUpgradeCatalog={STATION_UPGRADES}
-              stationUpgrades={stationUpgrades}
-              territories={territories}
-              defenseEvents={defenseEvents}
-              onBuyMetaUpgrade={handleBuyMetaUpgrade}
-              onBuyStationUpgrade={handleBuyStationUpgrade}
-              onSelectGalaxy={handleSelectGalaxy}
-              onNodeLongPressDefense={handleNodeLongPressDefense}
-              autoOpenGalaxyId={autoOpenGalaxyId}
-              onAutoOpenGalaxyHandled={() => setAutoOpenGalaxyId(null)}
-              onBack={() => setScreen('menu')}
-              onDefendStation={handleDefendStation}
-            />
-          )}
-
-          {screen === 'game' && (
-            <GameScreen
-              galaxy={selectedGalaxy}
-              systemNumber={selectedSystemNumber}
-              showIntroStory={false}
-              onIntroStoryComplete={() => {}}
-              specialScenario={specialScenario}
-              quadrantAbilityUnlocks={quadrantAbilityUnlocks}
-              forceGiganautOnly={selectedForceGiganautOnly}
-              forceGiganautAfterWavesNoDetonation={selectedForceGiganautAfterWavesNoDetonation}
-              metaUpgrades={ownedMetaUpgrades}
-              meteorUnlocked={meteorUnlocked}
-              runProfile={runProfile}
-              onSystemComplete={handleSystemComplete}
-              onMainMenu={() => setScreen('menu')}
-            />
-          )}
-
-          {screen === 'defense_prep' && (
-            <DefensePrepScreen
-              territory={selectedDefenseTerritory}
-              defaultDoctrine={selectedDefenseDoctrine}
-              enemyCounterStyle={adaptiveCounterStyle}
-              onBack={() => setScreen('map')}
-              onStartDefense={handleStartDefense}
-            />
-          )}
-
-          {screen === 'defense' && (
-            <StationDefenseScreen
-              territory={selectedDefenseTerritory}
-              stationUpgrades={stationUpgrades}
-              doctrine={selectedDefenseDoctrine}
-              enemyCounterStyle={adaptiveCounterStyle}
-              onDefenseComplete={handleDefenseComplete}
-              onMainMenu={() => setScreen('menu')}
-            />
-          )}
-        </>
-      )}
+      </View>
     </GestureHandlerRootView>
   );
 }
@@ -665,18 +776,89 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000008',
   },
+  viewportShell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000008',
+    overflow: 'hidden',
+  },
+  landscapeFrame: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000008',
+    overflow: 'hidden',
+  },
   loadingOverlay: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000008',
+    overflow: 'hidden',
+    paddingHorizontal: 28,
+  },
+  loadingStarfield: {
+    position: 'absolute',
+    top: -120,
+    left: -80,
+    right: -80,
+    bottom: -120,
+    backgroundColor: '#020716',
+    borderColor: 'rgba(93, 244, 255, 0.08)',
+    borderWidth: 1,
+  },
+  loadingLogoWrap: {
+    width: '100%',
+    maxWidth: 210,
+    height: 210,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  loadingLogo: {
+    width: '100%',
+    height: '100%',
   },
   loadingText: {
     color: '#67F3FF',
     fontFamily: 'Courier New',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
-    letterSpacing: 2,
+    letterSpacing: 3,
+    textShadowColor: 'rgba(103, 243, 255, 0.85)',
+    textShadowRadius: 10,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  loadingBarTrack: {
+    width: '100%',
+    maxWidth: 320,
+    height: 8,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(103, 243, 255, 0.55)',
+    backgroundColor: 'rgba(0, 8, 22, 0.84)',
+    overflow: 'hidden',
+    shadowColor: '#67F3FF',
+    shadowOpacity: 0.75,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  loadingBarFill: {
+    height: '100%',
+    backgroundColor: '#67F3FF',
+    shadowColor: '#67F3FF',
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  loadingBarScan: {
+    position: 'absolute',
+    top: -3,
+    width: 48,
+    height: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.74)',
+    opacity: 0.72,
   },
   loadingPctText: {
     marginTop: 10,

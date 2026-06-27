@@ -17,52 +17,23 @@ export default function IntroStoryScreen({ onContinue }) {
     []
   );
   const fullText = useMemo(() => (
-`They called you a dreamer.
-A coward hiding behind shields.
-A scientist afraid of real power.
+`The universe is failing.
 
-For decades, the civilizations of the known universe mocked your life's work - defensive barrier systems capable of absorbing the destructive force of stars themselves. While empires raced to create larger fleets, stronger cannons, and weapons capable of tearing holes through space-time, you warned them of the inevitable consequence:
+Every empire chased stronger weapons. Every rupture weakened space-time. Your warnings were ignored until stolen shield technology became the next generation of planet-killers.
 
-Every distortion.
-Every rupture.
-Every experimental superweapon.
-
-The universe was becoming unstable.
-
-No one listened.
-
-Then they stole your technology.
-
-Your shielding systems were reverse-engineered into weapons beyond imagination. Planet-killers. Singularity bombs. Temporal fractures. Entire star systems vanished in moments as governments and warlords competed for domination. Space itself began to collapse under the strain.
-
-Now, the universe approaches what your calculations named:
+Now the collapse has a name:
 
 THE GREAT CRITICAL MASS
 
-The final threshold where accumulated space-time instability triggers a total universal implosion.
+You are the Celestial Engineer. Your Stabilization Network is the only system that can keep reality intact.
 
-There is no senate left to appeal to.
-No alliance powerful enough to stop the chaos.
-Only one truth remains:
+The mission is simple:
 
-The galaxy cannot be trusted with this power.
+Secure fractured systems.
+Strip catastrophic weapons from enemy fleets.
+Expand the network before the universe tears itself apart.
 
-You are the Celestial Engineer - the greatest scientific mind ever born - and creator of the only technology capable of stabilizing the universe. To save existence itself, you must seize control of the fractured systems before rival empires destroy reality entirely.
-
-Your mission is no longer conquest for power.
-
-It is conquest for survival.
-
-Every world secured strengthens the Stabilization Network.
-Every enemy defeated removes another catastrophic weapon from circulation.
-Every fleet you command pushes the universe one step farther from annihilation.
-
-Some will call you a tyrant.
-Others, a savior.
-
-History will decide.
-
-If history survives.`
+The deeper record is fragmented. More of it will unlock as you reclaim the map.`
   ), []);
 
   useEffect(() => {
@@ -77,7 +48,7 @@ If history survives.`
         if (prev >= fullText.length) return prev;
         return Math.min(fullText.length, prev + 1);
       });
-    }, 65);
+    }, 38);
     return () => clearInterval(interval);
   }, [fullText]);
   useEffect(() => {

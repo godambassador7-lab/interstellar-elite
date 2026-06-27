@@ -50,47 +50,6 @@ const BG_STARS = Array.from({ length: 180 }, (_, i) => ({
   opacity: 0.2 + Math.random() * 0.7,
 }));
 
-
-function DoubleChevronArrow({ left, top, scale = 1, color = '#33D6FF', rotation = 0 }) {
-  const w = 116 * scale;
-  const h = 116 * scale;
-  const t = Math.max(2, 5 * scale);
-  const line = (x, y, width, height, rotate) => (
-    <View
-      style={{
-        position: 'absolute',
-        left: x,
-        top: y,
-        width,
-        height,
-        backgroundColor: color,
-        borderRadius: t,
-        transform: [{ rotate: `${rotate}deg` }],
-      }}
-    />
-  );
-
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left,
-        top,
-        width: w,
-        height: h,
-        opacity: 0.95,
-        transform: [{ rotate: `${rotation}deg` }],
-      }}
-    >
-      {line(w * 0.1, h * 0.2, w * 0.42, t, -28)}
-      {line(w * 0.48, h * 0.2, w * 0.42, t, 28)}
-      {line(w * 0.1, h * 0.46, w * 0.42, t, -28)}
-      {line(w * 0.48, h * 0.46, w * 0.42, t, 28)}
-    </View>
-  );
-}
-
 function formatWarCredits(value) {
   const n = Math.max(0, Number(value) || 0);
   if (n < 1000) return `${Math.floor(n)}`;
@@ -118,6 +77,44 @@ const PART_LABELS = {
   bio: 'BIO',
 };
 
+const LORE_ENTRIES = [
+  {
+    id: 'critical-mass',
+    title: 'THE GREAT CRITICAL MASS',
+    unlockAt: 0,
+    body:
+      'Accumulated weapon tests, singularity drives, and temporal fractures are pushing space-time toward a runaway collapse. The Stabilization Network can still slow the chain reaction, but only if enough systems are secured.',
+  },
+  {
+    id: 'stolen-shields',
+    title: 'STOLEN SHIELD DOCTRINE',
+    unlockAt: 2,
+    body:
+      'Your defensive barriers were copied, inverted, and weaponized. What once absorbed stellar force now traps it, compresses it, and detonates it inside enemy target zones.',
+  },
+  {
+    id: 'no-senate',
+    title: 'THE FAILED SENATE',
+    unlockAt: 5,
+    body:
+      'The last interstellar senate dissolved after three member worlds vanished during ceasefire negotiations. No authority remains strong enough to confiscate catastrophic weapons peacefully.',
+  },
+  {
+    id: 'network',
+    title: 'STABILIZATION NETWORK',
+    unlockAt: 9,
+    body:
+      'Each reclaimed system becomes a network anchor. Anchors dampen local fractures, expose nearby weapon signatures, and make deeper territory reachable before the collapse front expands.',
+  },
+  {
+    id: 'history',
+    title: 'HISTORY WILL DECIDE',
+    unlockAt: 14,
+    body:
+      'Enemy transmissions already call the Celestial Engineer a conqueror. The archive reaches a colder conclusion: survival now requires control, and control will look like tyranny to every fleet being disarmed.',
+  },
+];
+
 export default function UniverseMapScreen({
   unlockedGalaxyIndex,
   completedSystemsByGalaxy,
@@ -142,6 +139,7 @@ export default function UniverseMapScreen({
   const [zoom, setZoom] = useState(1);
   const [lockCurrentGalaxy, setLockCurrentGalaxy] = useState(false);
   const [showStore, setShowStore] = useState(false);
+  const [showLore, setShowLore] = useState(false);
   const [conquestGalaxy, setConquestGalaxy] = useState(null);
   const [isPinching, setIsPinching] = useState(false);
   const [mapImageReady, setMapImageReady] = useState(false);
@@ -174,9 +172,16 @@ export default function UniverseMapScreen({
   const zoomMin = useMemo(() => {
     if (!viewport.width || !viewport.height) return 0.42;
     const fitX = viewport.width / MAP_WIDTH;
-    const fitY = viewport.height / MAP_HEIGHT;
-    return Math.max(0.12, Math.min(fitX, fitY));
-  }, [viewport.width, viewport.height]);
+    return Math.max(0.12, Math.min(ZOOM_MAX, fitX));
+  }, [viewport.width]);
+  const totalCompletedSystems = useMemo(
+    () => (completedSystemsByGalaxy || []).reduce((sum, n) => sum + (Number(n) || 0), 0),
+    [completedSystemsByGalaxy]
+  );
+  const unlockedLoreCount = useMemo(
+    () => LORE_ENTRIES.filter((entry) => totalCompletedSystems >= entry.unlockAt).length,
+    [totalCompletedSystems]
+  );
 
   useEffect(() => {
     setZoom((z) => Math.max(zoomMin, Math.min(ZOOM_MAX, z)));
@@ -327,35 +332,6 @@ export default function UniverseMapScreen({
     return links;
   }, [galaxies]);
 
-  const expansionArrow = useMemo(() => {
-    if (!galaxies.length) {
-      return { mapX: LOGICAL_MAP_WIDTH * 0.9, mapY: LOGICAL_MAP_HEIGHT * 0.5, rotation: 90 };
-    }
-
-    const xs = galaxies.map((g) => g.x);
-    const ys = galaxies.map((g) => g.y);
-    const minX = Math.max(0, Math.min(...xs));
-    const maxX = Math.min(LOGICAL_MAP_WIDTH, Math.max(...xs));
-    const minY = Math.max(0, Math.min(...ys));
-    const maxY = Math.min(LOGICAL_MAP_HEIGHT, Math.max(...ys));
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    const spaces = [
-      { dir: 'left', value: minX },
-      { dir: 'right', value: LOGICAL_MAP_WIDTH - maxX },
-      { dir: 'up', value: minY },
-      { dir: 'down', value: LOGICAL_MAP_HEIGHT - maxY },
-    ];
-    spaces.sort((a, b) => b.value - a.value);
-    const winner = spaces[0]?.dir || 'right';
-
-    if (winner === 'left') return { mapX: Math.max(96, minX - 120), mapY: centerY, rotation: -90 };
-    if (winner === 'up') return { mapX: centerX, mapY: Math.max(96, minY - 120), rotation: 0 };
-    if (winner === 'down') return { mapX: centerX, mapY: Math.min(LOGICAL_MAP_HEIGHT - 96, maxY + 120), rotation: 180 };
-    return { mapX: Math.min(LOGICAL_MAP_WIDTH - 96, maxX + 120), mapY: centerY, rotation: 90 };
-  }, [galaxies]);
-
   const clampScroll = useCallback((x, y, targetZoom) => {
     const nextWidth = MAP_WIDTH * targetZoom;
     const nextHeight = MAP_HEIGHT * targetZoom;
@@ -449,9 +425,8 @@ export default function UniverseMapScreen({
     const minY = Math.max(0, Math.min(...ys) - padding);
     const maxY = Math.min(LOGICAL_MAP_HEIGHT, Math.max(...ys) + padding);
 
-    const { width, height } = Dimensions.get('window');
-    const viewportW = Math.max(280, width - 24);
-    const viewportH = Math.max(320, height - 300);
+    const viewportW = Math.max(280, viewport.width || Dimensions.get('window').width);
+    const viewportH = Math.max(180, viewport.height || Dimensions.get('window').height);
     const targetZoom = Math.max(
       zoomMin,
       Math.min(
@@ -606,6 +581,9 @@ export default function UniverseMapScreen({
           <TouchableOpacity style={styles.storeBtn} onPress={() => setShowStore(true)} activeOpacity={0.8}>
             <Text style={styles.storeBtnText}>STORE</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.loreBtn} onPress={() => setShowLore(true)} activeOpacity={0.8}>
+            <Text style={styles.loreBtnText}>LORE {unlockedLoreCount}/{LORE_ENTRIES.length}</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.zoomBtn}
             onPress={() => setZoom((z) => Math.max(zoomMin, z - 0.15))}
@@ -754,14 +732,6 @@ export default function UniverseMapScreen({
                 }, 180);
               }}
             />
-            <DoubleChevronArrow
-              left={expansionArrow.mapX * MAP_SCALE_X * zoom - 58}
-              top={expansionArrow.mapY * MAP_SCALE_Y * zoom - 58}
-              scale={Math.max(0.8, zoom * 0.9)}
-              color="#2FD8FF"
-              rotation={expansionArrow.rotation}
-            />
-
             {/* Quadron background tints */}
             {QUADRANT_DEFS.map((q) => (
               <View
@@ -1208,6 +1178,42 @@ export default function UniverseMapScreen({
         </View>
       )}
 
+      {showLore && (
+        <View style={styles.storeOverlay}>
+          <View style={styles.lorePanel}>
+            <View style={styles.storeHeader}>
+              <Text style={styles.storeTitle}>LORE ARCHIVE</Text>
+              <Text style={styles.loreProgress}>
+                SYSTEMS SECURED {totalCompletedSystems}  |  FILES {unlockedLoreCount}/{LORE_ENTRIES.length}
+              </Text>
+            </View>
+
+            <ScrollView style={styles.loreList} contentContainerStyle={{ paddingBottom: 8 }}>
+              {LORE_ENTRIES.map((entry) => {
+                const unlocked = totalCompletedSystems >= entry.unlockAt;
+                return (
+                  <View key={entry.id} style={[styles.loreItem, !unlocked && styles.loreItemLocked]}>
+                    <Text style={[styles.loreItemTitle, !unlocked && styles.loreItemTitleLocked]}>
+                      {unlocked ? entry.title : 'LOCKED FILE'}
+                    </Text>
+                    <Text style={styles.loreItemMeta}>
+                      {entry.unlockAt === 0 ? 'AVAILABLE NOW' : `UNLOCKS AFTER ${entry.unlockAt} SYSTEMS SECURED`}
+                    </Text>
+                    <Text style={[styles.loreItemBody, !unlocked && styles.loreItemBodyLocked]}>
+                      {unlocked ? entry.body : 'Signal fragment encrypted. Reclaim more territory to restore this archive entry.'}
+                    </Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity style={styles.closeBtn} activeOpacity={0.8} onPress={() => setShowLore(false)}>
+              <Text style={styles.closeBtnText}>CLOSE ARCHIVE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {conquestGalaxy && (
         <ConquestScreen
           galaxy={conquestGalaxy}
@@ -1391,6 +1397,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 0.8,
   },
+  loreBtn: {
+    borderWidth: 1,
+    borderColor: '#B46CFF',
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(180,108,255,0.13)',
+  },
+  loreBtnText: {
+    color: '#D8B7FF',
+    fontFamily: 'Courier New',
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+  },
   zoomBtn: {
     width: 24,
     height: 24,
@@ -1561,6 +1582,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(9,14,24,0.96)',
     padding: 12,
   },
+  lorePanel: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '88%',
+    borderWidth: 1,
+    borderColor: 'rgba(180,108,255,0.42)',
+    borderRadius: 8,
+    backgroundColor: 'rgba(9,14,24,0.97)',
+    padding: 12,
+  },
   storeHeader: {
     marginBottom: 8,
   },
@@ -1594,6 +1625,14 @@ const styles = StyleSheet.create({
     fontSize: 9,
     letterSpacing: 0.5,
   },
+  loreProgress: {
+    marginTop: 4,
+    color: '#D8B7FF',
+    fontFamily: 'Courier New',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.7,
+  },
   sectionTitle: {
     color: 'rgba(127,242,255,0.9)',
     fontFamily: 'Courier New',
@@ -1614,6 +1653,49 @@ const styles = StyleSheet.create({
   },
   storeList: {
     maxHeight: 520,
+  },
+  loreList: {
+    maxHeight: 520,
+  },
+  loreItem: {
+    borderWidth: 1,
+    borderColor: 'rgba(180,108,255,0.28)',
+    borderRadius: 6,
+    backgroundColor: 'rgba(18,18,34,0.92)',
+    padding: 10,
+    marginBottom: 8,
+  },
+  loreItemLocked: {
+    borderColor: 'rgba(132,148,173,0.24)',
+    backgroundColor: 'rgba(20,24,35,0.72)',
+  },
+  loreItemTitle: {
+    color: '#F0E6FF',
+    fontFamily: 'Courier New',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 0.8,
+  },
+  loreItemTitleLocked: {
+    color: 'rgba(190,200,218,0.62)',
+  },
+  loreItemMeta: {
+    marginTop: 4,
+    color: 'rgba(216,183,255,0.82)',
+    fontFamily: 'Courier New',
+    fontSize: 8,
+    fontWeight: 'bold',
+    letterSpacing: 0.6,
+  },
+  loreItemBody: {
+    marginTop: 6,
+    color: 'rgba(232,240,255,0.86)',
+    fontFamily: 'Courier New',
+    fontSize: 10,
+    lineHeight: 15,
+  },
+  loreItemBodyLocked: {
+    color: 'rgba(174,187,207,0.58)',
   },
   storeItem: {
     flexDirection: 'row',
