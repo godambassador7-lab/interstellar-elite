@@ -54,6 +54,7 @@ const WARM_ASSETS = [
 
 export default function App() {
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const [availableViewport, setAvailableViewport] = useState({ width: viewportWidth, height: viewportHeight });
   const [coreAssetsReady, setCoreAssetsReady] = useState(false);
   const [assetLoadPct, setAssetLoadPct] = useState(0);
   const logoPulse = useRef(new Animated.Value(0)).current;
@@ -93,7 +94,7 @@ export default function App() {
   const [nemesisCommanders, setNemesisCommanders] = useState(createInitialCommanders());
   const [defenseEvents, setDefenseEvents] = useState([]);
   const [flawlessSystemsStreak, setFlawlessSystemsStreak] = useState(0);
-  const [giganautFirstPickTestPending, setGiganautFirstPickTestPending] = useState(true);
+  const [giganautFirstPickTestPending, setGiganautFirstPickTestPending] = useState(false);
   const [specialScenario, setSpecialScenario] = useState(null); // null | singularity | meganaut | armageddon
   const [specialProgress, setSpecialProgress] = useState({
     singularityComplete: false,
@@ -110,8 +111,11 @@ export default function App() {
     Platform.OS === 'web' && viewportHeight > viewportWidth && Math.min(viewportWidth, viewportHeight) <= 820;
   const landscapeFrameStyle = shouldRotateForMobileWeb
     ? {
-        width: viewportHeight,
-        height: viewportWidth,
+        // Use the root's measured content box. On iOS this excludes the notch,
+        // home indicator and browser chrome via the CSS safe-area padding.
+        width: availableViewport.height,
+        height: availableViewport.width,
+        flex: 0,
         transform: [{ rotate: '90deg' }],
       }
     : null;
@@ -232,7 +236,7 @@ export default function App() {
     body.style.margin = '0';
 
     if (root) {
-      root.style.height = '100vh';
+      root.style.height = '100dvh';
       root.style.overflow = 'hidden';
     }
 
@@ -631,7 +635,13 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <StatusBar hidden />
-      <View style={styles.viewportShell}>
+      <View
+        style={styles.viewportShell}
+        onLayout={(event) => {
+          const { width, height } = event.nativeEvent.layout;
+          if (width > 0 && height > 0) setAvailableViewport({ width, height });
+        }}
+      >
         <View style={[styles.landscapeFrame, landscapeFrameStyle]}>
 
           {!coreAssetsReady && (
