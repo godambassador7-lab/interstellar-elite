@@ -54,7 +54,6 @@ const WARM_ASSETS = [
 
 export default function App() {
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
-  const [availableViewport, setAvailableViewport] = useState({ width: viewportWidth, height: viewportHeight });
   const [coreAssetsReady, setCoreAssetsReady] = useState(false);
   const [assetLoadPct, setAssetLoadPct] = useState(0);
   const logoPulse = useRef(new Animated.Value(0)).current;
@@ -111,11 +110,8 @@ export default function App() {
     Platform.OS === 'web' && viewportHeight > viewportWidth && Math.min(viewportWidth, viewportHeight) <= 820;
   const landscapeFrameStyle = shouldRotateForMobileWeb
     ? {
-        // Use the root's measured content box. On iOS this excludes the notch,
-        // home indicator and browser chrome via the CSS safe-area padding.
-        width: availableViewport.height,
-        height: availableViewport.width,
-        flex: 0,
+        width: viewportHeight,
+        height: viewportWidth,
         transform: [{ rotate: '90deg' }],
       }
     : null;
@@ -635,13 +631,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <StatusBar hidden />
-      <View
-        style={styles.viewportShell}
-        onLayout={(event) => {
-          const { width, height } = event.nativeEvent.layout;
-          if (width > 0 && height > 0) setAvailableViewport({ width, height });
-        }}
-      >
+      <View style={styles.viewportShell}>
         <View style={[styles.landscapeFrame, landscapeFrameStyle]}>
 
           {!coreAssetsReady && (
