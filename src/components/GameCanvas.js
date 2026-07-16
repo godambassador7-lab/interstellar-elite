@@ -336,16 +336,16 @@ export function EnemyShip({ enemy }) {
         shadowOffset: { width: 0, height: 0 },
       }} />
 
-      {moving && classKey === 'flagship' && (
+      {moving && (classKey === 'flagship' || isGiganaut) && (
         <>
           <View
             style={{
               position: 'absolute',
-              left: shipBox * 0.5 + rearNx * shipBox * 0.33 + sideNx * shipBox * 0.08 - shipBox * 0.04,
-              top: shipBox * 0.5 + rearNy * shipBox * 0.33 + sideNy * shipBox * 0.08 - shipBox * 0.1,
-              width: shipBox * 0.08,
-              height: shipBox * 0.2 * pulse,
-              borderRadius: shipBox * 0.04,
+              left: shipBox * 0.5 + rearNx * shipBox * (isGiganaut ? 0.41 : 0.33) + sideNx * shipBox * (isGiganaut ? 0.065 : 0.08) - shipBox * (isGiganaut ? 0.03 : 0.04),
+              top: shipBox * 0.5 + rearNy * shipBox * (isGiganaut ? 0.41 : 0.33) + sideNy * shipBox * (isGiganaut ? 0.065 : 0.08) - shipBox * (isGiganaut ? 0.11 : 0.1),
+              width: shipBox * (isGiganaut ? 0.06 : 0.08),
+              height: shipBox * (isGiganaut ? 0.22 : 0.2) * pulse,
+              borderRadius: shipBox * (isGiganaut ? 0.03 : 0.04),
               backgroundColor: 'rgba(117,236,255,0.95)',
               shadowColor: '#6EEFFF',
               shadowOpacity: 0.95,
@@ -357,11 +357,11 @@ export function EnemyShip({ enemy }) {
           <View
             style={{
               position: 'absolute',
-              left: shipBox * 0.5 + rearNx * shipBox * 0.33 - sideNx * shipBox * 0.08 - shipBox * 0.04,
-              top: shipBox * 0.5 + rearNy * shipBox * 0.33 - sideNy * shipBox * 0.08 - shipBox * 0.1,
-              width: shipBox * 0.08,
-              height: shipBox * 0.2 * pulse,
-              borderRadius: shipBox * 0.04,
+              left: shipBox * 0.5 + rearNx * shipBox * (isGiganaut ? 0.41 : 0.33) - sideNx * shipBox * (isGiganaut ? 0.065 : 0.08) - shipBox * (isGiganaut ? 0.03 : 0.04),
+              top: shipBox * 0.5 + rearNy * shipBox * (isGiganaut ? 0.41 : 0.33) - sideNy * shipBox * (isGiganaut ? 0.065 : 0.08) - shipBox * (isGiganaut ? 0.11 : 0.1),
+              width: shipBox * (isGiganaut ? 0.06 : 0.08),
+              height: shipBox * (isGiganaut ? 0.22 : 0.2) * pulse,
+              borderRadius: shipBox * (isGiganaut ? 0.03 : 0.04),
               backgroundColor: 'rgba(79,188,255,0.95)',
               shadowColor: '#49C6FF',
               shadowOpacity: 0.95,
@@ -373,40 +373,6 @@ export function EnemyShip({ enemy }) {
         </>
       )}
       <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, transform: [{ rotate: `${shipAngle}deg` }] }}>
-        {moving && isGiganaut && (
-          <>
-            <View
-              style={{
-                position: 'absolute',
-                left: shipBox * 0.46,
-                top: shipBox * 0.79,
-                width: shipBox * 0.045,
-                height: shipBox * 0.18 * pulse,
-                borderRadius: shipBox * 0.03,
-                backgroundColor: 'rgba(117,236,255,0.95)',
-                shadowColor: '#6EEFFF',
-                shadowOpacity: 0.95,
-                shadowRadius: 7,
-                shadowOffset: { width: 0, height: 0 },
-              }}
-            />
-            <View
-              style={{
-                position: 'absolute',
-                left: shipBox * 0.505,
-                top: shipBox * 0.79,
-                width: shipBox * 0.045,
-                height: shipBox * 0.18 * pulse,
-                borderRadius: shipBox * 0.03,
-                backgroundColor: 'rgba(79,188,255,0.95)',
-                shadowColor: '#49C6FF',
-                shadowOpacity: 0.95,
-                shadowRadius: 7,
-                shadowOffset: { width: 0, height: 0 },
-              }}
-            />
-          </>
-        )}
         {isGiganaut && (
           <>
             {meganautOverdrive && (

@@ -43,6 +43,25 @@ const SYSTEM_DIFFICULTY_CURVES = {
   core: { waveMult: 1.22, spawnIntervalMult: 0.81, activeCapMult: 1.24, eliteChanceBonus: 0.05 },
 };
 
+const SPECIALTY_UNLOCKS_BY_SYSTEM_TYPE = {
+  frontier: ['legionary'],
+  contested: ['legionary', 'raybin'],
+  warzone: ['legionary', 'raybin', 'outlander'],
+  core: ['legionary', 'raybin', 'outlander', 'hord'],
+};
+
+const STEERING_RESPONSE = {
+  nemesis: 0.045,
+  heavySiege: 0.016,
+  heavyHunter: 0.022,
+  elite: 0.16,
+  legionary: 0.105,
+  raybin: 0.032,
+  hord: 0.022,
+  hordSurge: 0.04,
+  outlander: 0.095,
+};
+
 function getSystemType(state) {
   const galaxySystems = Math.max(1, Number(state?.galaxy?.systems) || 1);
   const systemNumber = Math.max(1, Math.min(galaxySystems, Number(state?.systemNumber) || 1));
@@ -62,6 +81,11 @@ function chooseWeightedType(entries, fallback = ENEMY_TYPES.legionary) {
   }
   const tail = entries[entries.length - 1];
   return ENEMY_TYPES[tail.key] || fallback;
+}
+
+function steerToward(enemy, targetVx, targetVy, response) {
+  enemy.vx += (targetVx - enemy.vx) * response;
+  enemy.vy += (targetVy - enemy.vy) * response;
 }
 
 function getSystemSpawnProfile(state) {
@@ -101,9 +125,12 @@ function chooseAdvancedTypeBySystem(state) {
     },
   };
   const lockPick = (locks[quadrant] && locks[quadrant][systemType]) || 'legionary';
+  const unlockedTypes = SPECIALTY_UNLOCKS_BY_SYSTEM_TYPE[systemType] || SPECIALTY_UNLOCKS_BY_SYSTEM_TYPE.frontier;
+  const allowedWeights = weights.filter((entry) => unlockedTypes.includes(entry.key));
+  const fallback = ENEMY_TYPES[unlockedTypes.includes(lockPick) ? lockPick : unlockedTypes[0]] || ENEMY_TYPES.legionary;
   const lockWeight = 0.52;
-  if (Math.random() < lockWeight) return ENEMY_TYPES[lockPick] || ENEMY_TYPES.legionary;
-  return chooseWeightedType(weights, ENEMY_TYPES[lockPick] || ENEMY_TYPES.legionary);
+  if (unlockedTypes.includes(lockPick) && Math.random() < lockWeight) return ENEMY_TYPES[lockPick] || fallback;
+  return chooseWeightedType(allowedWeights, fallback);
 }
 
 function chooseTypeForSpecialScenario(state) {
@@ -182,7 +209,13 @@ export function trySpawn(state) {
   const eliteChance = Math.min(0.34, Math.max(0.02, 0.035 + waveProgress * 0.13 + state.currentWave * 0.015 * threat + systemCurve.eliteChanceBonus));
   const heavyChance = Math.min(0.3, 0.085 + waveProgress * 0.11 + state.currentWave * 0.016 * threat);
 
-  const advancedChance = Math.min(0.42, Math.max(0, waveProgress - 0.14) * 0.55 + state.currentWave * 0.012);
+  const specialtyRamp = getSystemType(state) === 'frontier'
+    ? Math.max(0, waveProgress - 0.38)
+    : Math.max(0, waveProgress - 0.18);
+  const advancedChance = Math.min(
+    0.42,
+    specialtyRamp * 0.5 + Math.max(0, state.currentWave - 1) * 0.009
+  );
   const r = Math.random();
   let typeDef;
   const specialDef = chooseTypeForSpecialScenario(state);
@@ -397,8 +430,7 @@ export function updateEnemyMovement(state, deltaMs) {
       // Flagship should drive forward toward the player; avoid lateral orbiting.
       const targetVx = nx * enemy.speed * 0.96;
       const targetVy = ny * enemy.speed * 0.96;
-      enemy.vx += (targetVx - enemy.vx) * 0.16;
-      enemy.vy += (targetVy - enemy.vy) * 0.16;
+      steerToward(enemy, targetVx, targetVy, STEERING_RESPONSE.nemesis);
       const vmax = enemy.speed * 1.02;
       const vlen = Math.hypot(enemy.vx, enemy.vy);
       if (vlen > vmax && vlen > 0) {
@@ -415,15 +447,18 @@ export function updateEnemyMovement(state, deltaMs) {
       if (enemy.heavyRole === 'siege') {
         const standOff = 220;
         const toward = d > standOff ? 1 : 0.25;
-        enemy.vx += (targetVx * toward - enemy.vx) * 0.034;
-        enemy.vy += (targetVy * toward - enemy.vy) * 0.034;
+        steerToward(enemy, targetVx * toward, targetVy * toward, STEERING_RESPONSE.heavySiege);
       } else {
         const perpX = -ny;
         const perpY = nx;
         const strafe = Math.sin((enemy.zigZagTimer || 0) * 2.2 + (enemy.zigZagPhase || 0)) * 0.42;
         enemy.zigZagTimer = (enemy.zigZagTimer || 0) + dt;
-        enemy.vx += ((targetVx + perpX * enemy.speed * strafe) - enemy.vx) * 0.05;
-        enemy.vy += ((targetVy + perpY * enemy.speed * strafe) - enemy.vy) * 0.05;
+        steerToward(
+          enemy,
+          targetVx + perpX * enemy.speed * strafe,
+          targetVy + perpY * enemy.speed * strafe,
+          STEERING_RESPONSE.heavyHunter
+        );
       }
     } else if (enemy.type === 'elite') {
       enemy.zigZagTimer += dt;
@@ -444,8 +479,12 @@ export function updateEnemyMovement(state, deltaMs) {
       }
 
       const speedMult = enemy.burstActive ? 2.4 : 1;
-      enemy.vx = (nx + perpX * zigZag) * enemy.speed * speedMult;
-      enemy.vy = (ny + perpY * zigZag) * enemy.speed * speedMult;
+      steerToward(
+        enemy,
+        (nx + perpX * zigZag) * enemy.speed * speedMult,
+        (ny + perpY * zigZag) * enemy.speed * speedMult,
+        STEERING_RESPONSE.elite
+      );
     } else if (enemy.type === 'legionary') {
       // Legionaries run suppressive strafing lines, keeping lateral pressure.
       enemy.zigZagTimer += dt;
@@ -455,8 +494,12 @@ export function updateEnemyMovement(state, deltaMs) {
       const perpY = nx;
       const standoff = 200;
       const toward = d > standoff ? 1 : 0.45;
-      enemy.vx = (nx * toward + perpX * strafe) * enemy.speed;
-      enemy.vy = (ny * toward + perpY * strafe) * enemy.speed;
+      steerToward(
+        enemy,
+        (nx * toward + perpX * strafe) * enemy.speed,
+        (ny * toward + perpY * strafe) * enemy.speed,
+        STEERING_RESPONSE.legionary
+      );
     } else if (enemy.type === 'raybin') {
       // Raybins flank: maintain offset ring and strafe around player before missile shots.
       const standOff = 280;
@@ -468,8 +511,7 @@ export function updateEnemyMovement(state, deltaMs) {
       const flankStrength = Math.min(1.1, 0.6 + raybinAllies.length * 0.08);
       const targetVx = (nx * radial + perpX * flank * flankStrength) * enemy.speed;
       const targetVy = (ny * radial + perpY * flank * flankStrength) * enemy.speed;
-      enemy.vx += (targetVx - enemy.vx) * 0.08;
-      enemy.vy += (targetVy - enemy.vy) * 0.08;
+      steerToward(enemy, targetVx, targetVy, STEERING_RESPONSE.raybin);
     } else if (enemy.type === 'hord') {
       // Hord fights as a swarm mass: cohesion + periodic surge rushes.
       enemy.tacticTimer = (enemy.tacticTimer || 0) + dt;
@@ -490,8 +532,7 @@ export function updateEnemyMovement(state, deltaMs) {
       const coh = inSurge ? 0.2 : 0.5;
       const targetVx = (nx * press + cx * coh) * enemy.speed;
       const targetVy = (ny * press + cy * coh) * enemy.speed;
-      enemy.vx += (targetVx - enemy.vx) * (inSurge ? 0.09 : 0.05);
-      enemy.vy += (targetVy - enemy.vy) * (inSurge ? 0.09 : 0.05);
+      steerToward(enemy, targetVx, targetVy, inSurge ? STEERING_RESPONSE.hordSurge : STEERING_RESPONSE.hord);
     } else if (enemy.type === 'outlander') {
       // Outlanders use hit-and-fade movement around teleport windows.
       enemy.tacticTimer = (enemy.tacticTimer || 0) + dt;
@@ -501,8 +542,12 @@ export function updateEnemyMovement(state, deltaMs) {
       const preferred = 165;
       const err = (d - preferred) / preferred;
       const radial = Math.max(-0.9, Math.min(0.9, err));
-      enemy.vx = (nx * radial + perpX * weave) * enemy.speed * 1.08;
-      enemy.vy = (ny * radial + perpY * weave) * enemy.speed * 1.08;
+      steerToward(
+        enemy,
+        (nx * radial + perpX * weave) * enemy.speed * 1.08,
+        (ny * radial + perpY * weave) * enemy.speed * 1.08,
+        STEERING_RESPONSE.outlander
+      );
     }
 
     if (enemy.hitFlash > 0) enemy.hitFlash--;
@@ -513,7 +558,15 @@ export function updateEnemyMovement(state, deltaMs) {
       const targetAngle = (Math.atan2(enemy.vy, enemy.vx) * 180) / Math.PI + 90;
       const current = enemy.facingAngle ?? targetAngle;
       const delta = normalizeAngleDelta(targetAngle - current);
-      const maxTurnSpeed = enemy.isNemesis ? 160 : (enemy.type === 'heavy' || enemy.type === 'hord') ? 95 : 260; // deg/sec
+      const maxTurnSpeed = enemy.type === 'swarm'
+        ? 360
+        : enemy.isNemesis
+          ? 45
+          : enemy.type === 'heavy' || enemy.type === 'hord'
+            ? 52
+            : enemy.type === 'elite'
+              ? 90
+              : 70; // deg/sec
       const maxTurnStep = maxTurnSpeed * dt;
       const applied = Math.max(-maxTurnStep, Math.min(maxTurnStep, delta));
       enemy.facingAngle = current + applied;

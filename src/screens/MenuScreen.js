@@ -1,7 +1,7 @@
 // src/screens/MenuScreen.js
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, useWindowDimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 const MENU_TITLE_IMAGE = require('../../main menu title.png');
@@ -15,6 +15,11 @@ const STARS = Array.from({ length: 60 }, () => ({
 }));
 
 export default function MenuScreen({ onStart }) {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  // The app rotates its frame on portrait mobile web, so the visible content
+  // height is the shorter window edge in that case.
+  const contentHeight = Math.min(windowWidth, windowHeight);
+  const compact = contentHeight < 500;
   const [runProfile, setRunProfile] = useState('combat');
   const titleScale = useRef(new Animated.Value(0.7)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
@@ -43,23 +48,23 @@ export default function MenuScreen({ onStart }) {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, compact && styles.containerCompact]}>
       <Image source={BATTLE_BACKGROUND_IMAGE} resizeMode="cover" style={styles.battleBg} />
       <View style={styles.focusOverlay} />
 
-      <Animated.View style={[styles.titleBlock, { opacity: titleOpacity, transform: [{ scale: titleScale }] }]}>
+      <Animated.View style={[styles.titleBlock, compact && styles.titleBlockCompact, { opacity: titleOpacity, transform: [{ scale: titleScale }] }]}>
         <Text style={styles.titleSub}>MOBILIZED COMBAT SERIES</Text>
-        <Image source={MENU_TITLE_IMAGE} resizeMode="contain" style={styles.titleImage} />
+        <Image source={MENU_TITLE_IMAGE} resizeMode="contain" style={[styles.titleImage, compact && styles.titleImageCompact]} />
         <View style={styles.titleLine} />
       </Animated.View>
 
-      <Animated.View style={[styles.tagBlock, { opacity: subtitleOpacity }]}> 
+      <Animated.View style={[styles.tagBlock, compact && styles.tagBlockCompact, { opacity: subtitleOpacity }]}>
         <Text style={styles.tag}>SLASH | COMBO | SURVIVE</Text>
         <View style={styles.tagDivider} />
         <Text style={styles.tagSub}>Destroy enemy fleets. Build your combo. Upgrade your ship.</Text>
       </Animated.View>
 
-      <Animated.View style={[styles.abilitiesRow, { opacity: subtitleOpacity }]}> 
+      <Animated.View style={[styles.abilitiesRow, compact && styles.abilitiesRowCompact, { opacity: subtitleOpacity }]}>
         {[
           { icon: 'DSH', label: 'DASH SLASH', color: '#30FFB5' },
           { icon: 'PLS', label: 'ENERGY PULSE', color: '#FF7A2E' },
@@ -74,7 +79,7 @@ export default function MenuScreen({ onStart }) {
 
       <Animated.View style={{ opacity: btnOpacity, transform: [{ scale: pulseAnim }] }}>
         <TouchableOpacity style={styles.startBtn} onPress={() => onStart?.(runProfile)} activeOpacity={0.8}>
-          <View style={styles.startBtnInner}>
+          <View style={[styles.startBtnInner, compact && styles.startBtnInnerCompact]}>
             <Text style={styles.startText}>LAUNCH MISSION</Text>
           </View>
           <View style={styles.startBtnGlowTop} />
@@ -82,7 +87,7 @@ export default function MenuScreen({ onStart }) {
         </TouchableOpacity>
       </Animated.View>
 
-      <View style={styles.profileRow}>
+      <View style={[styles.profileRow, compact && styles.profileRowCompact]}>
         {[
           { id: 'cadet', label: 'CADET' },
           { id: 'combat', label: 'COMBAT' },
@@ -102,7 +107,7 @@ export default function MenuScreen({ onStart }) {
         })}
       </View>
 
-      <Animated.Text style={[styles.hint, { opacity: subtitleOpacity }]}> 
+      <Animated.Text style={[styles.hint, compact && styles.hintCompact, { opacity: subtitleOpacity }]}>
         Use joystick to move | Abilities activate on tap
       </Animated.Text>
     </View>
@@ -116,6 +121,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  containerCompact: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
   },
   battleBg: {
     position: 'absolute',
@@ -140,6 +149,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     width: '100%',
   },
+  titleBlockCompact: { marginBottom: 2 },
   titleSub: {
     color: 'rgba(196,230,255,0.9)',
     fontFamily: 'Courier New',
@@ -156,6 +166,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     height: 160,
   },
+  titleImageCompact: { height: 76, maxWidth: 340 },
   titleLine: {
     width: 120,
     height: 2,
@@ -171,6 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 28,
   },
+  tagBlockCompact: { marginBottom: 8 },
   tag: {
     color: 'rgba(182,241,255,0.95)',
     fontFamily: 'Courier New',
@@ -206,6 +218,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 36,
   },
+  abilitiesRowCompact: { marginBottom: 10 },
   abilityChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -249,6 +262,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     backgroundColor: 'rgba(4,18,36,0.6)',
   },
+  startBtnInnerCompact: { paddingHorizontal: 40, paddingVertical: 10 },
   startText: {
     color: '#67F3FF',
     fontFamily: 'Courier New',
@@ -290,11 +304,13 @@ const styles = StyleSheet.create({
     textShadowRadius: 5,
     textShadowOffset: { width: 0, height: 1 },
   },
+  hintCompact: { marginTop: 6 },
   profileRow: {
     marginTop: 14,
     flexDirection: 'row',
     gap: 8,
   },
+  profileRowCompact: { marginTop: 7 },
   profileChip: {
     borderWidth: 1,
     borderColor: 'rgba(127,196,255,0.5)',
